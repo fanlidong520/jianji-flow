@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import os
 from pathlib import Path
 
 from jianji_flow.cli import main as cli_main
@@ -22,19 +23,19 @@ def _assert_outputs(work_dir: Path) -> None:
         raise AssertionError(f"invalid smoke remix duration: {work_dir / 'remix.mp4'}")
 
 
-def _run_case(mode: str, scenario: str, script_name: str) -> None:
-    work_dir = ROOT / "out" / f"smoke-{scenario}"
+def _run_case(mode: str, scenario: str, script_name: str, fixture_root: Path, run_root: Path) -> None:
+    work_dir = run_root / scenario
     code = cli_main(
         [
             "run",
             "--mode",
             mode,
             "--reference",
-            str(ROOT / "fixtures" / scenario / "reference.mp4"),
+            str(fixture_root / scenario / "reference.mp4"),
             "--assets",
-            str(ROOT / "fixtures" / scenario / "assets"),
+            str(fixture_root / scenario / "assets"),
             "--script",
-            str(ROOT / "fixtures" / scenario / script_name),
+            str(fixture_root / scenario / script_name),
             "--work-dir",
             str(work_dir),
             "--target-width",
@@ -51,15 +52,15 @@ def _run_case(mode: str, scenario: str, script_name: str) -> None:
 
 
 def main() -> int:
-    fixture_root = ROOT / "fixtures"
+    smoke_root = ROOT / "out" / f"smoke-{os.getpid()}"
+    if smoke_root.exists():
+        shutil.rmtree(smoke_root)
+    smoke_root.mkdir(parents=True, exist_ok=True)
+    fixture_root = smoke_root / "fixtures"
     generate_fixtures(fixture_root)
-    smoke_root = ROOT / "out"
-    for old in smoke_root.glob("smoke-*"):
-        if old.is_dir():
-            shutil.rmtree(old)
 
-    _run_case("product", "scenario-a-product", "script.txt")
-    _run_case("talking-head", "scenario-b-talking", "transcript.txt")
+    _run_case("product", "scenario-a-product", "script.txt", fixture_root, smoke_root)
+    _run_case("talking-head", "scenario-b-talking", "transcript.txt", fixture_root, smoke_root)
     print("smoke passed")
     return 0
 

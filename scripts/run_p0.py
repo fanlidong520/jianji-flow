@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import os
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
@@ -32,7 +33,7 @@ def _assert_no_remix(work_dir: Path) -> None:
         raise AssertionError(f"blocking failure produced remix.mp4: {work_dir}")
 
 
-def test_missing_reference(base: Path) -> None:
+def test_missing_reference(base: Path, fixture_root: Path) -> None:
     work_dir = base / "missing-reference"
     code, _, stderr = _run(
         [
@@ -42,7 +43,7 @@ def test_missing_reference(base: Path) -> None:
             "--reference",
             str(base / "missing.mp4"),
             "--assets",
-            str(ROOT / "fixtures" / "scenario-a-product" / "assets"),
+            str(fixture_root / "scenario-a-product" / "assets"),
             "--work-dir",
             str(work_dir),
         ]
@@ -54,7 +55,7 @@ def test_missing_reference(base: Path) -> None:
     _assert_no_remix(work_dir)
 
 
-def test_empty_asset_dir(base: Path) -> None:
+def test_empty_asset_dir(base: Path, fixture_root: Path) -> None:
     assets = base / "empty-assets"
     assets.mkdir(parents=True, exist_ok=True)
     work_dir = base / "empty-asset-output"
@@ -64,7 +65,7 @@ def test_empty_asset_dir(base: Path) -> None:
             "--mode",
             "product",
             "--reference",
-            str(ROOT / "fixtures" / "scenario-a-product" / "reference.mp4"),
+            str(fixture_root / "scenario-a-product" / "reference.mp4"),
             "--assets",
             str(assets),
             "--work-dir",
@@ -78,10 +79,10 @@ def test_empty_asset_dir(base: Path) -> None:
     _assert_no_remix(work_dir)
 
 
-def test_damaged_asset_dir(base: Path) -> None:
+def test_damaged_asset_dir(base: Path, fixture_root: Path) -> None:
     assets = base / "damaged-assets"
     assets.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(ROOT / "fixtures" / "malformed" / "damaged.mp4", assets / "damaged.mp4")
+    shutil.copy2(fixture_root / "malformed" / "damaged.mp4", assets / "damaged.mp4")
     work_dir = base / "damaged-output"
     code, _, stderr = _run(
         [
@@ -89,7 +90,7 @@ def test_damaged_asset_dir(base: Path) -> None:
             "--mode",
             "product",
             "--reference",
-            str(ROOT / "fixtures" / "scenario-a-product" / "reference.mp4"),
+            str(fixture_root / "scenario-a-product" / "reference.mp4"),
             "--assets",
             str(assets),
             "--work-dir",
@@ -103,8 +104,8 @@ def test_damaged_asset_dir(base: Path) -> None:
     _assert_no_remix(work_dir)
 
 
-def test_chinese_path_with_spaces(base: Path) -> None:
-    source = ROOT / "fixtures" / "scenario-a-product"
+def test_chinese_path_with_spaces(base: Path, fixture_root: Path) -> None:
+    source = fixture_root / "scenario-a-product"
     scenario = base / "中文 路径" / "产品 样例"
     shutil.copytree(source, scenario)
     work_dir = base / "中文 输出"
@@ -136,13 +137,14 @@ def test_chinese_path_with_spaces(base: Path) -> None:
 
 
 def main() -> int:
-    generate_fixtures(ROOT / "fixtures")
-    base = ROOT / "out" / "p0"
+    base = ROOT / "out" / f"p0-{os.getpid()}"
     _reset_dir(base)
-    test_missing_reference(base)
-    test_empty_asset_dir(base)
-    test_damaged_asset_dir(base)
-    test_chinese_path_with_spaces(base)
+    fixture_root = base / "fixtures"
+    generate_fixtures(fixture_root)
+    test_missing_reference(base, fixture_root)
+    test_empty_asset_dir(base, fixture_root)
+    test_damaged_asset_dir(base, fixture_root)
+    test_chinese_path_with_spaces(base, fixture_root)
     print("p0 passed")
     return 0
 

@@ -1,14 +1,28 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 from pathlib import Path
 
+from PIL import Image, ImageDraw, ImageFont
+
 
 VIDEO_SIZE = "320x180"
+VIDEO_WIDTH = 320
+VIDEO_HEIGHT = 180
 FRAME_RATE = 12
 CREATION_TIME = "1970-01-01T00:00:00Z"
+
+SUBLINES = {
+    "reference-product": "Structure source only",
+    "product-overview": "Hero shot / workflow view",
+    "product-detail": "Detail shot / proof moment",
+    "reference-talking": "Rhythm source only",
+    "talking-wide": "Wide talking-head frame",
+    "talking-detail": "Close-up evidence frame",
+}
 
 
 SCENARIOS = {
@@ -45,11 +59,59 @@ SCENARIOS = {
 }
 
 
+def _pil_color(color: str) -> str:
+    return "#" + color.removeprefix("0x")
+
+
+def _font(size: int, bold: bool = False) -> ImageFont.ImageFont:
+    candidates = [
+        Path("C:/Windows/Fonts/arialbd.ttf" if bold else "C:/Windows/Fonts/arial.ttf"),
+        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return ImageFont.truetype(str(candidate), size)
+    return ImageFont.load_default()
+
+
+def _text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> tuple[int, int]:
+    box = draw.textbbox((0, 0), text, font=font)
+    return box[2] - box[0], box[3] - box[1]
+
+
+def _draw_centered(draw: ImageDraw.ImageDraw, y: int, text: str, font: ImageFont.ImageFont, fill: str) -> None:
+    width, _ = _text_size(draw, text, font)
+    draw.text(((VIDEO_WIDTH - width) / 2, y), text, font=font, fill=fill)
+
+
+def _make_frame(path: Path, label: str, color: str) -> None:
+    title = label.replace("-", " ").upper()
+    subline = SUBLINES.get(label, "Synthetic local media")
+    image = Image.new("RGB", (VIDEO_WIDTH, VIDEO_HEIGHT), _pil_color(color))
+    draw = ImageDraw.Draw(image)
+
+    draw.rectangle((0, 0, VIDEO_WIDTH, VIDEO_HEIGHT), outline="#111111", width=3)
+    draw.rectangle((0, 0, VIDEO_WIDTH, 34), fill="#111111")
+    draw.rectangle((18, 54, 302, 138), outline="#ffffff", width=2)
+    draw.ellipse((228, 46, 286, 104), fill="#ffffff", outline="#111111", width=2)
+    draw.rectangle((36, 94, 170, 122), fill="#ffffff")
+    draw.line((40, 145, 280, 145), fill="#111111", width=3)
+    draw.line((40, 154, 220, 154), fill="#111111", width=2)
+
+    _draw_centered(draw, 9, title, _font(18, bold=True), "#ffffff")
+    _draw_centered(draw, 64, subline, _font(14), "#111111")
+    _draw_centered(draw, 101, "VISIBLE SYNTHETIC ASSET", _font(13, bold=True), "#111111")
+    image.save(path)
+
+
 def _make_video(output: Path, label: str, color: str, frequency: int, duration: float) -> None:
     ffmpeg = shutil.which("ffmpeg")
     if ffmpeg is None:
         raise RuntimeError("ffmpeg is required to generate synthetic fixtures")
 
+    frame_path = output.with_name(f".{output.stem}.{os.getpid()}.frame.png")
+    temp_output = output.with_name(f".{output.stem}.{os.getpid()}.tmp{output.suffix}")
+    _make_frame(frame_path, label, color)
     command = [
         ffmpeg,
         "-hide_banner",
@@ -57,10 +119,12 @@ def _make_video(output: Path, label: str, color: str, frequency: int, duration: 
         "error",
         "-nostdin",
         "-y",
-        "-f",
-        "lavfi",
+        "-loop",
+        "1",
+        "-framerate",
+        str(FRAME_RATE),
         "-i",
-        f"color=c={color}:s={VIDEO_SIZE}:r={FRAME_RATE}:d={duration}",
+        str(frame_path),
         "-f",
         "lavfi",
         "-i",
@@ -101,12 +165,19 @@ def _make_video(output: Path, label: str, color: str, frequency: int, duration: 
         "1",
         "-movflags",
         "+faststart",
-        str(output),
+        str(temp_output),
     ]
-    result = subprocess.run(command, check=False, capture_output=True, text=True)
-    if result.returncode != 0:
-        detail = result.stderr.strip() or "no diagnostic output"
-        raise RuntimeError(f"ffmpeg failed for {output}: {detail}")
+    try:
+        result = subprocess.run(command, check=False, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if result.returncode != 0:
+            detail = result.stderr.strip() or "no diagnostic output"
+            raise RuntimeError(f"ffmpeg failed for {output}: {detail}")
+        temp_output.replace(output)
+    finally:
+        if frame_path.exists():
+            frame_path.unlink()
+        if temp_output.exists():
+            temp_output.unlink()
 
 
 def generate_fixtures(output: Path) -> None:

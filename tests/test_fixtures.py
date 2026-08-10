@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from PIL import Image, ImageStat
 
 from jianji_flow.media_probe import run_ffprobe
 
@@ -49,6 +50,36 @@ def test_generated_media_is_probeable_and_has_audio(tmp_path: Path, scenario: st
         assert (info.width, info.height) == (320, 180)
         assert 0 < info.fps <= 30
         assert info.has_audio is True
+
+
+def test_generated_fixture_frames_are_not_plain_color_blocks(tmp_path: Path):
+    output = tmp_path / "fixtures"
+    frame_path = tmp_path / "frame.png"
+    _run_generator(output)
+    media_path = output / "scenario-a-product" / "assets" / "product-overview.mp4"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-ss",
+            "0.2",
+            "-i",
+            str(media_path),
+            "-frames:v",
+            "1",
+            str(frame_path),
+        ],
+        check=True,
+    )
+
+    image = Image.open(frame_path).convert("RGB")
+    extrema = image.getextrema()
+    stat = ImageStat.Stat(image)
+    assert any(high - low > 40 for low, high in extrema)
+    assert max(stat.stddev) > 20
 
 
 def test_generator_output_is_deterministic(tmp_path: Path):

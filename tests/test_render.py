@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from PIL import Image, ImageStat
 
 from jianji_flow.media_probe import run_ffprobe
 from jianji_flow.render import build_ffmpeg_plan, render_preview
@@ -224,6 +225,30 @@ def test_render_preview_creates_probeable_mp4(tmp_path: Path):
     assert 900 <= info.duration_ms <= 1200
     assert (info.width, info.height) == (320, 180)
     assert info.has_audio is True
+
+    frame_path = tmp_path / "render-frame.png"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-ss",
+            "0.2",
+            "-i",
+            str(output_path),
+            "-frames:v",
+            "1",
+            str(frame_path),
+        ],
+        check=True,
+    )
+    frame = Image.open(frame_path).convert("RGB")
+    extrema = frame.getextrema()
+    stat = ImageStat.Stat(frame)
+    assert any(high - low > 40 for low, high in extrema)
+    assert max(stat.stddev) > 20
 
 
 def test_render_preview_removes_stale_output_on_validation_failure(tmp_path: Path):
