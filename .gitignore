@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+out/
+work/
+fixtures/generated/
+docs/superpowers/
+findings.md
+progress.md
+task_plan.md

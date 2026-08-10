@@ -1,0 +1,5 @@
+Topic: A practical way to review a talking-head video.
+Claim: Clear claims are easier to follow when each has one explanation.
+Explanation: Keep the topic, reason, evidence, and conclusion distinct.
+Evidence: This synthetic sequence supplies short labeled talking clips.
+Conclusion: A simple structure makes review easier.

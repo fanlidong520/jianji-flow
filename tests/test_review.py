@@ -1,0 +1,81 @@
+from pathlib import Path
+
+from jianji_flow.review import build_review, build_review_markdown, write_review_markdown
+
+
+def test_review_marks_missing_assets_as_failure():
+    recipe = {"segments": [{"id": "seg-001", "match_id": "match-001", "caption": "Hook"}]}
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "missing",
+                "confidence": 0,
+                "missing_reason": "no asset",
+            }
+        ]
+    }
+
+    review = build_review(recipe, matches, remix_path=Path("work/remix.mp4"), captions_path=Path("work/captions.srt"))
+
+    assert review["status"] == "fail"
+    assert any("missing" in failure for failure in review["failures"])
+
+
+def test_review_marks_low_confidence_as_warning():
+    recipe = {"segments": [{"id": "seg-001", "match_id": "match-001", "caption": "Hook"}]}
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "low_confidence",
+                "asset_id": "asset-001",
+                "confidence": 0.55,
+            }
+        ]
+    }
+
+    review = build_review(recipe, matches, remix_path=Path("work/remix.mp4"), captions_path=Path("work/captions.srt"))
+
+    assert review["status"] == "warning"
+    assert any("low confidence" in warning for warning in review["warnings"])
+
+
+def test_review_passes_when_all_segments_are_selected():
+    recipe = {"segments": [{"id": "seg-001", "match_id": "match-001", "caption": "Hook"}]}
+    matches = {"matches": [{"id": "match-001", "segment_id": "seg-001", "status": "selected", "asset_id": "asset-001", "confidence": 0.9}]}
+
+    review = build_review(recipe, matches, remix_path=Path("work/remix.mp4"), captions_path=Path("work/captions.srt"))
+
+    assert review["status"] == "pass"
+    assert review["failures"] == []
+    assert review["warnings"] == []
+
+
+def test_build_review_markdown_contains_checklist_and_outputs():
+    markdown = build_review_markdown(
+        {
+            "status": "warning",
+            "warnings": ["seg-001 low confidence"],
+            "failures": [],
+            "outputs": {"remix": "work/remix.mp4", "captions": "work/captions.srt"},
+            "missing_segments": [],
+            "low_confidence_segments": ["seg-001"],
+        }
+    )
+
+    assert "# jianji-flow Review" in markdown
+    assert "Status: warning" in markdown
+    assert "work/remix.mp4" in markdown
+    assert "seg-001 low confidence" in markdown
+    assert "Manual review checklist" in markdown
+
+
+def test_write_review_markdown_creates_file(tmp_path: Path):
+    output = tmp_path / "nested" / "review.md"
+
+    write_review_markdown({"status": "pass", "warnings": [], "failures": [], "outputs": {}}, output)
+
+    assert output.read_text(encoding="utf-8").startswith("# jianji-flow Review")

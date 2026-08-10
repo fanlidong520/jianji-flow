@@ -1,0 +1,4 @@
+interface:
+  display_name: "jianji-flow"
+  short_description: "从参考视频和素材目录生成可审核的预览视频流程。"
+  default_prompt: "请使用 jianji-flow，根据参考视频、素材目录、模式和工作目录执行可校验的预览流程。"

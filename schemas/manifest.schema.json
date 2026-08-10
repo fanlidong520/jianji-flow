@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "jianji-flow manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "asset_root", "reference", "assets"],
+  "properties": {
+    "version": {"const": "0.1"},
+    "asset_root": {"type": "string", "minLength": 1},
+    "reference": {"type": "string", "minLength": 1},
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "asset_id",
+          "path",
+          "sha256",
+          "media_type",
+          "duration_ms",
+          "width",
+          "height",
+          "fps",
+          "has_audio"
+        ],
+        "properties": {
+          "asset_id": {"type": "string", "minLength": 1},
+          "path": {"type": "string", "minLength": 1},
+          "sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+          "media_type": {"const": "video"},
+          "duration_ms": {"type": "integer", "minimum": 0},
+          "width": {"type": "integer", "minimum": 1},
+          "height": {"type": "integer", "minimum": 1},
+          "fps": {"type": "number", "minimum": 0},
+          "has_audio": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}

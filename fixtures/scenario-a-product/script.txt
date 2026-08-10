@@ -1,0 +1,5 @@
+Hook: A small product can make one repetitive task easier.
+Pain: The manual workflow repeats the same steps.
+Feature: The product groups the steps into one clear flow.
+Evidence: This synthetic demo shows the product, detail, and result.
+CTA: Try the smallest useful workflow first.
