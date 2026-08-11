@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from jianji_flow.subtitles import format_srt_time, srt_from_recipe, write_srt
+from jianji_flow.subtitles import ass_from_recipe, format_srt_time, srt_from_recipe, write_ass, write_srt
 
 
 def test_format_srt_time():
@@ -64,3 +64,28 @@ def test_write_srt_creates_utf8_file(tmp_path: Path):
     write_srt(recipe, output)
 
     assert output.read_text(encoding="utf-8").startswith("1\n00:00:00,000")
+
+
+def test_ass_from_recipe_contains_chinese_caption_and_style():
+    recipe = {
+        "target": {"width": 720, "height": 1280, "fps": 30},
+        "segments": [{"start_ms": 0, "end_ms": 1200, "caption": "家里难刷角落"}],
+    }
+
+    ass = ass_from_recipe(recipe, width=720, height=1280)
+
+    assert "[Script Info]" in ass
+    assert "Microsoft YaHei" in ass
+    assert "家里难刷角落" in ass
+
+
+def test_write_ass_creates_utf8_file(tmp_path: Path):
+    recipe = {
+        "target": {"width": 720, "height": 1280, "fps": 30},
+        "segments": [{"start_ms": 0, "end_ms": 1000, "caption": "可伸缩清洁刷"}],
+    }
+    output = tmp_path / "captions.ass"
+
+    write_ass(recipe, output)
+
+    assert "可伸缩清洁刷" in output.read_text(encoding="utf-8")

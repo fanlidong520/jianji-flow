@@ -192,6 +192,31 @@ def test_render_command_uses_nonzero_source_start_and_declared_range():
     assert command[command.index("-t") + 1] == "1.000"
 
 
+def test_render_command_uses_voiceover_audio_and_burned_captions(tmp_path: Path):
+    recipe, matches = _recipe(Path("assets/hook.mp4"))
+    voiceover = tmp_path / "voiceover.wav"
+    voiceover.write_bytes(b"RIFFfake")
+    recipe["audio_strategy"] = "voiceover-only"
+    recipe["voiceover_path"] = str(voiceover)
+    recipe["caption_burn_in"] = True
+
+    command = build_ffmpeg_plan(
+        recipe,
+        matches,
+        _manifest("assets/hook.mp4"),
+        Path("out/remix.mp4"),
+        work_dir=Path("out"),
+        reference_path=Path("reference.mp4"),
+        asset_root=Path("assets"),
+        captions_path=Path("out/captions.ass"),
+        voiceover_path=voiceover,
+    )
+
+    assert "anullsrc=channel_layout=mono:sample_rate=48000" not in command
+    assert str(voiceover) in command
+    assert any("subtitles=" in part for part in command)
+
+
 @pytest.mark.skipif(shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None, reason="ffmpeg required")
 def test_render_preview_creates_probeable_mp4(tmp_path: Path):
     fixture_root = tmp_path / "fixtures"

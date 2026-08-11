@@ -7,6 +7,7 @@ from pathlib import Path
 
 from jianji_flow.paths import ensure_inside, reject_url_or_protocol
 from jianji_flow.semantics import validate_semantics
+from jianji_flow.voiceover import validate_voiceover
 
 
 def _posix(path: Path) -> str:
@@ -38,7 +39,12 @@ def _selected_sources(recipe: dict, matches: dict) -> list[tuple[dict, dict]]:
     return selected
 
 
-def _filter_complex(recipe: dict, source_count: int) -> str:
+def _subtitle_filter_path(path: Path) -> str:
+    normalized = path.resolve().as_posix()
+    return normalized.replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
+
+
+def _filter_complex(recipe: dict, source_count: int, captions_path: Path | None = None) -> str:
     target = recipe["target"]
     width = int(target["width"])
     height = int(target["height"])
@@ -55,7 +61,11 @@ def _filter_complex(recipe: dict, source_count: int) -> str:
             f"[{label}]"
         )
         video_labels.append(f"[{label}]")
-    return ";".join(video_filters + [f"{''.join(video_labels)}concat=n={source_count}:v=1:a=0[vout]"])
+    concat_filter = f"{''.join(video_labels)}concat=n={source_count}:v=1:a=0"
+    if captions_path is None:
+        return ";".join(video_filters + [f"{concat_filter}[vout]"])
+    subtitles = f"subtitles=filename='{_subtitle_filter_path(captions_path)}'"
+    return ";".join(video_filters + [f"{concat_filter}[vcat]", f"[vcat]{subtitles}[vout]"])
 
 
 def build_ffmpeg_plan(
@@ -68,10 +78,13 @@ def build_ffmpeg_plan(
     reference_path: Path,
     asset_root: Path,
     captions_path: Path | None = None,
+    voiceover_path: Path | None = None,
 ) -> list[str]:
-    if captions_path is not None:
-        raise NotImplementedError("caption burn-in is not implemented yet")
     reject_url_or_protocol(str(output_path))
+    if captions_path is not None:
+        reject_url_or_protocol(str(captions_path))
+    if voiceover_path is not None:
+        reject_url_or_protocol(str(voiceover_path))
     try:
         output_path = ensure_inside(work_dir, output_path)
     except ValueError as exc:
@@ -108,21 +121,51 @@ def build_ffmpeg_plan(
             ]
         )
 
-    command.extend(
-        [
-            "-f",
-            "lavfi",
-            "-t",
-            f"{total_duration_s:.3f}",
-            "-i",
-            "anullsrc=channel_layout=mono:sample_rate=48000",
-            "-filter_complex",
-            _filter_complex(recipe, len(selected)),
+    audio_strategy = recipe.get("audio_strategy", "silent-preview")
+    if audio_strategy == "voiceover-only":
+        resolved_voiceover = voiceover_path or Path(str(recipe.get("voiceover_path", "")))
+        if not str(resolved_voiceover):
+            raise ValueError("voiceover-only requires voiceover_path")
+        validate_voiceover(resolved_voiceover)
+        audio_input_index = len(selected)
+        command.extend(["-i", str(resolved_voiceover)])
+        audio_options = [
             "-map",
             "[vout]",
             "-map",
-            f"{len(selected)}:a:0",
+            f"{audio_input_index}:a:0",
+            "-af",
+            f"apad=whole_dur={total_duration_s:.3f}",
+            "-t",
+            f"{total_duration_s:.3f}",
+        ]
+    elif audio_strategy == "silent-preview":
+        audio_input_index = len(selected)
+        command.extend(
+            [
+                "-f",
+                "lavfi",
+                "-t",
+                f"{total_duration_s:.3f}",
+                "-i",
+                "anullsrc=channel_layout=mono:sample_rate=48000",
+            ]
+        )
+        audio_options = [
+            "-map",
+            "[vout]",
+            "-map",
+            f"{audio_input_index}:a:0",
             "-shortest",
+        ]
+    else:
+        raise ValueError(f"unsupported audio_strategy: {audio_strategy}")
+
+    command.extend(
+        [
+            "-filter_complex",
+            _filter_complex(recipe, len(selected), captions_path),
+            *audio_options,
             "-c:v",
             "libx264",
             "-preset",
@@ -153,6 +196,7 @@ def render_preview(
     reference_path: Path,
     asset_root: Path,
     captions_path: Path | None = None,
+    voiceover_path: Path | None = None,
     timeout_s: int = 120,
 ) -> None:
     reject_url_or_protocol(str(output_path))
@@ -180,6 +224,7 @@ def render_preview(
         reference_path=reference_path,
         asset_root=asset_root,
         captions_path=captions_path,
+        voiceover_path=voiceover_path,
     )
     try:
         result = subprocess.run(
