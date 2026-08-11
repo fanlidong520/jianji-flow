@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from jianji_flow.review import build_review, build_review_markdown, write_review_markdown
+from jianji_flow.review import build_review, build_review_html, build_review_markdown, write_review_html, write_review_markdown
 
 
 def test_review_marks_missing_assets_as_failure():
@@ -79,3 +79,55 @@ def test_write_review_markdown_creates_file(tmp_path: Path):
     write_review_markdown({"status": "pass", "warnings": [], "failures": [], "outputs": {}}, output)
 
     assert output.read_text(encoding="utf-8").startswith("# jianji-flow Review")
+
+
+def test_build_review_html_contains_outputs_and_match_evidence():
+    review = {
+        "status": "pass",
+        "outputs": {
+            "remix": "work/remix.mp4",
+            "contact_sheet": "work/contact-sheet.png",
+            "voiceover": "work/voiceover.wav",
+        },
+        "warnings": [],
+        "failures": [],
+    }
+    recipe = {
+        "segments": [
+            {
+                "id": "seg-001",
+                "match_id": "match-001",
+                "caption": "家里难刷角落",
+                "start_ms": 0,
+                "end_ms": 1000,
+            }
+        ]
+    }
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "asset_id": "asset-001",
+                "source_path": "assets/hook.mp4",
+                "confidence": 0.92,
+                "evidence": ["filename-role:hook"],
+            }
+        ]
+    }
+
+    html = build_review_html(review, recipe, matches)
+
+    assert "<video" in html
+    assert "work/remix.mp4" in html
+    assert "work/contact-sheet.png" in html
+    assert "work/voiceover.wav" in html
+    assert "家里难刷角落" in html
+    assert "filename-role:hook" in html
+
+
+def test_write_review_html_creates_file(tmp_path: Path):
+    output = tmp_path / "review.html"
+
+    write_review_html({"status": "pass", "outputs": {}}, {"segments": []}, {"matches": []}, output)
+
+    assert output.read_text(encoding="utf-8").startswith("<!doctype html>")
