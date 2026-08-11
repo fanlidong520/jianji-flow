@@ -3,6 +3,22 @@
   "title": "jianji-flow recipe",
   "type": "object",
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "audio_strategy": {"const": "voiceover-only"}
+        },
+        "required": ["audio_strategy"]
+      },
+      "then": {
+        "required": ["voiceover_path", "caption_burn_in"],
+        "properties": {
+          "caption_burn_in": {"const": true}
+        }
+      }
+    }
+  ],
   "required": ["version", "mode", "duration_ms", "target", "audio_strategy", "segments"],
   "properties": {
     "version": {"const": "0.1"},
@@ -18,8 +34,10 @@
         "fps": {"type": "number", "exclusiveMinimum": 0}
       }
     },
-    "audio_strategy": {"const": "silent-preview"},
+    "audio_strategy": {"enum": ["silent-preview", "voiceover-only"]},
     "output_path": {"type": "string", "minLength": 1},
+    "voiceover_path": {"type": "string", "minLength": 1},
+    "caption_burn_in": {"type": "boolean"},
     "segments": {
       "type": "array",
       "minItems": 1,

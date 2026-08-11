@@ -94,6 +94,27 @@ def test_build_recipe_adds_match_ids_and_validates_schema():
     assert "reference" not in str(recipe).lower()
 
 
+def test_build_recipe_can_include_voiceover_and_caption_burn_in():
+    assets = [FakeAsset("asset-hook", Path("assets/hook.mp4"), 5000)]
+    segment = _segments()[0]
+    matches = match_segments([segment], assets)
+
+    recipe = build_recipe(
+        "product",
+        {"width": 1080, "height": 1920, "fps": 30},
+        [segment],
+        matches,
+        voiceover_path=Path("work/voiceover.wav"),
+        caption_burn_in=True,
+        audio_strategy="voiceover-only",
+    )
+
+    validate_recipe(recipe)
+    assert recipe["audio_strategy"] == "voiceover-only"
+    assert recipe["voiceover_path"] == "work/voiceover.wav"
+    assert recipe["caption_burn_in"] is True
+
+
 def test_build_recipe_preserves_existing_match_id_when_present():
     segment = {"id": "seg-001", "role": "hook", "start_ms": 0, "end_ms": 1000, "match_id": "custom", "caption": ""}
     matches = {"version": "0.1", "matches": [{"id": "custom", "segment_id": "seg-001", "status": "missing", "confidence": 0, "scores": {}, "candidates": [], "evidence": [], "missing_reason": "none"}]}

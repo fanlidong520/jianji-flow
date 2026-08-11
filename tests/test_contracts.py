@@ -175,6 +175,33 @@ def test_recipe_rejects_unsupported_audio_strategy():
         validate_recipe(data)
 
 
+def test_recipe_allows_voiceover_only_outputs():
+    data = valid_recipe()
+    data["audio_strategy"] = "voiceover-only"
+    data["voiceover_path"] = "work/voiceover.wav"
+    data["caption_burn_in"] = True
+
+    validate_recipe(data)
+
+
+def test_recipe_voiceover_only_requires_voiceover_path():
+    data = valid_recipe()
+    data["audio_strategy"] = "voiceover-only"
+    data["caption_burn_in"] = True
+
+    with pytest.raises(ValidationError):
+        validate_recipe(data)
+
+
+def test_recipe_voiceover_only_requires_caption_burn_in():
+    data = valid_recipe()
+    data["audio_strategy"] = "voiceover-only"
+    data["voiceover_path"] = "work/voiceover.wav"
+
+    with pytest.raises(ValidationError):
+        validate_recipe(data)
+
+
 def test_manifest_rejects_unsupported_media_type():
     data = valid_manifest()
     data["assets"][0]["media_type"] = "image"

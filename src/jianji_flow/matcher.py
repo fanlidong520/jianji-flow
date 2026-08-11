@@ -126,6 +126,8 @@ def build_recipe(
     *,
     output_path: Path | None = None,
     audio_strategy: str = "silent-preview",
+    voiceover_path: Path | None = None,
+    caption_burn_in: bool = False,
 ) -> dict:
     match_ids = [item["id"] for item in matches["matches"]]
     recipe_segments = []
@@ -150,6 +152,10 @@ def build_recipe(
     }
     if output_path is not None:
         recipe["output_path"] = output_path.as_posix()
+    if voiceover_path is not None:
+        recipe["voiceover_path"] = voiceover_path.as_posix()
+    if caption_burn_in:
+        recipe["caption_burn_in"] = True
 
     validate_recipe(recipe)
     return recipe
