@@ -1,8 +1,14 @@
 # jianji-flow
 
-`jianji-flow` is an open-source Codex skill for auditable automatic preview-video workflows.
+`jianji-flow` 是一个开源 Codex 自动剪辑 skill：输入参考视频、本地素材目录和可选文案，输出一条可人工复核的短视频预览。
 
-It takes a reference video, a local asset directory, and an optional script, then creates a reviewable short-video draft with machine voiceover, burned-in captions, and a local review page.
+当前 v0.2 已经能生成机器配音、烧录字幕、可播放预览视频、分段复核图和本地复核页。它更像一个“自动剪辑工作流底座”，不是完整替代剪映的桌面剪辑软件。
+
+## 适合谁
+
+- 想用 Codex 自动跑短视频粗剪的人。
+- 想先验证“参考视频拆解 -> 本地素材匹配 -> 自动生成预览”的创作者。
+- 想做带货、口播切片、素材复用流程，但仍愿意人工复核结果的人。
 
 ## What v0.2 Does
 
@@ -26,47 +32,75 @@ It takes a reference video, a local asset directory, and an optional script, the
 - It does not generate music, effects, or beat-synced edits.
 - It does not guarantee semantic matching beyond the current auditable matching evidence.
 
-## Contract Note
+## 安装
 
-The package is v0.2.0, but the JSON recipe contract still uses `"version": "0.1"` for compatibility with the v0.1 schema. The v0.2 experience adds optional fields such as:
-
-- `audio_strategy: "voiceover-only"`
-- `voiceover_path`
-- `caption_burn_in: true`
-
-## Requirements
+环境要求：
 
 - Python 3.10+
 - FFmpeg and ffprobe
-- Windows local TTS for default voiceover generation
+- Windows local TTS for default Chinese voiceover generation
 
-Check the environment:
+Clone 仓库后，在项目目录里安装：
+
+```powershell
+python -m pip install -e ".[dev]"
+```
+
+如果当前 `python` 没有 pip，但 Windows Python Launcher 可用，可以改用：
+
+```powershell
+py -m pip install -e ".[dev]"
+```
+
+如果你在 CMD、bash 或 GitHub Actions 里运行，也可以用：
+
+```bash
+python -m pip install -e .[dev]
+```
+
+检查本机环境：
 
 ```powershell
 python scripts/check_env.py
 ```
 
-## Quick Start
+## 素材怎么准备
 
-Generate local synthetic fixtures:
+你需要准备三类输入：
+
+- `reference.mp4`: 一条你想参考节奏和结构的视频。它只用于分析，不会被复制进输出视频。
+- `assets/`: 你自己的本地素材文件夹，里面放可用的 `.mp4` 素材。
+- `script.txt`: 可选文案。产品带货建议按“开头、痛点、卖点、演示、行动提醒”写成 3 到 8 段短句。
+
+素材命名越清楚，当前匹配越稳。例如：
+
+- `01-hook-cleaning.mp4`
+- `02-pain-window-dust.mp4`
+- `03-feature-extendable-brush.mp4`
+- `04-evidence-before-after.mp4`
+- `05-cta-order-reminder.mp4`
+
+没有真实素材时，可以先生成本地合成样例：
 
 ```powershell
 python scripts/generate_fixtures.py --output fixtures
 ```
 
-Run the product sample:
+## 快速运行
+
+跑产品带货样例：
 
 ```powershell
 python -m jianji_flow run --mode product --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --script fixtures\scenario-a-product\script.txt --work-dir out\scenario-a-product --target-width 320 --target-height 180 --target-fps 12
 ```
 
-Run the talking-head sample:
+跑口播切片样例：
 
 ```powershell
 python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-talking\reference.mp4 --assets fixtures\scenario-b-talking\assets --script fixtures\scenario-b-talking\transcript.txt --work-dir out\scenario-b-talking --target-width 320 --target-height 180 --target-fps 12
 ```
 
-## Outputs
+## 输出文件
 
 - `manifest.json`: local asset inventory.
 - `recipe.json`: authoritative timeline.
@@ -79,6 +113,18 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 - `review.md`: review status and checklist.
 - `review.html`: local visual review page.
 
+## 怎么判断结果能不能用
+
+每次运行后，先打开 `review.html`，再看 `remix.mp4`。
+
+重点检查：
+
+- `review.md` 的状态是 `pass` 或 `warning`，不是 `fail`。
+- `contact-sheet.png` 里每一段都有不同画面，不是纯色背景或空白图。
+- `remix.mp4` 有声音，字幕可读，画面没有明显黑屏、卡帧或严重拉伸。
+- `matches.json` 里的素材路径确实来自你的 `assets/` 文件夹。
+- 低置信度片段要人工确认，不要直接发布。
+
 ## Validation
 
 ```powershell
@@ -89,7 +135,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 171 passed
+- `python -m pytest -q` -> 175 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 
@@ -100,6 +146,22 @@ Latest local result:
 - Outputs must stay inside the requested work directory.
 - Blocking failures remove stale success artifacts.
 - `review.md` must report failures and warnings honestly.
+
+## Known Limitations
+
+- 当前默认使用 Windows 本地中文 TTS；没有中文语音包的机器会失败。
+- 当前匹配主要依赖文件名、结构和可审计证据，不是完整多模态理解。
+- 当前不会自动寻找素材、生成素材、发布视频或创建剪映草稿。
+- 字幕字体默认使用 `Microsoft YaHei`；非 Windows 环境需要后续适配字体。
+- `remix.mp4` 是自动剪辑预览，发布前仍需要人工复核。
+
+## Contract Note
+
+The package is v0.2.0, but the JSON recipe contract still uses `"version": "0.1"` for compatibility with the v0.1 schema. The v0.2 experience adds optional fields such as:
+
+- `audio_strategy: "voiceover-only"`
+- `voiceover_path`
+- `caption_burn_in: true`
 
 ## License
 
