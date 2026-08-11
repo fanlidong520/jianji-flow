@@ -1,12 +1,12 @@
 ---
 name: jianji-flow
-description: Create auditable preview videos from a reference video, a local asset directory, and optional script text; outputs manifest.json, recipe.json, matches.json, captions.srt, remix.mp4, and review.md after validation.
+description: Create auditable preview videos from a reference video, a local asset directory, and optional script text; outputs manifest.json, recipe.json, matches.json, captions.srt, captions.ass, voiceover.wav, remix.mp4, contact-sheet.png, review.md, and review.html after validation.
 ---
 
 # jianji-flow
 
 Use this skill when the user wants an automatic local preview-video workflow.
-Version 0.1 creates inspectable intermediate files and a playable MP4 preview.
+Version 0.2 creates inspectable intermediate files, machine voiceover, burned-in captions, a playable MP4 preview, and a local review page.
 It does not create Jianying, CapCut, or other editor draft projects.
 
 ## Required Inputs
@@ -27,9 +27,11 @@ Ask for any missing input before running:
 4. Build the segment plan and create `matches.json` and `recipe.json`.
 5. Run JSON Schema validation and semantic validation.
 6. Stop before rendering if validation has any blocking failure.
-7. Write `captions.srt`.
-8. Render `remix.mp4` only from validated manifest assets.
-9. Write `review.md` with pass, warning, or fail status.
+7. Write `captions.srt` and `captions.ass`.
+8. Generate `voiceover.wav` with local machine TTS.
+9. Render `remix.mp4` only from validated manifest assets, burned-in captions, and generated voiceover.
+10. Write `contact-sheet.png` with one frame per segment.
+11. Write `review.md` and `review.html` with pass, warning, or fail status.
 
 ## Hard Rules
 
@@ -38,8 +40,9 @@ Ask for any missing input before running:
 - Do not write outputs outside the requested work directory.
 - Do not render a segment whose match is missing or rejected.
 - Do not hide low-confidence matches; report them in `review.md`.
-- Do not leave a stale `remix.mp4` after a failed rerun.
-- Do not claim image support, TTS, music, effects, publishing, or editor draft export in v0.1.
+- Do not leave stale success artifacts after a failed rerun.
+- Do not describe a run as successful unless `review.md` is pass or warning and the requested output artifacts exist.
+- Do not claim image support, music, effects, publishing, source-audio preservation, or editor draft export in v0.2.
 
 ## Commands
 
@@ -83,8 +86,12 @@ On success or warning, report the paths for:
 - `recipe.json`
 - `matches.json`
 - `captions.srt`
+- `captions.ass`
+- `voiceover.wav`
 - `remix.mp4`
+- `contact-sheet.png`
 - `review.md`
+- `review.html`
 
 On fail, report `review.md` and any diagnostic JSON files that were written.
 Never describe a failed run as completed video output.

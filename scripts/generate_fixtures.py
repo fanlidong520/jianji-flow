@@ -29,31 +29,31 @@ SCENARIOS = {
     "scenario-a-product": {
         "text_name": "script.txt",
         "text": (
-            "Hook: A small product can make one repetitive task easier.\n"
-            "Pain: The manual workflow repeats the same steps.\n"
-            "Feature: The product groups the steps into one clear flow.\n"
-            "Evidence: This synthetic demo shows the product, detail, and result.\n"
-            "CTA: Try the smallest useful workflow first.\n"
+            "Hook.\n"
+            "Pain.\n"
+            "Feature.\n"
+            "Proof.\n"
+            "Buy.\n"
         ),
-        "reference": ("reference-product", "0x6cc6ff", 440, 1.6),
+        "reference": ("reference-product", "0x6cc6ff", 440, 8.0),
         "assets": [
-            ("product-overview", "0x2d8a6e", 520, 1.0),
-            ("product-detail", "0xffb347", 660, 1.0),
+            ("product-overview", "0x2d8a6e", 520, 3.0),
+            ("product-detail", "0xffb347", 660, 3.0),
         ],
     },
     "scenario-b-talking": {
         "text_name": "transcript.txt",
         "text": (
-            "Topic: A practical way to review a talking-head video.\n"
-            "Claim: Clear claims are easier to follow when each has one explanation.\n"
-            "Explanation: Keep the topic, reason, evidence, and conclusion distinct.\n"
-            "Evidence: This synthetic sequence supplies short labeled talking clips.\n"
-            "Conclusion: A simple structure makes review easier.\n"
+            "Topic.\n"
+            "Claim.\n"
+            "Explain.\n"
+            "Proof.\n"
+            "Done.\n"
         ),
-        "reference": ("reference-talking", "0xff8a65", 330, 1.6),
+        "reference": ("reference-talking", "0xff8a65", 330, 8.0),
         "assets": [
-            ("talking-wide", "0x7654d6", 390, 1.0),
-            ("talking-detail", "0x42a5f5", 730, 1.0),
+            ("talking-wide", "0x7654d6", 390, 3.0),
+            ("talking-detail", "0x42a5f5", 730, 3.0),
         ],
     },
 }

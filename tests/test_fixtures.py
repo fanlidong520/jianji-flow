@@ -46,7 +46,7 @@ def test_generated_media_is_probeable_and_has_audio(tmp_path: Path, scenario: st
     media_files = [scenario_dir / "reference.mp4", *sorted((scenario_dir / "assets").glob("*.mp4"))]
     for media_path in media_files:
         info = run_ffprobe(media_path)
-        assert 0 < info.duration_ms <= 3000
+        assert 0 < info.duration_ms <= 9000
         assert (info.width, info.height) == (320, 180)
         assert 0 < info.fps <= 30
         assert info.has_audio is True

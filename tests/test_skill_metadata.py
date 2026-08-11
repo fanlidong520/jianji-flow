@@ -17,6 +17,7 @@ def test_skill_frontmatter_has_required_fields_only():
     assert "name: jianji-flow" in frontmatter
     assert "recipe.json" in frontmatter
     assert "remix.mp4" in frontmatter
+    assert "voiceover.wav" in frontmatter
 
 
 def test_license_is_mit():
@@ -25,7 +26,9 @@ def test_license_is_mit():
     assert "Permission is hereby granted" in text
 
 
-def test_readme_mentions_v0_1_boundaries():
+def test_readme_mentions_v0_2_experience_boundaries():
     text = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "不生成剪映草稿" in text
+    assert "What v0.2 Does" in text
+    assert "It does not create Jianying or CapCut draft projects." in text
+    assert "voiceover.wav" in text
     assert "remix.mp4" in text

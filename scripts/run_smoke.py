@@ -14,13 +14,26 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _assert_outputs(work_dir: Path) -> None:
-    for name in ("manifest.json", "recipe.json", "matches.json", "captions.srt", "remix.mp4", "review.md"):
+    for name in (
+        "manifest.json",
+        "recipe.json",
+        "matches.json",
+        "captions.srt",
+        "captions.ass",
+        "voiceover.wav",
+        "remix.mp4",
+        "contact-sheet.png",
+        "review.md",
+        "review.html",
+    ):
         path = work_dir / name
         if not path.exists():
             raise AssertionError(f"missing smoke output: {path}")
     info = run_ffprobe(work_dir / "remix.mp4")
     if info.duration_ms <= 0:
         raise AssertionError(f"invalid smoke remix duration: {work_dir / 'remix.mp4'}")
+    if not info.has_audio:
+        raise AssertionError(f"smoke remix has no audio: {work_dir / 'remix.mp4'}")
 
 
 def _run_case(mode: str, scenario: str, script_name: str, fixture_root: Path, run_root: Path) -> None:

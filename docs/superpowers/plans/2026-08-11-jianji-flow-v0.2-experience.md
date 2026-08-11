@@ -702,7 +702,7 @@ Run:
 python -m pytest -q
 python scripts/run_smoke.py
 python scripts/run_p0.py
-python path\to\quick_validate.py path\to\jianji-flow
+run the Codex skill validator for this repository when the validator is available
 ```
 
 Expected:

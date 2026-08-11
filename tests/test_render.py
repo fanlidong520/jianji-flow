@@ -1,6 +1,9 @@
 import shutil
 import subprocess
 import sys
+import math
+import struct
+import wave
 from pathlib import Path
 
 import pytest
@@ -12,6 +15,20 @@ from jianji_flow.render import build_ffmpeg_plan, render_preview
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 GENERATOR = PROJECT_ROOT / "scripts" / "generate_fixtures.py"
+
+
+def _write_tone_wav(path: Path, *, seconds: float = 0.25) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sample_rate = 8000
+    frames = bytearray()
+    for index in range(int(sample_rate * seconds)):
+        value = int(math.sin(index / sample_rate * 440 * math.tau) * 8000)
+        frames.extend(struct.pack("<h", value))
+    with wave.open(str(path), "wb") as handle:
+        handle.setnchannels(1)
+        handle.setsampwidth(2)
+        handle.setframerate(sample_rate)
+        handle.writeframes(bytes(frames))
 
 
 def _recipe(source_path: Path | str) -> tuple[dict, dict]:
@@ -195,7 +212,7 @@ def test_render_command_uses_nonzero_source_start_and_declared_range():
 def test_render_command_uses_voiceover_audio_and_burned_captions(tmp_path: Path):
     recipe, matches = _recipe(Path("assets/hook.mp4"))
     voiceover = tmp_path / "voiceover.wav"
-    voiceover.write_bytes(b"RIFFfake")
+    _write_tone_wav(voiceover)
     recipe["audio_strategy"] = "voiceover-only"
     recipe["voiceover_path"] = str(voiceover)
     recipe["caption_burn_in"] = True

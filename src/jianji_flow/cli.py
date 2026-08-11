@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from jianji_flow import __version__
+from jianji_flow.contact_sheet import write_contact_sheet
 from jianji_flow.contracts import validate_manifest, validate_matches, validate_recipe
 from jianji_flow.matcher import build_recipe, match_segments
 from jianji_flow.media_probe import run_ffprobe
@@ -13,9 +14,10 @@ from jianji_flow.media_scan import scan_assets, write_manifest
 from jianji_flow.paths import make_output_dir, resolve_existing_dir, resolve_existing_file
 from jianji_flow.planner import build_segment_plan
 from jianji_flow.render import render_preview
-from jianji_flow.review import build_review, write_review_markdown
+from jianji_flow.review import build_review, write_review_html, write_review_markdown
 from jianji_flow.semantics import validate_semantics
-from jianji_flow.subtitles import write_srt
+from jianji_flow.subtitles import write_ass, write_srt
+from jianji_flow.voiceover import create_voiceover, validate_voiceover
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -46,12 +48,42 @@ def _read_script(path_text: str | None) -> str | None:
     return resolve_existing_file(path_text).read_text(encoding="utf-8")
 
 
+def _success_artifact_names() -> tuple[str, ...]:
+    return ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png", "review.html")
+
+
+def _clear_success_artifacts(work_dir: Path) -> None:
+    for name in _success_artifact_names():
+        path = work_dir / name
+        if path.exists():
+            path.unlink()
+
+
+def _write_failure_review(work_dir: Path, failure: str) -> None:
+    review_path = work_dir / "review.md"
+    review = {
+        "status": "fail",
+        "failures": [failure],
+        "warnings": [],
+        "missing_segments": [],
+        "low_confidence_segments": [],
+        "outputs": {},
+    }
+    write_review_markdown(review, review_path)
+
+
+def _remove_success_outputs_from_review(review: dict) -> None:
+    outputs = review.get("outputs", {})
+    for name in ("remix", "voiceover", "captions_ass", "contact_sheet", "review_html"):
+        outputs.pop(name, None)
+
+
 def _run_pipeline(args: argparse.Namespace) -> int:
+    work_dir: Path | None = None
     try:
         work_dir = make_output_dir(Path(args.work_dir).resolve().parent, Path(args.work_dir).name)
+        _clear_success_artifacts(work_dir)
         remix_path = work_dir / "remix.mp4"
-        if remix_path.exists():
-            remix_path.unlink()
 
         reference_path = resolve_existing_file(args.reference)
         asset_root = resolve_existing_dir(args.assets)
@@ -77,7 +109,9 @@ def _run_pipeline(args: argparse.Namespace) -> int:
             segments,
             matches,
             output_path=work_dir / "remix.mp4",
-            audio_strategy="silent-preview",
+            audio_strategy="voiceover-only",
+            voiceover_path=work_dir / "voiceover.wav",
+            caption_burn_in=True,
         )
         validate_matches(matches)
         validate_recipe(recipe)
@@ -85,13 +119,19 @@ def _run_pipeline(args: argparse.Namespace) -> int:
         matches_path = work_dir / "matches.json"
         recipe_path = work_dir / "recipe.json"
         captions_path = work_dir / "captions.srt"
+        ass_path = work_dir / "captions.ass"
+        voiceover_path = work_dir / "voiceover.wav"
+        contact_sheet_path = work_dir / "contact-sheet.png"
         review_path = work_dir / "review.md"
+        review_html_path = work_dir / "review.html"
         _write_json(matches_path, matches)
         _write_json(recipe_path, recipe)
         write_srt(recipe, captions_path)
+        write_ass(recipe, ass_path)
 
         semantic_errors = validate_semantics(recipe, matches, manifest, str(reference_path), str(asset_root), str(work_dir))
         if semantic_errors:
+            _clear_success_artifacts(work_dir)
             review = {
                 "status": "fail",
                 "failures": semantic_errors,
@@ -109,6 +149,9 @@ def _run_pipeline(args: argparse.Namespace) -> int:
             print(f"validation failed; review written to {review_path}", file=sys.stderr)
             return 1
 
+        create_voiceover(recipe, voiceover_path)
+        validate_voiceover(voiceover_path, expected_duration_ms=int(recipe["duration_ms"]))
+
         render_preview(
             recipe_path,
             matches_path,
@@ -117,15 +160,38 @@ def _run_pipeline(args: argparse.Namespace) -> int:
             work_dir=work_dir,
             reference_path=reference_path,
             asset_root=asset_root,
+            captions_path=ass_path,
+            voiceover_path=voiceover_path,
         )
-        review = build_review(recipe, matches, remix_path, captions_path)
+        write_contact_sheet(remix_path, contact_sheet_path, recipe=recipe)
+        review = build_review(
+            recipe,
+            matches,
+            remix_path,
+            captions_path,
+            ass_path=ass_path,
+            voiceover_path=voiceover_path,
+            contact_sheet_path=contact_sheet_path,
+            review_html_path=review_html_path,
+        )
         review["outputs"]["manifest"] = manifest_path.as_posix()
         review["outputs"]["recipe"] = recipe_path.as_posix()
         review["outputs"]["matches"] = matches_path.as_posix()
+        review["outputs"]["captions_ass"] = ass_path.as_posix()
+        if review["status"] == "fail":
+            _clear_success_artifacts(work_dir)
+            _remove_success_outputs_from_review(review)
+            write_review_markdown(review, review_path)
+            print(f"jianji-flow failed review: {review_path}", file=sys.stderr)
+            return 1
         write_review_markdown(review, review_path)
+        write_review_html(review, recipe, matches, review_html_path)
         print(f"jianji-flow completed: {review_path}")
         return 0 if review["status"] in {"pass", "warning"} else 1
     except Exception as exc:
+        if work_dir is not None:
+            _clear_success_artifacts(work_dir)
+            _write_failure_review(work_dir, str(exc))
         print(f"jianji-flow failed: {exc}", file=sys.stderr)
         return 1
 

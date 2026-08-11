@@ -29,8 +29,9 @@ def _run(args: list[str]) -> tuple[int, str, str]:
 
 
 def _assert_no_remix(work_dir: Path) -> None:
-    if (work_dir / "remix.mp4").exists():
-        raise AssertionError(f"blocking failure produced remix.mp4: {work_dir}")
+    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png", "review.html"):
+        if (work_dir / name).exists():
+            raise AssertionError(f"blocking failure produced stale success artifact {name}: {work_dir}")
 
 
 def test_missing_reference(base: Path, fixture_root: Path) -> None:
@@ -134,6 +135,8 @@ def test_chinese_path_with_spaces(base: Path, fixture_root: Path) -> None:
         raise AssertionError(f"Chinese path smoke should pass: {stderr}")
     if not (work_dir / "remix.mp4").exists():
         raise AssertionError("Chinese path smoke did not create remix.mp4")
+    if not (work_dir / "review.html").exists():
+        raise AssertionError("Chinese path smoke did not create review.html")
 
 
 def main() -> int:

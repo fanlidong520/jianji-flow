@@ -1,7 +1,14 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from html import escape
 from pathlib import Path
+
+from PIL import Image, UnidentifiedImageError
+from PIL import ImageStat
+
+from jianji_flow.media_probe import run_ffprobe
+from jianji_flow.voiceover import validate_voiceover
 
 
 def _match_by_id(matches: dict) -> dict[str, dict]:
@@ -18,9 +25,11 @@ def build_review(
     remix_path: Path,
     captions_path: Path,
     *,
+    ass_path: Path | None = None,
     voiceover_path: Path | None = None,
     contact_sheet_path: Path | None = None,
     review_html_path: Path | None = None,
+    check_artifacts: bool = True,
 ) -> dict:
     by_id = _match_by_id(matches)
     failures: list[str] = []
@@ -49,6 +58,9 @@ def build_review(
             warnings.append(f"{segment_id} low confidence: {confidence}")
             low_confidence_segments.append(str(segment_id))
 
+    if check_artifacts:
+        failures.extend(_artifact_failures(recipe, remix_path, captions_path, ass_path, voiceover_path, contact_sheet_path))
+
     status = "fail" if failures else "warning" if warnings else "pass"
     review = {
         "status": status,
@@ -63,10 +75,84 @@ def build_review(
     }
     return _with_optional_outputs(
         review,
+        captions_ass=ass_path,
         voiceover=voiceover_path,
         contact_sheet=contact_sheet_path,
         review_html=review_html_path,
     )
+
+
+def _duration_tolerance_ms(duration_ms: int) -> int:
+    return max(200, round(duration_ms * 0.02))
+
+
+def _artifact_failures(
+    recipe: dict,
+    remix_path: Path,
+    captions_path: Path,
+    ass_path: Path | None,
+    voiceover_path: Path | None,
+    contact_sheet_path: Path | None,
+) -> list[str]:
+    failures = []
+    expected_duration = int(recipe.get("duration_ms", 0) or 0)
+    if not remix_path.exists():
+        failures.append(f"remix missing: {remix_path}")
+    else:
+        try:
+            info = run_ffprobe(remix_path)
+            if not info.has_audio:
+                failures.append("remix has no audio stream")
+            if expected_duration > 0 and abs(info.duration_ms - expected_duration) > _duration_tolerance_ms(expected_duration):
+                failures.append(f"remix duration {info.duration_ms}ms does not match recipe {expected_duration}ms")
+        except (RuntimeError, ValueError) as exc:
+            failures.append(f"remix probe failed: {exc}")
+
+    if not captions_path.exists() or captions_path.stat().st_size <= 0:
+        failures.append(f"captions missing or empty: {captions_path}")
+
+    if recipe.get("caption_burn_in"):
+        if ass_path is None:
+            failures.append("captions.ass path is required when caption_burn_in is true")
+        elif not ass_path.exists() or ass_path.stat().st_size <= 0:
+            failures.append(f"captions.ass missing or empty: {ass_path}")
+
+    if voiceover_path is not None:
+        try:
+            validate_voiceover(voiceover_path, expected_duration_ms=expected_duration)
+        except (FileNotFoundError, ValueError, RuntimeError) as exc:
+            failures.append(f"voiceover invalid: {exc}")
+
+    expected_segments = len(recipe.get("segments", []))
+    if contact_sheet_path is None:
+        failures.append("contact sheet path is required")
+    elif not contact_sheet_path.exists() or contact_sheet_path.stat().st_size <= 0:
+        failures.append(f"contact sheet missing or empty: {contact_sheet_path}")
+    else:
+        try:
+            with Image.open(contact_sheet_path) as image:
+                image.verify()
+            with Image.open(contact_sheet_path) as image:
+                if image.width <= 0 or image.height <= 0:
+                    failures.append(f"contact sheet has invalid dimensions: {contact_sheet_path}")
+                elif expected_segments > 0 and image.width < expected_segments * 100:
+                    failures.append(
+                        f"contact sheet is too narrow for {expected_segments} segments: {image.width}px"
+                    )
+                elif not _has_contact_sheet_visual_detail(image):
+                    failures.append(f"contact sheet has insufficient visual detail: {contact_sheet_path}")
+        except (OSError, UnidentifiedImageError) as exc:
+            failures.append(f"contact sheet is not a readable image: {exc}")
+
+    return failures
+
+
+def _has_contact_sheet_visual_detail(image: Image.Image) -> bool:
+    rgb = image.convert("RGB")
+    full_stat = ImageStat.Stat(rgb)
+    lower_band = rgb.crop((0, round(rgb.height * 0.7), rgb.width, rgb.height))
+    lower_stat = ImageStat.Stat(lower_band)
+    return max(full_stat.stddev) > 8 and max(lower_stat.stddev) > 8
 
 
 def _with_optional_outputs(review: dict, **paths: Path | None) -> dict:
@@ -201,4 +287,22 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
 
 def write_review_html(review: dict, recipe: dict, matches: dict, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(build_review_html(review, recipe, matches), encoding="utf-8")
+    output_path.write_text(
+        build_review_html(_html_review_paths(review, output_path.parent), recipe, matches),
+        encoding="utf-8",
+    )
+
+
+def _html_review_paths(review: dict, base_dir: Path) -> dict:
+    html_review = deepcopy(review)
+    outputs = html_review.get("outputs", {})
+    for key, value in list(outputs.items()):
+        if not isinstance(value, str) or not value:
+            continue
+        try:
+            candidate = Path(value)
+            if candidate.is_absolute():
+                outputs[key] = candidate.resolve().relative_to(base_dir.resolve()).as_posix()
+        except (OSError, ValueError):
+            continue
+    return html_review
