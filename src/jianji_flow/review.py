@@ -8,6 +8,7 @@ from PIL import Image, UnidentifiedImageError
 from PIL import ImageStat
 
 from jianji_flow.media_probe import run_ffprobe
+from jianji_flow.review_summary import build_review_summary
 from jianji_flow.voiceover import validate_voiceover
 
 
@@ -73,6 +74,7 @@ def build_review(
             "captions": _path_text(captions_path),
         },
     }
+    review["summary"] = build_review_summary(review)
     return _with_optional_outputs(
         review,
         captions_ass=ass_path,
@@ -173,10 +175,16 @@ def _list_section(title: str, values: list[str]) -> list[str]:
 
 
 def build_review_markdown(review: dict) -> str:
+    summary = review.get("summary", build_review_summary(review))
     lines = [
         "# jianji-flow Review",
         "",
         f"Status: {review.get('status', 'unknown')}",
+        "",
+        "## Summary",
+        f"- Decision: {summary.get('decision', 'Unknown')}",
+        f"- Reason: {summary.get('reason', '')}",
+        f"- Next action: {summary.get('next_action', '')}",
         "",
         "## Outputs",
     ]
@@ -214,6 +222,7 @@ def write_review_markdown(review: dict, output_path: Path) -> None:
 
 def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
     outputs = review.get("outputs", {})
+    summary = review.get("summary", build_review_summary(review))
     match_by_id = _match_by_id(matches)
     rows = []
     for segment in recipe.get("segments", []):
@@ -250,6 +259,12 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
 <body>
 <main>
   <h1>jianji-flow Review: {escape(str(review.get('status', 'unknown')))}</h1>
+  <section>
+    <h2>Summary</h2>
+    <p><strong>Decision:</strong> {escape(str(summary.get('decision', 'Unknown')))}</p>
+    <p><strong>Reason:</strong> {escape(str(summary.get('reason', '')))}</p>
+    <p><strong>Next action:</strong> {escape(str(summary.get('next_action', '')))}</p>
+  </section>
   <h2>Video</h2>
   <video controls src="{escape(str(outputs.get('remix', '')))}"></video>
   <h2>Contact Sheet</h2>

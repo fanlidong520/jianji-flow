@@ -175,6 +175,14 @@ def test_build_review_markdown_contains_checklist_and_outputs():
     assert "Manual review checklist" in markdown
 
 
+def test_build_review_markdown_contains_plain_language_summary():
+    markdown = build_review_markdown({"status": "pass", "outputs": {}, "warnings": [], "failures": []})
+
+    assert "## Summary" in markdown
+    assert "Usable rough cut" in markdown
+    assert "Next action" in markdown
+
+
 def test_write_review_markdown_creates_file(tmp_path: Path):
     output = tmp_path / "nested" / "review.md"
 
@@ -225,6 +233,17 @@ def test_build_review_html_contains_outputs_and_match_evidence():
     assert "work/voiceover.wav" in html
     assert "家里难刷角落" in html
     assert "filename-role:hook" in html
+
+
+def test_build_review_html_contains_plain_language_summary():
+    html = build_review_html(
+        {"status": "warning", "outputs": {}, "warnings": ["low confidence"], "failures": []},
+        {"segments": []},
+        {"matches": []},
+    )
+
+    assert "<h2>Summary</h2>" in html
+    assert "Needs review" in html
 
 
 def test_write_review_html_creates_file(tmp_path: Path):
