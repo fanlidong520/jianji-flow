@@ -21,6 +21,17 @@ Ask for any missing input before running:
 
 ## Workflow
 
+For first-time users, prefer:
+
+1. `jianji-flow doctor`
+2. `jianji-flow demo`
+3. `jianji-flow quick --reference examples\reference.mp4 --assets examples\assets`
+
+If `quick` writes `diagnosis.md`, report the missing or weak material roles and
+do not describe the run as a completed video.
+
+Detailed workflow:
+
 1. Run the environment check.
 2. Generate synthetic fixtures only when the user wants a demo run.
 3. Scan the local asset directory and create `manifest.json`.
@@ -50,12 +61,20 @@ Environment:
 
 ```powershell
 python scripts/check_env.py
+jianji-flow doctor
 ```
 
 Demo fixtures:
 
 ```powershell
 python scripts/generate_fixtures.py --output fixtures
+jianji-flow demo
+```
+
+Quick home-product draft:
+
+```powershell
+jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets
 ```
 
 Product smoke:

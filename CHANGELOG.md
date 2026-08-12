@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Planned v0.3 usability layer: `doctor`, `demo`, `quick`, material diagnosis,
+  and plain-language review summary.
+
 ## 0.2.0
 
 - Added local Windows Chinese TTS generation for `voiceover.wav`.

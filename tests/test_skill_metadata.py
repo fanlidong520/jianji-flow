@@ -58,6 +58,29 @@ def test_readme_references_demo_contact_sheet_asset():
     assert asset_path.stat().st_size > 100_000
 
 
+def test_readme_documents_v0_3_usability_commands():
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "jianji-flow doctor" in text
+    assert "jianji-flow demo" in text
+    assert "jianji-flow quick" in text
+    assert "Ready to run quick draft" in text
+
+
+def test_skill_documents_quick_start_commands():
+    text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+    assert "doctor" in text
+    assert "demo" in text
+    assert "quick" in text
+    assert "diagnosis.md" in text
+
+
+def test_v0_3_validation_record_has_ten_runs():
+    text = (ROOT / "docs" / "validation" / "v0.3-usability-runs.md").read_text(encoding="utf-8")
+    assert text.count("## Run ") == 10
+    assert "usable rough cut" in text
+    assert "do not use yet" in text
+
+
 def test_changelog_documents_public_versions():
     text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     assert "# Changelog" in text

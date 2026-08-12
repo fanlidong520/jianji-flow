@@ -70,6 +70,36 @@ python -m pip install -e .[dev]
 python scripts/check_env.py
 ```
 
+安装后也可以使用更短的命令：
+
+```powershell
+jianji-flow doctor
+```
+
+健康输出会以 `Ready to run quick draft` 结尾。
+
+## v0.3 Quick Start
+
+第一次使用建议按三步走：
+
+```powershell
+jianji-flow doctor
+```
+
+没有素材时，先跑一个本地合成示例：
+
+```powershell
+jianji-flow demo
+```
+
+有自己的家居带货素材后，用最短命令跑一条粗剪：
+
+```powershell
+jianji-flow quick --reference examples\reference.mp4 --assets examples\assets
+```
+
+`quick` 在没有传 `--script` 时会使用一组很短的家居生活用品默认文案。素材明显不够时，它会先停下并写出 `diagnosis.md`，不会硬剪出一条误导性的坏视频。
+
 ## 素材怎么准备
 
 你需要准备三类输入：
