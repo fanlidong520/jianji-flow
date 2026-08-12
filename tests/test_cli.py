@@ -8,6 +8,7 @@ from pathlib import Path
 
 from jianji_flow.cli import main
 from jianji_flow.media_probe import run_ffprobe
+from jianji_flow.voiceover import probe_voiceover
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -397,6 +398,49 @@ def test_run_product_fixture_creates_v0_2_experience_outputs(tmp_path, monkeypat
     review_html = (work_dir / "review.html").read_text(encoding="utf-8")
     assert "<video" in review_html
     assert "voiceover.wav" in review_html
+
+
+def test_run_shortens_voiceover_timeline_instead_of_padding_silent_tail(tmp_path, monkeypatch):
+    def fake_create_voiceover(recipe: dict, output_path: Path, *, rate: int = 0) -> Path:
+        duration_ms = int(recipe.get("duration_ms", 1000) or 1000)
+        _write_test_wav(output_path, seconds=max(0.25, duration_ms / 1000 * 0.8))
+        return output_path
+
+    monkeypatch.setattr("jianji_flow.cli.create_voiceover", fake_create_voiceover)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    work_dir = tmp_path / "work"
+
+    code = main(
+        [
+            "run",
+            "--mode",
+            "product",
+            "--reference",
+            str(fixture_root / "scenario-a-product" / "reference.mp4"),
+            "--assets",
+            str(fixture_root / "scenario-a-product" / "assets"),
+            "--script",
+            str(fixture_root / "scenario-a-product" / "script.txt"),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    recipe = __import__("json").loads((work_dir / "recipe.json").read_text(encoding="utf-8"))
+    voiceover_duration = probe_voiceover(work_dir / "voiceover.wav").duration_ms
+    remix_duration = run_ffprobe(work_dir / "remix.mp4").duration_ms
+
+    assert code == 0
+    assert abs(recipe["duration_ms"] - voiceover_duration) <= 100
+    assert abs(remix_duration - voiceover_duration) <= 250
+    assert recipe["segments"][-1]["end_ms"] == recipe["duration_ms"]
 
 
 def test_failed_rerun_removes_stale_remix(tmp_path, monkeypatch):

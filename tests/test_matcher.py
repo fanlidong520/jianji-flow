@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from jianji_flow.contracts import validate_matches, validate_recipe
-from jianji_flow.matcher import build_recipe, match_segments
+from jianji_flow.matcher import build_recipe, match_segments, retime_recipe_and_matches
 
 
 @dataclass(frozen=True)
@@ -137,3 +137,25 @@ def test_build_recipe_preserves_existing_match_id_when_present():
     recipe = build_recipe("product", {"width": 1080, "height": 1920, "fps": 30}, [segment], matches)
 
     assert recipe["segments"][0]["match_id"] == "custom"
+
+
+def test_retime_recipe_and_matches_scales_timeline_without_changing_assets():
+    assets = [
+        FakeAsset("asset-hook", Path("assets/hook.mp4"), 5000),
+        FakeAsset("asset-feature", Path("assets/feature.mp4"), 5000),
+    ]
+    segments = _segments()
+    matches = match_segments(segments, assets)
+    recipe = build_recipe("product", {"width": 1080, "height": 1920, "fps": 30}, segments, matches)
+
+    retimed_recipe, retimed_matches = retime_recipe_and_matches(recipe, matches, 2000)
+
+    validate_recipe(retimed_recipe)
+    validate_matches(retimed_matches)
+    assert retimed_recipe["duration_ms"] == 2000
+    assert [(item["start_ms"], item["end_ms"]) for item in retimed_recipe["segments"]] == [(0, 800), (800, 2000)]
+    assert [(item["source_start_ms"], item["source_end_ms"]) for item in retimed_matches["matches"]] == [
+        (0, 800),
+        (0, 1200),
+    ]
+    assert [item["asset_id"] for item in retimed_matches["matches"]] == ["asset-hook", "asset-feature"]

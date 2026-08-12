@@ -11,7 +11,7 @@ from jianji_flow.contact_sheet import write_contact_sheet
 from jianji_flow.contracts import validate_manifest, validate_matches, validate_recipe
 from jianji_flow.environment import check_environment, format_environment_report
 from jianji_flow.fixtures import generate_fixtures
-from jianji_flow.matcher import build_recipe, match_segments
+from jianji_flow.matcher import build_recipe, match_segments, retime_recipe_and_matches
 from jianji_flow.media_probe import run_ffprobe
 from jianji_flow.media_scan import scan_assets, write_manifest
 from jianji_flow.paths import make_output_dir, resolve_existing_dir, resolve_existing_file
@@ -21,7 +21,7 @@ from jianji_flow.render import render_preview
 from jianji_flow.review import build_review, write_review_html, write_review_markdown
 from jianji_flow.semantics import validate_semantics
 from jianji_flow.subtitles import write_ass, write_srt
-from jianji_flow.voiceover import create_voiceover, validate_voiceover
+from jianji_flow.voiceover import create_voiceover, probe_voiceover, validate_voiceover
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -204,6 +204,32 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
 
         create_voiceover(recipe, voiceover_path)
         validate_voiceover(voiceover_path, expected_duration_ms=int(recipe["duration_ms"]))
+        voiceover_duration_ms = probe_voiceover(voiceover_path).duration_ms
+        recipe, matches = retime_recipe_and_matches(recipe, matches, voiceover_duration_ms)
+        validate_voiceover(voiceover_path, expected_duration_ms=int(recipe["duration_ms"]))
+        semantic_errors = validate_semantics(recipe, matches, manifest, str(reference_path), str(asset_root), str(work_dir))
+        if semantic_errors:
+            _clear_success_artifacts(work_dir)
+            review = {
+                "status": "fail",
+                "failures": semantic_errors,
+                "warnings": [],
+                "missing_segments": [],
+                "low_confidence_segments": [],
+                "outputs": {
+                    "manifest": manifest_path.as_posix(),
+                    "recipe": recipe_path.as_posix(),
+                    "matches": matches_path.as_posix(),
+                    "captions": captions_path.as_posix(),
+                },
+            }
+            write_review_markdown(review, review_path)
+            print(f"validation failed after voiceover retiming; review written to {review_path}", file=sys.stderr)
+            return 1
+        _write_json(matches_path, matches)
+        _write_json(recipe_path, recipe)
+        write_srt(recipe, captions_path)
+        write_ass(recipe, ass_path)
 
         render_preview(
             recipe_path,

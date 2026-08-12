@@ -21,6 +21,32 @@ def _duration(segment: dict) -> int:
     return int(segment["end_ms"]) - int(segment["start_ms"])
 
 
+def _scaled_bounds(segments: list[dict], target_duration_ms: int) -> list[tuple[int, int]]:
+    if target_duration_ms <= 0:
+        raise ValueError("target_duration_ms must be positive")
+    source_duration = int(segments[-1]["end_ms"]) - int(segments[0]["start_ms"])
+    if source_duration <= 0:
+        raise ValueError("recipe duration must be positive")
+
+    bounds: list[tuple[int, int]] = []
+    cursor = 0
+    elapsed_source = 0
+    for index, segment in enumerate(segments):
+        segment_duration = _duration(segment)
+        if segment_duration <= 0:
+            raise ValueError("recipe segments must have positive duration")
+        elapsed_source += segment_duration
+        if index == len(segments) - 1:
+            end = target_duration_ms
+        else:
+            end = round(target_duration_ms * elapsed_source / source_duration)
+        bounds.append((cursor, end))
+        cursor = end
+    if any(end <= start for start, end in bounds):
+        raise ValueError("target_duration_ms is too short for the segment count")
+    return bounds
+
+
 def _source_path(asset: Any) -> str:
     path = _asset_field(asset, "path")
     if isinstance(path, Path):
@@ -158,3 +184,42 @@ def build_recipe(
 
     validate_recipe(recipe)
     return recipe
+
+
+def retime_recipe_and_matches(recipe: dict, matches: dict, target_duration_ms: int) -> tuple[dict, dict]:
+    segments = recipe.get("segments", [])
+    if not segments:
+        raise ValueError("recipe has no segments")
+    bounds = _scaled_bounds(segments, int(target_duration_ms))
+    retimed_recipe = {
+        **recipe,
+        "duration_ms": int(target_duration_ms),
+        "segments": [
+            {**segment, "start_ms": start_ms, "end_ms": end_ms}
+            for segment, (start_ms, end_ms) in zip(segments, bounds)
+        ],
+    }
+
+    duration_by_segment_id = {
+        str(segment["id"]): int(segment["end_ms"]) - int(segment["start_ms"])
+        for segment in retimed_recipe["segments"]
+    }
+    retimed_matches = {
+        **matches,
+        "matches": [
+            (
+                {
+                    **match,
+                    "source_start_ms": 0,
+                    "source_end_ms": duration_by_segment_id[str(match["segment_id"])],
+                }
+                if match.get("status") in {"selected", "low_confidence"}
+                else dict(match)
+            )
+            for match in matches.get("matches", [])
+        ],
+    }
+
+    validate_recipe(retimed_recipe)
+    validate_matches(retimed_matches)
+    return retimed_recipe, retimed_matches
