@@ -50,6 +50,14 @@ def test_readme_has_open_source_getting_started_sections():
     assert "review.html" in text
 
 
+def test_readme_references_demo_contact_sheet_asset():
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    asset_path = ROOT / "docs" / "assets" / "home-product-contact-sheet.png"
+    assert "docs/assets/home-product-contact-sheet.png" in text
+    assert asset_path.exists()
+    assert asset_path.stat().st_size > 100_000
+
+
 def test_changelog_documents_public_versions():
     text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     assert "# Changelog" in text

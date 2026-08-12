@@ -4,6 +4,12 @@
 
 当前 v0.2 已经能生成机器配音、烧录字幕、可播放预览视频、分段复核图和本地复核页。它更像一个“自动剪辑工作流底座”，不是完整替代剪映的桌面剪辑软件。
 
+## 效果预览
+
+下面是一次家居带货样片生成后的 `contact-sheet.png`，每一格对应一个时间线片段，方便快速检查画面和字幕是否正常。
+
+![Home product demo contact sheet](docs/assets/home-product-contact-sheet.png)
+
 ## 适合谁
 
 - 想用 Codex 自动跑短视频粗剪的人。
@@ -135,7 +141,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 176 passed
+- `python -m pytest -q` -> 177 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 
