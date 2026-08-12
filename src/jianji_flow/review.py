@@ -8,6 +8,7 @@ from PIL import Image, UnidentifiedImageError
 from PIL import ImageStat
 
 from jianji_flow.media_probe import run_ffprobe
+from jianji_flow.quality_diagnosis import diagnose_contact_sheet_segments
 from jianji_flow.review_summary import build_review_summary
 from jianji_flow.voiceover import validate_voiceover
 
@@ -60,7 +61,9 @@ def build_review(
             low_confidence_segments.append(str(segment_id))
 
     if check_artifacts:
-        failures.extend(_artifact_failures(recipe, remix_path, captions_path, ass_path, voiceover_path, contact_sheet_path))
+        artifact_result = _artifact_review(recipe, remix_path, captions_path, ass_path, voiceover_path, contact_sheet_path)
+        failures.extend(artifact_result["failures"])
+        warnings.extend(artifact_result["warnings"])
 
     status = "fail" if failures else "warning" if warnings else "pass"
     review = {
@@ -88,15 +91,16 @@ def _duration_tolerance_ms(duration_ms: int) -> int:
     return max(200, round(duration_ms * 0.02))
 
 
-def _artifact_failures(
+def _artifact_review(
     recipe: dict,
     remix_path: Path,
     captions_path: Path,
     ass_path: Path | None,
     voiceover_path: Path | None,
     contact_sheet_path: Path | None,
-) -> list[str]:
+) -> dict:
     failures = []
+    warnings = []
     expected_duration = int(recipe.get("duration_ms", 0) or 0)
     if not remix_path.exists():
         failures.append(f"remix missing: {remix_path}")
@@ -143,10 +147,13 @@ def _artifact_failures(
                     )
                 elif not _has_contact_sheet_visual_detail(image):
                     failures.append(f"contact sheet has insufficient visual detail: {contact_sheet_path}")
+                else:
+                    diagnosis = diagnose_contact_sheet_segments(contact_sheet_path, recipe)
+                    warnings.extend(diagnosis.get("warnings", []))
         except (OSError, UnidentifiedImageError) as exc:
             failures.append(f"contact sheet is not a readable image: {exc}")
 
-    return failures
+    return {"failures": failures, "warnings": warnings}
 
 
 def _has_contact_sheet_visual_detail(image: Image.Image) -> bool:

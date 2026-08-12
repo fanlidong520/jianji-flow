@@ -156,6 +156,37 @@ def test_review_fails_when_contact_sheet_has_no_visual_detail(tmp_path: Path):
     assert any("visual detail" in failure for failure in review["failures"])
 
 
+def test_review_warns_when_contact_sheet_has_platform_ui_risk(tmp_path: Path):
+    contact_sheet = tmp_path / "contact-sheet.png"
+    image = Image.new("RGB", (592, 1280), "#c8d8d0")
+    from PIL import ImageDraw
+
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((100, 250, 500, 760), fill="#557a95")
+    for row in range(6):
+        y = 1010 + row * 28
+        for col in range(18):
+            x = 24 + col * 30
+            draw.rectangle((x, y, x + 18, y + 9), fill="white")
+    image.save(contact_sheet)
+    recipe = {
+        "duration_ms": 1000,
+        "segments": [{"id": "seg-001", "match_id": "match-001", "caption": "Hook"}],
+    }
+    matches = {"matches": [{"id": "match-001", "segment_id": "seg-001", "status": "selected", "asset_id": "asset-001", "confidence": 0.9}]}
+
+    review = build_review(
+        recipe,
+        matches,
+        remix_path=Path("work/missing.mp4"),
+        captions_path=Path("work/missing.srt"),
+        contact_sheet_path=contact_sheet,
+    )
+
+    assert review["status"] == "fail"
+    assert any("seg-001:" in warning and "platform UI" in warning for warning in review["warnings"])
+
+
 def test_build_review_markdown_contains_checklist_and_outputs():
     markdown = build_review_markdown(
         {
