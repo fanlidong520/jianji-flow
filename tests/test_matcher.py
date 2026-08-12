@@ -49,6 +49,21 @@ def test_match_segments_prefers_role_in_filename():
     assert any("filename-role" in item for item in match["evidence"])
 
 
+def test_match_segments_uses_same_role_aliases_as_material_diagnosis():
+    assets = [
+        FakeAsset("asset-other", Path("assets/other.mp4"), 5000),
+        FakeAsset("asset-feature", Path("assets/product-detail.mp4"), 5000),
+    ]
+
+    result = match_segments([_segments()[1]], assets)
+
+    match = result["matches"][0]
+    assert match["status"] == "selected"
+    assert match["asset_id"] == "asset-feature"
+    assert match["confidence"] >= 0.9
+    assert any("filename-role:feature" in item for item in match["evidence"])
+
+
 def test_match_segments_uses_low_confidence_fallback_when_role_not_found():
     assets = [FakeAsset("asset-any", Path("assets/any.mp4"), 5000)]
 

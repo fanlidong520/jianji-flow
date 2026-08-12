@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from jianji_flow.contracts import validate_matches, validate_recipe
+from jianji_flow.asset_diagnosis import primary_role_for_asset
 
 
 def _asset_field(asset: Any, name: str) -> Any:
@@ -28,9 +29,7 @@ def _source_path(asset: Any) -> str:
 
 
 def _role_score(role: str, asset: Any) -> tuple[float, list[str]]:
-    name = Path(_source_path(asset)).stem.casefold()
-    role_text = role.casefold()
-    if role_text and role_text in name:
+    if primary_role_for_asset({"path": _source_path(asset)}) == role:
         return 0.92, [f"filename-role:{role}"]
     return 0.55, ["fallback:first-available"]
 
@@ -61,7 +60,7 @@ def _pick_asset(segment: dict, assets: list[Any], recent_asset_ids: list[str]) -
     role_matches = [
         asset
         for asset in eligible
-        if str(segment["role"]).casefold() in Path(_source_path(asset)).stem.casefold()
+        if primary_role_for_asset({"path": _source_path(asset)}) == str(segment["role"])
     ]
     candidates = role_matches or eligible
 

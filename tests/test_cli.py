@@ -117,6 +117,21 @@ def test_demo_runs_generated_fixture(tmp_path, monkeypatch):
     assert (work_dir / "review.html").exists()
 
 
+def test_demo_reports_fixture_generation_failure_without_traceback(tmp_path, monkeypatch, capsys):
+    def fake_generate_fixtures(output: Path) -> None:
+        raise RuntimeError("fixture generation failed")
+
+    monkeypatch.setattr("jianji_flow.cli.generate_fixtures", fake_generate_fixtures)
+
+    code = main(["demo", "--work-dir", str(tmp_path / "demo")])
+    output = capsys.readouterr()
+
+    assert code == 1
+    assert "jianji-flow failed" in output.err
+    assert "Traceback" not in output.err
+    assert (tmp_path / "demo" / "review.md").exists()
+
+
 def test_quick_uses_default_product_script_when_script_is_missing(tmp_path, monkeypatch):
     _patch_voiceover(monkeypatch)
     fixture_root = tmp_path / "fixtures"
@@ -144,6 +159,49 @@ def test_quick_uses_default_product_script_when_script_is_missing(tmp_path, monk
     assert code == 0
     assert (work_dir / "remix.mp4").exists()
     assert "家里乱" in (work_dir / "captions.srt").read_text(encoding="utf-8")
+
+
+def test_quick_talking_head_requires_script(tmp_path, capsys):
+    code = main(
+        [
+            "quick",
+            "--mode",
+            "talking-head",
+            "--reference",
+            str(tmp_path / "ref.mp4"),
+            "--assets",
+            str(tmp_path / "assets"),
+            "--work-dir",
+            str(tmp_path / "quick"),
+        ]
+    )
+    output = capsys.readouterr()
+
+    assert code == 2
+    assert "script" in output.err.lower()
+
+
+def test_quick_reports_missing_reference_without_traceback(tmp_path, capsys):
+    assets = tmp_path / "assets"
+    assets.mkdir()
+
+    code = main(
+        [
+            "quick",
+            "--reference",
+            str(tmp_path / "missing.mp4"),
+            "--assets",
+            str(assets),
+            "--work-dir",
+            str(tmp_path / "quick"),
+        ]
+    )
+    output = capsys.readouterr()
+
+    assert code == 1
+    assert "jianji-flow failed" in output.err
+    assert "Traceback" not in output.err
+    assert (tmp_path / "quick" / "review.md").exists()
 
 
 def test_quick_stops_before_render_when_product_roles_are_missing(tmp_path, monkeypatch):
@@ -178,6 +236,43 @@ def test_quick_stops_before_render_when_product_roles_are_missing(tmp_path, monk
     assert (work_dir / "diagnosis.md").exists()
     assert "缺少" in (work_dir / "diagnosis.md").read_text(encoding="utf-8")
     assert not (work_dir / "remix.mp4").exists()
+
+
+def test_quick_material_failure_removes_stale_review_outputs(tmp_path, monkeypatch):
+    _patch_voiceover(monkeypatch)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    work_dir = tmp_path / "quick"
+    success_args = [
+        "quick",
+        "--reference",
+        str(fixture_root / "scenario-a-product" / "reference.mp4"),
+        "--assets",
+        str(fixture_root / "scenario-a-product" / "assets"),
+        "--work-dir",
+        str(work_dir),
+        "--target-width",
+        "320",
+        "--target-height",
+        "180",
+        "--target-fps",
+        "12",
+    ]
+    assert main(success_args) == 0
+    assert (work_dir / "review.md").exists()
+    assert (work_dir / "recipe.json").exists()
+
+    incomplete = tmp_path / "incomplete"
+    incomplete.mkdir()
+    first_asset = next((fixture_root / "scenario-a-product" / "assets").glob("*.mp4"))
+    shutil.copy(first_asset, incomplete / "01-hook.mp4")
+    failed_args = success_args.copy()
+    failed_args[failed_args.index("--assets") + 1] = str(incomplete)
+
+    assert main(failed_args) == 1
+    assert (work_dir / "diagnosis.md").exists()
+    for name in ("review.md", "review.html", "manifest.json", "recipe.json", "matches.json", "captions.srt", "captions.ass"):
+        assert not (work_dir / name).exists(), name
 
 
 def test_cli_help_when_argv_none(monkeypatch, capsys):

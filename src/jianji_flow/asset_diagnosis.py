@@ -73,14 +73,25 @@ def _asset_duration_ms(asset: dict) -> int:
 def _assets_by_primary_role(assets: list[dict]) -> dict[str, list[dict]]:
     grouped = {role: [] for role in ROLE_HINTS}
     for asset in assets:
-        scores = _matched_role_scores(asset)
-        best_score = max(scores.values(), default=0)
-        if best_score <= 0:
-            continue
-        best_roles = [role for role, score in scores.items() if score == best_score]
-        if len(best_roles) == 1:
-            grouped[best_roles[0]].append(asset)
+        role = primary_role_for_asset(asset)
+        if role is not None:
+            grouped[role].append(asset)
     return grouped
+
+
+def primary_role_for_asset(asset: dict) -> str | None:
+    name = Path(_asset_path(asset)).stem.casefold()
+    direct_roles = [role for role in ROLE_HINTS if role.casefold() in name]
+    if len(direct_roles) == 1:
+        return direct_roles[0]
+    scores = _matched_role_scores(asset)
+    best_score = max(scores.values(), default=0)
+    if best_score <= 0:
+        return None
+    best_roles = [role for role, score in scores.items() if score == best_score]
+    if len(best_roles) != 1:
+        return None
+    return best_roles[0]
 
 
 def diagnose_product_assets(assets: list[dict], segments: list[dict]) -> dict:

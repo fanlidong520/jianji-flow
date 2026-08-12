@@ -24,9 +24,14 @@ def _writable_output_check(output_root: Path | None) -> dict:
     root = output_root or Path(tempfile.gettempdir())
     try:
         root.mkdir(parents=True, exist_ok=True)
-        probe = root / ".jianji-flow-write-test"
-        probe.write_text("ok", encoding="utf-8")
-        probe.unlink()
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            prefix=".jianji-flow-write-test-",
+            dir=root,
+            delete=True,
+        ) as probe:
+            probe.write("ok")
     except OSError as exc:
         return _check("fail", f"Output directory is not writable: {exc}")
     return _check("pass", f"Output directory is writable: {root}")

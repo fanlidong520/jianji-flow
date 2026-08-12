@@ -83,6 +83,22 @@ def test_check_environment_reports_unwritable_output_path(tmp_path: Path, monkey
     assert report["checks"]["writable_output"]["status"] == "fail"
 
 
+def test_check_environment_does_not_overwrite_existing_probe_file(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(
+        "jianji_flow.environment.check_ffmpeg_available",
+        lambda: {"ffmpeg": "ffmpeg ok", "ffprobe": "ffprobe ok"},
+    )
+    monkeypatch.setattr("jianji_flow.environment.platform.system", lambda: "Windows")
+    monkeypatch.setattr("jianji_flow.environment.has_local_chinese_tts", lambda: True)
+    existing = tmp_path / ".jianji-flow-write-test"
+    existing.write_text("user data", encoding="utf-8")
+
+    report = check_environment(output_root=tmp_path)
+
+    assert report["status"] == "pass"
+    assert existing.read_text(encoding="utf-8") == "user data"
+
+
 def test_format_environment_report_ends_with_plain_decision(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(
         "jianji_flow.environment.check_ffmpeg_available",

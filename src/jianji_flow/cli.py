@@ -76,8 +76,30 @@ def _success_artifact_names() -> tuple[str, ...]:
     return ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png", "review.html")
 
 
+def _run_state_artifact_names() -> tuple[str, ...]:
+    return (
+        "review.md",
+        "review.html",
+        "manifest.json",
+        "recipe.json",
+        "matches.json",
+        "captions.srt",
+        "captions.ass",
+        "voiceover.wav",
+        "remix.mp4",
+        "contact-sheet.png",
+    )
+
+
 def _clear_success_artifacts(work_dir: Path) -> None:
     for name in _success_artifact_names():
+        path = work_dir / name
+        if path.exists():
+            path.unlink()
+
+
+def _clear_run_state_artifacts(work_dir: Path) -> None:
+    for name in _run_state_artifact_names():
         path = work_dir / name
         if path.exists():
             path.unlink()
@@ -227,24 +249,9 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         return 1
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = _build_parser()
-    args_list = sys.argv[1:] if argv is None else argv
-    if args_list == []:
-        parser.print_help()
-        return 0
-
+def _run_demo_command(args: argparse.Namespace) -> int:
+    work_dir = Path(args.work_dir).resolve() if args.work_dir else default_quick_work_dir(Path.cwd())
     try:
-        args = parser.parse_args(args_list)
-    except SystemExit as error:
-        return int(error.code)
-    if args.command == "doctor":
-        output_root = Path(args.work_dir).resolve() if args.work_dir else None
-        report = check_environment(output_root=output_root)
-        print(format_environment_report(report), end="")
-        return 0 if report["status"] == "pass" else 1
-    if args.command == "demo":
-        work_dir = Path(args.work_dir).resolve() if args.work_dir else default_quick_work_dir(Path.cwd())
         fixture_root = work_dir.parent / f"{work_dir.name}-fixtures"
         generate_fixtures(fixture_root)
         demo_args = argparse.Namespace(
@@ -260,9 +267,23 @@ def main(argv: list[str] | None = None) -> int:
             target_fps=args.target_fps,
         )
         return _run_pipeline(demo_args)
-    if args.command == "quick":
-        if not args.work_dir:
-            args.work_dir = str(default_quick_work_dir(Path.cwd()))
+    except Exception as exc:
+        work_dir.mkdir(parents=True, exist_ok=True)
+        _clear_run_state_artifacts(work_dir)
+        _write_failure_review(work_dir, str(exc))
+        print(f"jianji-flow failed: {exc}", file=sys.stderr)
+        return 1
+
+
+def _run_quick_command(args: argparse.Namespace) -> int:
+    if not args.work_dir:
+        args.work_dir = str(default_quick_work_dir(Path.cwd()))
+    if args.mode != "product" and not args.script:
+        print("jianji-flow failed: quick --mode talking-head requires --script", file=sys.stderr)
+        return 2
+
+    work_dir: Path | None = None
+    try:
         script_override = None if args.script else default_product_script()
         work_dir = make_output_dir(Path(args.work_dir).resolve().parent, Path(args.work_dir).name)
         _clear_success_artifacts(work_dir)
@@ -280,10 +301,40 @@ def main(argv: list[str] | None = None) -> int:
                 segments,
             )
             if report["status"] == "fail":
+                _clear_run_state_artifacts(work_dir)
                 diagnosis_path = _write_diagnosis(work_dir, format_asset_diagnosis(report))
                 print(f"quick stopped; diagnosis written to {diagnosis_path}", file=sys.stderr)
                 return 1
         return _run_pipeline(args, script_text_override=script_override)
+    except Exception as exc:
+        if work_dir is None:
+            work_dir = make_output_dir(Path(args.work_dir).resolve().parent, Path(args.work_dir).name)
+        _clear_run_state_artifacts(work_dir)
+        _write_failure_review(work_dir, str(exc))
+        print(f"jianji-flow failed: {exc}", file=sys.stderr)
+        return 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = _build_parser()
+    args_list = sys.argv[1:] if argv is None else argv
+    if args_list == []:
+        parser.print_help()
+        return 0
+
+    try:
+        args = parser.parse_args(args_list)
+    except SystemExit as error:
+        return int(error.code)
+    if args.command == "doctor":
+        output_root = Path(args.work_dir).resolve() if args.work_dir else None
+        report = check_environment(output_root=output_root)
+        print(format_environment_report(report), end="")
+        return 0 if report["status"] == "pass" else 1
+    if args.command == "demo":
+        return _run_demo_command(args)
+    if args.command == "quick":
+        return _run_quick_command(args)
     if args.command == "run":
         return _run_pipeline(args)
     return 0
