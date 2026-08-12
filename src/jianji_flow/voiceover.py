@@ -125,6 +125,34 @@ def _encoded_powershell(script: str) -> str:
     return base64.b64encode(script.encode("utf-16le")).decode("ascii")
 
 
+def has_local_chinese_tts(timeout_s: int = 10) -> bool:
+    script = """
+$ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.Speech
+$s = New-Object System.Speech.Synthesis.SpeechSynthesizer
+try {
+    $voice = $s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -eq 'zh-CN' } | Select-Object -First 1
+    if ($null -eq $voice) { exit 1 }
+    exit 0
+} finally {
+    $s.Dispose()
+}
+"""
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-EncodedCommand", _encoded_powershell(script)],
+            check=False,
+            timeout=timeout_s,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0
+
+
 def create_voiceover(recipe: dict, output_path: Path, *, rate: int = 0) -> Path:
     if rate < -10 or rate > 10:
         raise ValueError("rate must be between -10 and 10")

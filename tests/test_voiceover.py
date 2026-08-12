@@ -6,7 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from jianji_flow.voiceover import build_voiceover_text, create_voiceover, probe_voiceover, validate_voiceover
+from jianji_flow.voiceover import (
+    build_voiceover_text,
+    create_voiceover,
+    has_local_chinese_tts,
+    probe_voiceover,
+    validate_voiceover,
+)
 
 
 def _write_tone_wav(path: Path, *, seconds: float = 0.25) -> None:
@@ -113,6 +119,42 @@ def test_probe_voiceover_reports_duration_for_decodable_wav(tmp_path: Path):
     info = probe_voiceover(output)
 
     assert 450 <= info.duration_ms <= 550
+
+
+def test_has_local_chinese_tts_returns_false_when_powershell_is_missing(monkeypatch):
+    def fake_run(*args, **kwargs):
+        raise FileNotFoundError("powershell")
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fake_run)
+
+    assert has_local_chinese_tts() is False
+
+
+def test_has_local_chinese_tts_returns_false_when_powershell_times_out(monkeypatch):
+    def fake_run(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd=args[0], timeout=kwargs["timeout"])
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fake_run)
+
+    assert has_local_chinese_tts() is False
+
+
+def test_has_local_chinese_tts_returns_false_when_powershell_cannot_start(monkeypatch):
+    def fake_run(*args, **kwargs):
+        raise PermissionError("blocked")
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fake_run)
+
+    assert has_local_chinese_tts() is False
+
+
+def test_has_local_chinese_tts_returns_true_when_local_voice_exists(monkeypatch):
+    class Result:
+        returncode = 0
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", lambda *args, **kwargs: Result())
+
+    assert has_local_chinese_tts() is True
 
 
 def test_create_voiceover_invokes_local_tts_and_validates_output(tmp_path: Path, monkeypatch):

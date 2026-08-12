@@ -8,6 +8,7 @@ from pathlib import Path
 from jianji_flow import __version__
 from jianji_flow.contact_sheet import write_contact_sheet
 from jianji_flow.contracts import validate_manifest, validate_matches, validate_recipe
+from jianji_flow.environment import check_environment, format_environment_report
 from jianji_flow.matcher import build_recipe, match_segments
 from jianji_flow.media_probe import run_ffprobe
 from jianji_flow.media_scan import scan_assets, write_manifest
@@ -35,6 +36,9 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--target-width", type=int)
     run.add_argument("--target-height", type=int)
     run.add_argument("--target-fps", type=float)
+
+    doctor = commands.add_parser("doctor", help="check local environment")
+    doctor.add_argument("--work-dir")
     return parser
 
 
@@ -207,6 +211,11 @@ def main(argv: list[str] | None = None) -> int:
         args = parser.parse_args(args_list)
     except SystemExit as error:
         return int(error.code)
+    if args.command == "doctor":
+        output_root = Path(args.work_dir).resolve() if args.work_dir else None
+        report = check_environment(output_root=output_root)
+        print(format_environment_report(report), end="")
+        return 0 if report["status"] == "pass" else 1
     if args.command == "run":
         return _run_pipeline(args)
     return 0

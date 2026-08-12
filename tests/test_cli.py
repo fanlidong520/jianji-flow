@@ -51,6 +51,48 @@ def test_cli_help_no_args(capsys):
     assert "run" in output.out
 
 
+def test_doctor_prints_environment_report(monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr(
+        "jianji_flow.cli.check_environment",
+        lambda output_root=None: {"status": "pass", "checks": {"python": {"status": "pass", "message": "Python ok"}}},
+    )
+    monkeypatch.setattr(
+        "jianji_flow.cli.format_environment_report",
+        lambda report: "# Environment\n- python: OK - Python ok\n\nReady to run quick draft\n",
+    )
+
+    code = main(["doctor", "--work-dir", str(tmp_path)])
+    output = capsys.readouterr()
+
+    assert code == 0
+    assert "Ready to run quick draft" in output.out
+
+
+def test_doctor_returns_failure_when_environment_is_not_ready(monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr(
+        "jianji_flow.cli.check_environment",
+        lambda output_root=None: {"status": "fail", "checks": {"local_tts": {"status": "fail", "message": "TTS missing"}}},
+    )
+    monkeypatch.setattr(
+        "jianji_flow.cli.format_environment_report",
+        lambda report: "# Environment\n- local_tts: FAIL - TTS missing\n\nNot ready\n",
+    )
+
+    code = main(["doctor", "--work-dir", str(tmp_path)])
+    output = capsys.readouterr()
+
+    assert code == 1
+    assert "Not ready" in output.out
+
+
+def test_doctor_is_environment_only_for_now(capsys):
+    code = main(["doctor", "--assets", "assets"])
+    output = capsys.readouterr()
+
+    assert code == 2
+    assert "unrecognized arguments" in output.err
+
+
 def test_cli_help_when_argv_none(monkeypatch, capsys):
     monkeypatch.setattr("sys.argv", ["jianji-flow"])
     code = main(None)
