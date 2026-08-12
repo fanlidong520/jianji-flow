@@ -26,6 +26,14 @@ ROLE_HINTS = {
     "cta": ("cta", "ending", "packshot", "order", "buy", "结尾", "下单", "购买", "优惠", "价格", "链接"),
 }
 
+ROLE_LABELS = {
+    "hook": "开头",
+    "pain": "痛点",
+    "feature": "卖点",
+    "evidence": "演示/证据",
+    "cta": "收尾",
+}
+
 
 def _asset_path(asset: dict) -> str:
     return str(asset.get("path", ""))
@@ -118,7 +126,8 @@ def format_asset_diagnosis(report: dict) -> str:
     lines = ["# Material diagnosis", "Filename and duration screening only; watch the video before publishing.", ""]
     for role, item in report.get("roles", {}).items():
         label = item.get("status", "unknown").upper()
-        lines.append(f"- {role}: {label} - {item.get('message', '')}")
+        role_label = f"{role} / {ROLE_LABELS.get(role, role)}"
+        lines.append(f"- {role_label}: {label} - {item.get('message', '')}")
     actions = report.get("actions", [])
     if actions:
         lines.append("")

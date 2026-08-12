@@ -2,6 +2,7 @@ import subprocess
 import sys
 import wave
 import math
+import shutil
 import struct
 from pathlib import Path
 
@@ -142,7 +143,41 @@ def test_quick_uses_default_product_script_when_script_is_missing(tmp_path, monk
 
     assert code == 0
     assert (work_dir / "remix.mp4").exists()
-    assert "家里这个角落" in (work_dir / "captions.srt").read_text(encoding="utf-8")
+    assert "家里乱" in (work_dir / "captions.srt").read_text(encoding="utf-8")
+
+
+def test_quick_stops_before_render_when_product_roles_are_missing(tmp_path, monkeypatch):
+    _patch_voiceover(monkeypatch)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    incomplete = tmp_path / "incomplete"
+    incomplete.mkdir()
+    first_asset = next((fixture_root / "scenario-a-product" / "assets").glob("*.mp4"))
+    shutil.copy(first_asset, incomplete / "01-hook.mp4")
+    work_dir = tmp_path / "quick"
+
+    code = main(
+        [
+            "quick",
+            "--reference",
+            str(fixture_root / "scenario-a-product" / "reference.mp4"),
+            "--assets",
+            str(incomplete),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    assert code == 1
+    assert (work_dir / "diagnosis.md").exists()
+    assert "Missing" in (work_dir / "diagnosis.md").read_text(encoding="utf-8")
+    assert not (work_dir / "remix.mp4").exists()
 
 
 def test_cli_help_when_argv_none(monkeypatch, capsys):

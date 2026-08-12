@@ -99,5 +99,6 @@ def test_format_asset_diagnosis_ends_with_decision():
     text = format_asset_diagnosis(report)
 
     assert "Material diagnosis" in text
+    assert "hook / 开头" in text
     assert "Filename and duration screening only" in text
     assert text.strip().endswith("Ready to run quick draft")

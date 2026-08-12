@@ -37,6 +37,21 @@ def test_generator_creates_both_synthetic_scenarios(tmp_path: Path):
         assert list((scenario_dir / "assets").glob("*.mp4"))
 
 
+def test_product_fixture_assets_use_quick_role_names(tmp_path: Path):
+    output = tmp_path / "fixtures"
+    _run_generator(output)
+
+    names = {path.name for path in (output / "scenario-a-product" / "assets").glob("*.mp4")}
+
+    assert names == {
+        "01-hook-opening.mp4",
+        "02-pain-before.mp4",
+        "03-feature-product-detail.mp4",
+        "04-evidence-demo-after.mp4",
+        "05-cta-packshot-buy.mp4",
+    }
+
+
 @pytest.mark.parametrize("scenario", ["scenario-a-product", "scenario-b-talking"])
 def test_generated_media_is_probeable_and_has_audio(tmp_path: Path, scenario: str):
     output = tmp_path / "fixtures"
@@ -56,7 +71,7 @@ def test_generated_fixture_frames_are_not_plain_color_blocks(tmp_path: Path):
     output = tmp_path / "fixtures"
     frame_path = tmp_path / "frame.png"
     _run_generator(output)
-    media_path = output / "scenario-a-product" / "assets" / "product-overview.mp4"
+    media_path = output / "scenario-a-product" / "assets" / "01-hook-opening.mp4"
     subprocess.run(
         [
             "ffmpeg",

@@ -17,8 +17,11 @@ CREATION_TIME = "1970-01-01T00:00:00Z"
 
 SUBLINES = {
     "reference-product": "Structure source only",
-    "product-overview": "Hero shot / workflow view",
-    "product-detail": "Detail shot / proof moment",
+    "01-hook-opening": "Hook / visible result",
+    "02-pain-before": "Pain / before cleanup",
+    "03-feature-product-detail": "Feature / product detail",
+    "04-evidence-demo-after": "Evidence / demo after use",
+    "05-cta-packshot-buy": "CTA / packshot",
     "reference-talking": "Rhythm source only",
     "talking-wide": "Wide talking-head frame",
     "talking-detail": "Close-up evidence frame",
@@ -37,8 +40,11 @@ SCENARIOS = {
         ),
         "reference": ("reference-product", "0x6cc6ff", 440, 8.0),
         "assets": [
-            ("product-overview", "0x2d8a6e", 520, 3.0),
-            ("product-detail", "0xffb347", 660, 3.0),
+            ("01-hook-opening", "0x2d8a6e", 520, 3.0),
+            ("02-pain-before", "0xff8a65", 580, 3.0),
+            ("03-feature-product-detail", "0xffb347", 660, 3.0),
+            ("04-evidence-demo-after", "0x42a5f5", 730, 3.0),
+            ("05-cta-packshot-buy", "0x7654d6", 820, 3.0),
         ],
     },
     "scenario-b-talking": {

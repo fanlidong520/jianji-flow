@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from jianji_flow import __version__
+from jianji_flow.asset_diagnosis import diagnose_product_assets, format_asset_diagnosis
 from jianji_flow.contact_sheet import write_contact_sheet
 from jianji_flow.contracts import validate_manifest, validate_matches, validate_recipe
 from jianji_flow.environment import check_environment, format_environment_report
@@ -93,6 +94,13 @@ def _write_failure_review(work_dir: Path, failure: str) -> None:
         "outputs": {},
     }
     write_review_markdown(review, review_path)
+
+
+def _write_diagnosis(work_dir: Path, text: str) -> Path:
+    work_dir.mkdir(parents=True, exist_ok=True)
+    path = work_dir / "diagnosis.md"
+    path.write_text(text, encoding="utf-8")
+    return path
 
 
 def _remove_success_outputs_from_review(review: dict) -> None:
@@ -256,6 +264,25 @@ def main(argv: list[str] | None = None) -> int:
         if not args.work_dir:
             args.work_dir = str(default_quick_work_dir(Path.cwd()))
         script_override = None if args.script else default_product_script()
+        work_dir = make_output_dir(Path(args.work_dir).resolve().parent, Path(args.work_dir).name)
+        _clear_success_artifacts(work_dir)
+        reference_path = resolve_existing_file(args.reference)
+        asset_root = resolve_existing_dir(args.assets)
+        reference_info = run_ffprobe(reference_path)
+        records = scan_assets(asset_root)
+        segments = build_segment_plan(args.mode, reference_info.duration_ms, script_override)
+        if args.mode == "product":
+            report = diagnose_product_assets(
+                [
+                    {"asset_id": item.asset_id, "path": item.path.as_posix(), "duration_ms": item.duration_ms}
+                    for item in records
+                ],
+                segments,
+            )
+            if report["status"] == "fail":
+                diagnosis_path = _write_diagnosis(work_dir, format_asset_diagnosis(report))
+                print(f"quick stopped; diagnosis written to {diagnosis_path}", file=sys.stderr)
+                return 1
         return _run_pipeline(args, script_text_override=script_override)
     if args.command == "run":
         return _run_pipeline(args)

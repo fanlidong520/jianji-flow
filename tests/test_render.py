@@ -238,7 +238,7 @@ def test_render_command_uses_voiceover_audio_and_burned_captions(tmp_path: Path)
 def test_render_preview_creates_probeable_mp4(tmp_path: Path):
     fixture_root = tmp_path / "fixtures"
     subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
-    source_path = fixture_root / "scenario-a-product" / "assets" / "product-overview.mp4"
+    source_path = fixture_root / "scenario-a-product" / "assets" / "01-hook-opening.mp4"
     recipe, matches = _recipe(source_path)
     recipe_path = tmp_path / "recipe.json"
     matches_path = tmp_path / "matches.json"
