@@ -1,0 +1,134 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+
+ROLE_HINTS = {
+    "hook": ("hook", "opening", "intro", "unbox", "result", "开头", "开箱", "效果"),
+    "pain": ("pain", "problem", "dust", "dirty", "before", "痛点", "脏", "灰", "油污", "水垢", "清洁前"),
+    "feature": ("feature", "product", "brush", "detail", "material", "size", "卖点", "产品", "刷", "材质", "尺寸", "细节"),
+    "evidence": (
+        "evidence",
+        "demo",
+        "use",
+        "before-after",
+        "after",
+        "test",
+        "scene",
+        "演示",
+        "使用",
+        "对比",
+        "实测",
+        "教程",
+        "场景",
+        "清洁后",
+    ),
+    "cta": ("cta", "ending", "packshot", "order", "buy", "结尾", "下单", "购买", "优惠", "价格", "链接"),
+}
+
+
+def _asset_path(asset: dict) -> str:
+    return str(asset.get("path", ""))
+
+
+def _role_segment_duration(role: str, segments: list[dict]) -> int:
+    for segment in segments:
+        if segment.get("role") == role:
+            return max(1, int(segment["end_ms"]) - int(segment["start_ms"]))
+    return 0
+
+
+def _matched_role_scores(asset: dict) -> dict[str, int]:
+    name = Path(_asset_path(asset)).stem.casefold()
+    return {
+        role: sum(1 for hint in hints if hint.casefold() in name)
+        for role, hints in ROLE_HINTS.items()
+    }
+
+
+def _asset_duration_ms(asset: dict) -> int:
+    try:
+        duration_ms = int(asset.get("duration_ms", 0))
+    except (TypeError, ValueError):
+        return 0
+    return max(0, duration_ms)
+
+
+def _assets_by_primary_role(assets: list[dict]) -> dict[str, list[dict]]:
+    grouped = {role: [] for role in ROLE_HINTS}
+    for asset in assets:
+        scores = _matched_role_scores(asset)
+        best_score = max(scores.values(), default=0)
+        if best_score <= 0:
+            continue
+        best_roles = [role for role, score in scores.items() if score == best_score]
+        if len(best_roles) == 1:
+            grouped[best_roles[0]].append(asset)
+    return grouped
+
+
+def diagnose_product_assets(assets: list[dict], segments: list[dict]) -> dict:
+    roles: dict[str, dict] = {}
+    actions: list[str] = []
+    if not segments or any(_role_segment_duration(role, segments) <= 0 for role in ROLE_HINTS):
+        return {
+            "status": "fail",
+            "roles": {},
+            "actions": ["Segment plan is incomplete. Rebuild the draft plan before checking materials."],
+        }
+    if not assets:
+        return {
+            "status": "fail",
+            "roles": {},
+            "actions": ["No decodable video assets found. Add local .mp4 clips to the assets folder."],
+        }
+
+    assets_by_role = _assets_by_primary_role(assets)
+    for role in ROLE_HINTS:
+        needed_ms = _role_segment_duration(role, segments)
+        candidates = assets_by_role[role]
+        long_enough = [asset for asset in candidates if _asset_duration_ms(asset) >= needed_ms]
+        if long_enough:
+            roles[role] = {
+                "status": "ready",
+                "message": f"{role} clip passes filename and duration screening",
+                "candidates": [_asset_path(item) for item in long_enough],
+            }
+        elif candidates:
+            roles[role] = {
+                "status": "weak",
+                "message": f"{role} clip is too short",
+                "candidates": [_asset_path(item) for item in candidates],
+            }
+            actions.append(f"Weak {role} clip: asset too short for the target segment.")
+        else:
+            roles[role] = {"status": "missing", "message": f"{role} clip is missing", "candidates": []}
+            actions.append(f"Missing {role} clip: add a video for the {role} segment.")
+
+    if any(item["status"] == "missing" for item in roles.values()):
+        status = "fail"
+    elif any(item["status"] == "weak" for item in roles.values()):
+        status = "warning"
+    else:
+        status = "pass"
+    return {"status": status, "roles": roles, "actions": actions}
+
+
+def format_asset_diagnosis(report: dict) -> str:
+    lines = ["# Material diagnosis", "Filename and duration screening only; watch the video before publishing.", ""]
+    for role, item in report.get("roles", {}).items():
+        label = item.get("status", "unknown").upper()
+        lines.append(f"- {role}: {label} - {item.get('message', '')}")
+    actions = report.get("actions", [])
+    if actions:
+        lines.append("")
+        lines.append("Next actions:")
+        lines.extend(f"- {action}" for action in actions)
+    decision = {
+        "pass": "Ready to run quick draft",
+        "warning": "Can run, but review carefully",
+        "fail": "Not ready",
+    }.get(report.get("status"), "Not ready")
+    lines.append("")
+    lines.append(decision)
+    return "\n".join(lines) + "\n"
