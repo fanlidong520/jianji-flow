@@ -8,6 +8,7 @@ def test_check_environment_reports_core_tool_statuses(tmp_path: Path, monkeypatc
         "jianji_flow.environment.check_ffmpeg_available",
         lambda: {"ffmpeg": "ffmpeg ok", "ffprobe": "ffprobe ok"},
     )
+    monkeypatch.setattr("jianji_flow.environment.platform.system", lambda: "Windows")
     monkeypatch.setattr("jianji_flow.environment.has_local_chinese_tts", lambda: True)
 
     report = check_environment(output_root=tmp_path)
@@ -24,6 +25,7 @@ def test_check_environment_reports_missing_tts_without_crashing(tmp_path: Path, 
         "jianji_flow.environment.check_ffmpeg_available",
         lambda: {"ffmpeg": "ffmpeg ok", "ffprobe": "ffprobe ok"},
     )
+    monkeypatch.setattr("jianji_flow.environment.platform.system", lambda: "Windows")
     monkeypatch.setattr("jianji_flow.environment.has_local_chinese_tts", lambda: False)
 
     report = check_environment(output_root=tmp_path)
@@ -38,6 +40,7 @@ def test_check_environment_reports_missing_ffmpeg_tools(tmp_path: Path, monkeypa
         "jianji_flow.environment.check_ffmpeg_available",
         lambda: {"ffmpeg": "missing", "ffprobe": ""},
     )
+    monkeypatch.setattr("jianji_flow.environment.platform.system", lambda: "Windows")
     monkeypatch.setattr("jianji_flow.environment.has_local_chinese_tts", lambda: True)
 
     report = check_environment(output_root=tmp_path)
@@ -66,6 +69,7 @@ def test_check_environment_reports_unwritable_output_path(tmp_path: Path, monkey
         "jianji_flow.environment.check_ffmpeg_available",
         lambda: {"ffmpeg": "ffmpeg ok", "ffprobe": "ffprobe ok"},
     )
+    monkeypatch.setattr("jianji_flow.environment.platform.system", lambda: "Windows")
     monkeypatch.setattr("jianji_flow.environment.has_local_chinese_tts", lambda: True)
     file_path = tmp_path / "not-a-directory"
     file_path.write_text("already a file", encoding="utf-8")
@@ -81,6 +85,7 @@ def test_format_environment_report_ends_with_plain_decision(tmp_path: Path, monk
         "jianji_flow.environment.check_ffmpeg_available",
         lambda: {"ffmpeg": "ffmpeg ok", "ffprobe": "ffprobe ok"},
     )
+    monkeypatch.setattr("jianji_flow.environment.platform.system", lambda: "Windows")
     monkeypatch.setattr("jianji_flow.environment.has_local_chinese_tts", lambda: True)
 
     text = format_environment_report(check_environment(output_root=tmp_path))
