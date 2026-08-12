@@ -65,6 +65,13 @@ def test_github_ci_runs_unit_tests_without_local_tts_smoke():
     assert "ffmpeg" in text
 
 
+def test_platform_specific_regression_smoke_is_windows_only():
+    text = (ROOT / "tests" / "test_regression_outputs.py").read_text(encoding="utf-8")
+    assert "pytest.mark.skipif" in text
+    assert 'platform.system() != "Windows"' in text
+    assert "Windows local TTS" in text
+
+
 def test_contributing_guides_small_verified_changes():
     text = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
     assert "small, focused changes" in text

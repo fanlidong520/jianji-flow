@@ -1,9 +1,18 @@
+import platform
 import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+pytestmark = pytest.mark.skipif(
+    platform.system() != "Windows",
+    reason="smoke and p0 runners require Windows local TTS",
+)
 
 
 def test_smoke_runner_completes():
