@@ -9,11 +9,13 @@ from jianji_flow import __version__
 from jianji_flow.contact_sheet import write_contact_sheet
 from jianji_flow.contracts import validate_manifest, validate_matches, validate_recipe
 from jianji_flow.environment import check_environment, format_environment_report
+from jianji_flow.fixtures import generate_fixtures
 from jianji_flow.matcher import build_recipe, match_segments
 from jianji_flow.media_probe import run_ffprobe
 from jianji_flow.media_scan import scan_assets, write_manifest
 from jianji_flow.paths import make_output_dir, resolve_existing_dir, resolve_existing_file
 from jianji_flow.planner import build_segment_plan
+from jianji_flow.quickstart import default_product_script, default_quick_work_dir
 from jianji_flow.render import render_preview
 from jianji_flow.review import build_review, write_review_html, write_review_markdown
 from jianji_flow.semantics import validate_semantics
@@ -39,6 +41,23 @@ def _build_parser() -> argparse.ArgumentParser:
 
     doctor = commands.add_parser("doctor", help="check local environment")
     doctor.add_argument("--work-dir")
+
+    demo = commands.add_parser("demo", help="run a local generated product demo")
+    demo.add_argument("--work-dir")
+    demo.add_argument("--target-width", type=int)
+    demo.add_argument("--target-height", type=int)
+    demo.add_argument("--target-fps", type=float)
+
+    quick = commands.add_parser("quick", help="run the shortest home-product draft flow")
+    quick.add_argument("--reference", required=True)
+    quick.add_argument("--assets", required=True)
+    quick.add_argument("--script")
+    quick.add_argument("--work-dir")
+    quick.add_argument("--mode", choices=("product", "talking-head"), default="product")
+    quick.add_argument("--confidence-threshold", type=float)
+    quick.add_argument("--target-width", type=int)
+    quick.add_argument("--target-height", type=int)
+    quick.add_argument("--target-fps", type=float)
     return parser
 
 
@@ -82,7 +101,7 @@ def _remove_success_outputs_from_review(review: dict) -> None:
         outputs.pop(name, None)
 
 
-def _run_pipeline(args: argparse.Namespace) -> int:
+def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None = None) -> int:
     work_dir: Path | None = None
     try:
         work_dir = make_output_dir(Path(args.work_dir).resolve().parent, Path(args.work_dir).name)
@@ -91,7 +110,7 @@ def _run_pipeline(args: argparse.Namespace) -> int:
 
         reference_path = resolve_existing_file(args.reference)
         asset_root = resolve_existing_dir(args.assets)
-        script_text = _read_script(args.script)
+        script_text = script_text_override if script_text_override is not None else _read_script(args.script)
 
         reference_info = run_ffprobe(reference_path)
         target = {
@@ -216,6 +235,28 @@ def main(argv: list[str] | None = None) -> int:
         report = check_environment(output_root=output_root)
         print(format_environment_report(report), end="")
         return 0 if report["status"] == "pass" else 1
+    if args.command == "demo":
+        work_dir = Path(args.work_dir).resolve() if args.work_dir else default_quick_work_dir(Path.cwd())
+        fixture_root = work_dir.parent / f"{work_dir.name}-fixtures"
+        generate_fixtures(fixture_root)
+        demo_args = argparse.Namespace(
+            command="run",
+            mode="product",
+            reference=str(fixture_root / "scenario-a-product" / "reference.mp4"),
+            assets=str(fixture_root / "scenario-a-product" / "assets"),
+            script=str(fixture_root / "scenario-a-product" / "script.txt"),
+            work_dir=str(work_dir),
+            confidence_threshold=None,
+            target_width=args.target_width,
+            target_height=args.target_height,
+            target_fps=args.target_fps,
+        )
+        return _run_pipeline(demo_args)
+    if args.command == "quick":
+        if not args.work_dir:
+            args.work_dir = str(default_quick_work_dir(Path.cwd()))
+        script_override = None if args.script else default_product_script()
+        return _run_pipeline(args, script_text_override=script_override)
     if args.command == "run":
         return _run_pipeline(args)
     return 0

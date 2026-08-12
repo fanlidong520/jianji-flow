@@ -93,6 +93,58 @@ def test_doctor_is_environment_only_for_now(capsys):
     assert "unrecognized arguments" in output.err
 
 
+def test_demo_runs_generated_fixture(tmp_path, monkeypatch):
+    _patch_voiceover(monkeypatch)
+    work_dir = tmp_path / "demo"
+
+    code = main(
+        [
+            "demo",
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    assert code == 0
+    assert (work_dir / "remix.mp4").exists()
+    assert (work_dir / "review.html").exists()
+
+
+def test_quick_uses_default_product_script_when_script_is_missing(tmp_path, monkeypatch):
+    _patch_voiceover(monkeypatch)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    work_dir = tmp_path / "quick"
+
+    code = main(
+        [
+            "quick",
+            "--reference",
+            str(fixture_root / "scenario-a-product" / "reference.mp4"),
+            "--assets",
+            str(fixture_root / "scenario-a-product" / "assets"),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    assert code == 0
+    assert (work_dir / "remix.mp4").exists()
+    assert "家里这个角落" in (work_dir / "captions.srt").read_text(encoding="utf-8")
+
+
 def test_cli_help_when_argv_none(monkeypatch, capsys):
     monkeypatch.setattr("sys.argv", ["jianji-flow"])
     code = main(None)
