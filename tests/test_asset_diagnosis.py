@@ -102,3 +102,15 @@ def test_format_asset_diagnosis_ends_with_decision():
     assert "hook / 开头" in text
     assert "Filename and duration screening only" in text
     assert text.strip().endswith("Ready to run quick draft")
+
+
+def test_format_asset_diagnosis_uses_plain_chinese_next_actions():
+    segments = build_segment_plan("product", 10_000, None)
+    report = diagnose_product_assets([_asset("01-hook.mp4")], segments)
+
+    text = format_asset_diagnosis(report)
+
+    assert "下一步" in text
+    assert "缺少痛点素材" in text
+    assert "02-pain" in text
+    assert "Missing pain clip" not in text

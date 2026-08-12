@@ -25,10 +25,12 @@ For first-time users, prefer:
 
 1. `jianji-flow doctor`
 2. `jianji-flow demo`
-3. `jianji-flow quick --reference examples\reference.mp4 --assets examples\assets`
+3. `jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets`
 
 If `quick` writes `diagnosis.md`, report the missing or weak material roles and
 do not describe the run as a completed video.
+If the user runs `quick` without `--script`, say the default script is only for
+cleaning-style home-product examples; other products need their own script.
 
 Detailed workflow:
 

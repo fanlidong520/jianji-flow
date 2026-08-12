@@ -48,6 +48,9 @@ def test_check_environment_reports_missing_ffmpeg_tools(tmp_path: Path, monkeypa
     assert report["status"] == "fail"
     assert report["checks"]["ffmpeg"]["status"] == "fail"
     assert report["checks"]["ffprobe"]["status"] == "fail"
+    text = format_environment_report(report)
+    assert "winget install Gyan.FFmpeg" in text
+    assert "Run this command again" in text
 
 
 def test_check_environment_explains_non_windows_tts_requirement(tmp_path: Path, monkeypatch):

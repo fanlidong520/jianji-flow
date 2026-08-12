@@ -63,6 +63,10 @@ def test_readme_documents_v0_3_usability_commands():
     assert "jianji-flow doctor" in text
     assert "jianji-flow demo" in text
     assert "jianji-flow quick" in text
+    assert "examples\\reference.mp4" not in text
+    assert "fixtures\\scenario-a-product\\reference.mp4" in text
+    assert "默认文案只适合清洁类家居样例" in text
+    assert "winget install Gyan.FFmpeg" in text
     assert "Ready to run quick draft" in text
 
 
@@ -72,6 +76,8 @@ def test_skill_documents_quick_start_commands():
     assert "demo" in text
     assert "quick" in text
     assert "diagnosis.md" in text
+    assert "examples\\reference.mp4" not in text
+    assert "fixtures\\scenario-a-product\\reference.mp4" in text
 
 
 def test_v0_3_validation_record_has_ten_runs():

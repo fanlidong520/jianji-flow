@@ -95,10 +95,20 @@ jianji-flow demo
 有自己的家居带货素材后，用最短命令跑一条粗剪：
 
 ```powershell
-jianji-flow quick --reference examples\reference.mp4 --assets examples\assets
+jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets
 ```
 
-`quick` 在没有传 `--script` 时会使用一组很短的家居生活用品默认文案。素材明显不够时，它会先停下并写出 `diagnosis.md`，不会硬剪出一条误导性的坏视频。
+上面这条命令需要先运行 `python scripts/generate_fixtures.py --output fixtures`，或者把路径换成你自己的参考视频和素材文件夹。
+
+`quick` 在没有传 `--script` 时会使用一组很短的家居生活用品默认文案。默认文案只适合清洁类家居样例；如果是收纳、厨房、床品、灯具等其他产品，请传入自己的 `--script`。素材明显不够时，它会先停下并写出 `diagnosis.md`，不会硬剪出一条误导性的坏视频。
+
+如果 `doctor` 显示 FFmpeg 或 ffprobe 缺失，Windows 上可以先尝试：
+
+```powershell
+winget install Gyan.FFmpeg
+```
+
+如果显示中文 TTS 不可用，需要在 Windows 里安装或启用本地中文语音。修好后重新运行 `jianji-flow doctor`。
 
 ## 素材怎么准备
 

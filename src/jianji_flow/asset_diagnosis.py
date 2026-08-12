@@ -34,6 +34,14 @@ ROLE_LABELS = {
     "cta": "收尾",
 }
 
+ROLE_EXAMPLES = {
+    "hook": "01-hook-opening.mp4",
+    "pain": "02-pain-before.mp4",
+    "feature": "03-feature-product-detail.mp4",
+    "evidence": "04-evidence-demo-after.mp4",
+    "cta": "05-cta-packshot-buy.mp4",
+}
+
 
 def _asset_path(asset: dict) -> str:
     return str(asset.get("path", ""))
@@ -131,8 +139,16 @@ def format_asset_diagnosis(report: dict) -> str:
     actions = report.get("actions", [])
     if actions:
         lines.append("")
-        lines.append("Next actions:")
-        lines.extend(f"- {action}" for action in actions)
+        lines.append("下一步:")
+        for role, item in report.get("roles", {}).items():
+            role_label = ROLE_LABELS.get(role, role)
+            example = ROLE_EXAMPLES.get(role, f"{role}.mp4")
+            if item.get("status") == "missing":
+                lines.append(f"- 缺少{role_label}素材：添加类似 `{example}` 的视频。")
+            elif item.get("status") == "weak":
+                lines.append(f"- {role_label}素材太短：换一条更长的视频，文件名可参考 `{example}`。")
+        if not report.get("roles"):
+            lines.extend(f"- {action}" for action in actions)
     decision = {
         "pass": "Ready to run quick draft",
         "warning": "Can run, but review carefully",

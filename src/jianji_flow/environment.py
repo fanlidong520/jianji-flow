@@ -62,6 +62,17 @@ def format_environment_report(report: dict) -> str:
         mark = "OK" if check.get("status") == "pass" else "FAIL"
         lines.append(f"- {name}: {mark} - {check.get('message', '')}")
     decision = "Ready to run quick draft" if report.get("status") == "pass" else "Not ready"
+    if decision == "Not ready":
+        checks = report.get("checks", {})
+        lines.append("")
+        lines.append("Next steps:")
+        if checks.get("ffmpeg", {}).get("status") == "fail" or checks.get("ffprobe", {}).get("status") == "fail":
+            lines.append("- Install FFmpeg and ffprobe, for example: winget install Gyan.FFmpeg")
+        if checks.get("local_tts", {}).get("status") == "fail":
+            lines.append("- On Windows, install or enable a local zh-CN text-to-speech voice.")
+        if checks.get("writable_output", {}).get("status") == "fail":
+            lines.append("- Choose a writable output folder with --work-dir.")
+        lines.append("- Run this command again after fixing the items above.")
     lines.append("")
     lines.append(decision)
     return "\n".join(lines) + "\n"

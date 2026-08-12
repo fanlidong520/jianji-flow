@@ -176,7 +176,7 @@ def test_quick_stops_before_render_when_product_roles_are_missing(tmp_path, monk
 
     assert code == 1
     assert (work_dir / "diagnosis.md").exists()
-    assert "Missing" in (work_dir / "diagnosis.md").read_text(encoding="utf-8")
+    assert "缺少" in (work_dir / "diagnosis.md").read_text(encoding="utf-8")
     assert not (work_dir / "remix.mp4").exists()
 
 
