@@ -21,6 +21,8 @@
   keeping `source-window` separate from visual evidence in review warnings.
 - Added `source-preflight:clean` match evidence after clean source-frame sampling,
   while keeping it separate from product-story visual evidence.
+- Added frame-information window scoring with auditable `window-diagnostics`
+  frames, while keeping `window-score` separate from story-match evidence.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while
   still removing stale success artifacts such as `remix.mp4`.
 - Reframed documentation around auditable rough-cut generation, not full editor

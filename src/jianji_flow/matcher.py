@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from jianji_flow.contracts import validate_matches, validate_recipe
 from jianji_flow.asset_diagnosis import primary_role_for_asset
@@ -25,15 +25,39 @@ def _asset_duration_ms(asset: Any) -> int:
     return int(_asset_field(asset, "duration_ms"))
 
 
-def _source_window(segment: dict, asset: Any) -> tuple[int, int]:
+WindowScorer = Callable[[Any, int, int], float]
+
+
+def _window_candidates(segment: dict, asset: Any) -> list[tuple[int, int]]:
     segment_duration = _duration(segment)
     asset_duration = _asset_duration_ms(asset)
     available_offset = max(0, asset_duration - segment_duration)
+    starts = {0, available_offset}
+    anchor_start = _timeline_source_start_ms(segment, available_offset)
+    starts.add(anchor_start)
+    starts.add(round(available_offset * 0.5))
+    return [(start_ms, start_ms + segment_duration) for start_ms in sorted(starts)]
+
+
+def _timeline_source_start_ms(segment: dict, available_offset: int) -> int:
     timeline_start = max(0, int(segment.get("start_ms", 0)))
+    segment_duration = _duration(segment)
     timeline_end = max(timeline_start, int(segment.get("end_ms", timeline_start + segment_duration)))
     timeline_duration = max(1, timeline_end)
-    start_ms = round(available_offset * min(1.0, timeline_start / timeline_duration))
-    return start_ms, start_ms + segment_duration
+    return round(available_offset * min(1.0, timeline_start / timeline_duration))
+
+
+def _source_window(segment: dict, asset: Any, window_scorer: WindowScorer | None = None) -> tuple[int, int, float | None]:
+    candidates = _window_candidates(segment, asset)
+    if window_scorer is None or len(candidates) == 1:
+        segment_duration = _duration(segment)
+        start_ms = _timeline_source_start_ms(segment, max(0, _asset_duration_ms(asset) - segment_duration))
+        end_ms = start_ms + segment_duration
+        return start_ms, end_ms, None
+
+    scored = [(float(window_scorer(asset, start_ms, end_ms)), start_ms, end_ms) for start_ms, end_ms in candidates]
+    score, start_ms, end_ms = max(scored, key=lambda item: (item[0], item[1]))
+    return start_ms, end_ms, score
 
 
 def _scaled_bounds(segments: list[dict], target_duration_ms: int) -> list[tuple[int, int]]:
@@ -75,11 +99,13 @@ def _role_score(role: str, asset: Any) -> tuple[float, list[str]]:
     return 0.55, ["fallback:first-available"]
 
 
-def _candidate_for(segment: dict, asset: Any) -> dict:
+def _candidate_for(segment: dict, asset: Any, window_scorer: WindowScorer | None = None) -> dict:
     confidence, evidence = _role_score(str(segment["role"]), asset)
-    source_start_ms, source_end_ms = _source_window(segment, asset)
+    source_start_ms, source_end_ms, window_score = _source_window(segment, asset, window_scorer)
     if source_start_ms > 0:
         evidence = [*evidence, f"source-window:{source_start_ms}-{source_end_ms}"]
+    if window_score is not None:
+        evidence = [*evidence, f"window-score:{window_score:.3f}"]
     return {
         "asset_id": str(_asset_field(asset, "asset_id")),
         "source_path": _source_path(asset),
@@ -88,6 +114,7 @@ def _candidate_for(segment: dict, asset: Any) -> dict:
         "asset_duration_ms": _asset_duration_ms(asset),
         "score": confidence,
         "evidence": evidence,
+        **({"window_score": window_score} if window_score is not None else {}),
     }
 
 
@@ -115,7 +142,13 @@ def _pick_asset(segment: dict, assets: list[Any], recent_asset_ids: list[str]) -
     return candidates[0]
 
 
-def match_segments(segments: list[dict], assets: list[Any], threshold: float = 0.6) -> dict:
+def match_segments(
+    segments: list[dict],
+    assets: list[Any],
+    threshold: float = 0.6,
+    *,
+    window_scorer: WindowScorer | None = None,
+) -> dict:
     matches = []
     recent_asset_ids: list[str] = []
     for index, segment in enumerate(segments, start=1):
@@ -136,8 +169,12 @@ def match_segments(segments: list[dict], assets: list[Any], threshold: float = 0
             )
             continue
 
-        candidate = _candidate_for(segment, asset)
+        candidate = _candidate_for(segment, asset, window_scorer)
         confidence = float(candidate["score"])
+        scores = {"filename": confidence}
+        if "window_score" in candidate:
+            scores["window"] = float(candidate["window_score"])
+        output_candidate = {key: value for key, value in candidate.items() if key != "window_score"}
         asset_id = str(candidate["asset_id"])
         recent_asset_ids.append(asset_id)
         matches.append(
@@ -151,8 +188,8 @@ def match_segments(segments: list[dict], assets: list[Any], threshold: float = 0
                 "source_end_ms": int(candidate["source_end_ms"]),
                 "asset_duration_ms": int(candidate["asset_duration_ms"]),
                 "confidence": confidence,
-                "scores": {"filename": confidence},
-                "candidates": [candidate],
+                "scores": scores,
+                "candidates": [output_candidate],
                 "evidence": list(candidate["evidence"]),
             }
         )

@@ -85,18 +85,21 @@ Manual judgment for v13:
 
 Latest local checkpoint after material diagnosis visibility:
 
-- `python -m pytest -q` -> 268 passed;
+- `python -m pytest -q` -> 277 passed;
 - `python scripts/run_smoke.py` -> smoke passed;
 - `python scripts/run_p0.py` -> p0 passed;
-- `out/real-material-remix-v22/diagnosis.md` -> all product roles show `CANDIDATE`, not visually ready;
-- `out/real-material-remix-v22/matches.json` -> 4 of 5 selected segments use non-zero source windows;
-- `out/real-material-remix-v22/matches.json` -> all five selected segments include `source-preflight:clean`;
-- `out/real-material-remix-v22/review.md` -> warning, not pass;
-- `out/real-material-remix-v22/remix.mp4` -> 37.907s, 592x1280, audio present;
+- `out/real-material-remix-v23/diagnosis.md` -> all product roles show `CANDIDATE`, not visually ready;
+- `out/real-material-remix-v23/matches.json` -> every selected segment has a `window` score;
+- `out/real-material-remix-v23/matches.json` -> 3 of 5 selected segments use non-zero source windows after scoring;
+- `out/real-material-remix-v23/matches.json` -> all five selected segments include `source-preflight:clean`;
+- `out/real-material-remix-v23/window-diagnostics` -> candidate midpoint frames preserved for audit;
+- `out/real-material-remix-v23/review.md` -> warning, not pass;
+- `out/real-material-remix-v23/remix.mp4` -> 37.907s, 592x1280, audio present;
 - `review.md` and `review.html` include `Story support` with roles, filename-only roles, visual-evidence roles, and weak-evidence roles;
 - `Story support.next_action` should name the weak roles to replace or manually verify;
 - warning is correct because all five story roles rely on filename evidence and have no non-filename visual evidence.
 - `source-window` evidence must not be treated as visual evidence.
+- `window-score` evidence must not be treated as story-match evidence.
 - `source-preflight:clean` evidence must not be treated as story-match evidence.
 
 ## Launch Rule

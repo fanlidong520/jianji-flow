@@ -62,6 +62,23 @@ def test_match_segments_uses_nonzero_source_window_for_long_assets():
     assert any("source-window:" in item for item in match["evidence"])
 
 
+def test_match_segments_uses_window_scorer_to_choose_source_window():
+    segment = {"id": "seg-003", "role": "feature", "start_ms": 4000, "end_ms": 6000, "caption": "Feature"}
+    assets = [FakeAsset("asset-feature", Path("assets/feature.mp4"), 8000)]
+
+    def window_scorer(asset, start_ms: int, end_ms: int) -> float:
+        return 0.95 if start_ms == 6000 and end_ms == 8000 else 0.1
+
+    result = match_segments([segment], assets, window_scorer=window_scorer)
+
+    validate_matches(result)
+    match = result["matches"][0]
+    assert match["source_start_ms"] == 6000
+    assert match["source_end_ms"] == 8000
+    assert match["scores"]["window"] == 0.95
+    assert any("window-score:0.950" in item for item in match["evidence"])
+
+
 def test_match_segments_uses_same_role_aliases_as_material_diagnosis():
     assets = [
         FakeAsset("asset-other", Path("assets/other.mp4"), 5000),

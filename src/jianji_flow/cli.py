@@ -24,6 +24,7 @@ from jianji_flow.review_summary import build_review_summary
 from jianji_flow.semantics import validate_semantics
 from jianji_flow.subtitles import write_ass, write_srt
 from jianji_flow.voiceover import create_voiceover, probe_voiceover, validate_voiceover
+from jianji_flow.window_scoring import score_source_window
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -188,6 +189,15 @@ def _minimum_viable_voiceover_duration_ms(segment_count: int) -> int:
     return max(1000, segment_count * 250)
 
 
+def _build_window_scorer(work_dir: Path):
+    diagnostics_dir = work_dir / "window-diagnostics"
+
+    def scorer(asset, start_ms: int, end_ms: int) -> float:
+        return score_source_window(Path(str(asset.path)), start_ms, end_ms, diagnostics_dir)
+
+    return scorer
+
+
 def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None = None) -> int:
     work_dir: Path | None = None
     try:
@@ -212,7 +222,12 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         validate_manifest(manifest)
 
         segments = build_segment_plan(args.mode, reference_info.duration_ms, script_text)
-        matches = match_segments(segments, records, threshold=args.confidence_threshold or 0.6)
+        matches = match_segments(
+            segments,
+            records,
+            threshold=args.confidence_threshold or 0.6,
+            window_scorer=_build_window_scorer(work_dir),
+        )
         recipe = build_recipe(
             args.mode,
             target,

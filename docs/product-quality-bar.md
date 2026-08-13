@@ -66,22 +66,24 @@ Still not good enough:
 - source preflight warnings now appear in material diagnosis, but the tool still cannot judge whether clean clips truly support the product story;
 - no independent real-material packs have passed the same bar yet.
 
-## Current v22 Judgment
+## Current v23 Judgment
 
-`out/real-material-remix-v22` should be judged as an honesty checkpoint, not a launch demo.
+`out/real-material-remix-v23` should be judged as an honesty checkpoint, not a launch demo.
 The review layer now exposes `Story support` so a run can distinguish "enough clips to render" from "enough evidence to trust the product story."
 
 Passes:
 
-- full test suite passed with 268 tests;
+- full test suite passed with 277 tests;
 - smoke and P0 passed;
 - product `quick` writes `diagnosis.md` even when material roles can be tried, so filename/duration screening remains visible without calling them visually ready;
 - product `quick` labels filename/duration-ready clips as `CANDIDATE`, not user-visible `READY`;
 - product `quick` appends source preflight warnings/failures to `diagnosis.md` when risky source frames are found;
-- `out/real-material-remix-v22/diagnosis.md` shows all five roles as `CANDIDATE`, not visually ready;
-- `out/real-material-remix-v22/matches.json` uses non-zero source windows for 4 of 5 segments while staying inside asset duration;
-- `out/real-material-remix-v22/matches.json` records `source-preflight:clean` for all five selected segments after clean source-frame sampling;
-- `out/real-material-remix-v22/remix.mp4` is 37.907s, 592x1280, with audio present;
+- `out/real-material-remix-v23/diagnosis.md` shows all five roles as `CANDIDATE`, not visually ready;
+- `out/real-material-remix-v23/matches.json` records a `window` score for every selected segment;
+- `out/real-material-remix-v23/matches.json` uses non-zero source windows for 3 of 5 segments after window scoring;
+- `out/real-material-remix-v23/matches.json` records `source-preflight:clean` for all five selected segments after clean source-frame sampling;
+- `out/real-material-remix-v23/window-diagnostics` keeps sampled candidate frames for audit;
+- `out/real-material-remix-v23/remix.mp4` is 37.907s, 592x1280, with audio present;
 - source preflight runs before voiceover/render;
 - review status must be `warning`, not `pass`, when most story roles have no non-filename visual evidence.
 - `Story support` must name the weak roles in `next_action` so a non-technical user knows what to replace or manually verify.
@@ -90,9 +92,11 @@ Still not good enough:
 
 - every segment is matched by filename evidence only;
 - `source-window` evidence is only a clip-window selection signal, not visual understanding;
+- `window-score` evidence is only frame-information scoring, not semantic story matching;
 - `source-preflight:clean` means sampled source frames did not trigger platform UI / old-subtitle checks; it is not story-matching evidence;
 - the contact sheet shows a rough assembly, but not a strong product-story edit;
 - the system still does not truly understand product visuals;
+- full test runtime increased after frame scoring and needs follow-up optimization;
 - this should be treated as a local validation artifact, not a public launch demo.
 
 ## Product Principle

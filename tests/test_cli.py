@@ -812,6 +812,50 @@ def test_source_preflight_clean_evidence_is_written_to_matches(tmp_path, monkeyp
     assert "source-preflight:clean" in evidence_by_segment["seg-002"]
 
 
+def test_run_passes_visual_window_scorer_to_matcher(tmp_path, monkeypatch):
+    _patch_voiceover(monkeypatch)
+    seen = {"window_scorer": False}
+
+    import jianji_flow.cli as cli_module
+
+    original_match_segments = cli_module.match_segments
+
+    def spy_match_segments(segments, records, threshold=0.6, *, window_scorer=None):
+        seen["window_scorer"] = window_scorer is not None
+        return original_match_segments(segments, records, threshold=threshold, window_scorer=window_scorer)
+
+    monkeypatch.setattr("jianji_flow.cli.match_segments", spy_match_segments)
+    monkeypatch.setattr("jianji_flow.cli.score_source_window", lambda *args, **kwargs: 0.5)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    work_dir = tmp_path / "work"
+
+    code = main(
+        [
+            "run",
+            "--mode",
+            "product",
+            "--reference",
+            str(fixture_root / "scenario-a-product" / "reference.mp4"),
+            "--assets",
+            str(fixture_root / "scenario-a-product" / "assets"),
+            "--script",
+            str(fixture_root / "scenario-a-product" / "script.txt"),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    assert code == 0
+    assert seen["window_scorer"] is True
+
+
 def test_semantic_failure_removes_generated_success_artifacts(tmp_path, monkeypatch):
     _patch_voiceover(monkeypatch)
     monkeypatch.setattr("jianji_flow.cli.validate_semantics", lambda *args, **kwargs: ["forced semantic failure"])
