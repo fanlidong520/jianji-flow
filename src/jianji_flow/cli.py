@@ -371,9 +371,9 @@ def _run_quick_command(args: argparse.Namespace) -> int:
                 ],
                 segments,
             )
+            diagnosis_path = _write_diagnosis(work_dir, format_asset_diagnosis(report))
             if report["status"] == "fail":
                 _clear_run_state_artifacts(work_dir)
-                diagnosis_path = _write_diagnosis(work_dir, format_asset_diagnosis(report))
                 print(f"quick stopped; diagnosis written to {diagnosis_path}", file=sys.stderr)
                 return 1
         return _run_pipeline(args, script_text_override=script_override)

@@ -66,15 +66,16 @@ Still not good enough:
 - review warns, but material diagnosis should stop earlier and say the source clips are not clean enough;
 - no independent real-material packs have passed the same bar yet.
 
-## Current v16 Judgment
+## Current v17 Judgment
 
-`out/real-material-remix-v16` should be judged as an honesty checkpoint, not a launch demo.
+`out/real-material-remix-v17` should be judged as an honesty checkpoint, not a launch demo.
 The review layer now exposes `Story support` so a run can distinguish "enough clips to render" from "enough evidence to trust the product story."
 
 Passes:
 
-- full test suite passed with 265 tests;
+- full test suite passed with 266 tests;
 - smoke and P0 passed;
+- product `quick` writes `diagnosis.md` even when material roles are ready, so filename/duration screening remains visible;
 - source preflight runs before voiceover/render;
 - review status must be `warning`, not `pass`, when most story roles have no non-filename visual evidence.
 - `Story support` must name the weak roles in `next_action` so a non-technical user knows what to replace or manually verify.

@@ -22,6 +22,7 @@
 
 - Builds a structured timeline for `product` or `talking-head` videos.
 - Scans local video assets and writes `manifest.json`.
+- Writes `diagnosis.md` for product quick runs so material readiness is visible before judging the cut.
 - Matches timeline segments to assets and writes `matches.json`.
 - Writes the authoritative timeline to `recipe.json`.
 - Runs source preflight checks on selected source frames before voiceover and rendering.
@@ -107,7 +108,7 @@ jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets
 
 上面这条命令需要先运行 `python scripts/generate_fixtures.py --output fixtures`，或者把路径换成你自己的参考视频和素材文件夹。
 
-`quick` 在没有传 `--script` 时会使用一组很短的家居生活用品默认文案。默认文案只适合清洁类家居样例；如果是收纳、厨房、床品、灯具等其他产品，请传入自己的 `--script`。素材明显不够时，它会先停下并写出 `diagnosis.md`，不会硬剪出一条误导性的坏视频。
+`quick` 在没有传 `--script` 时会使用一组很短的家居生活用品默认文案。默认文案只适合清洁类家居样例；如果是收纳、厨房、床品、灯具等其他产品，请传入自己的 `--script`。产品模式每次都会写出 `diagnosis.md`，先说明素材只是通过文件名和时长初筛；素材明显不够时，它会先停下，不会硬剪出一条误导性的坏视频。
 
 如果 `doctor` 显示 FFmpeg 或 ffprobe 缺失，Windows 上可以先尝试：
 
@@ -156,6 +157,7 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 ## 输出文件
 
 - `manifest.json`: local asset inventory.
+- `diagnosis.md`: product material readiness report from filename and duration screening.
 - `recipe.json`: authoritative timeline.
 - `matches.json`: selected assets, confidence, and evidence.
 - `captions.srt`: editable subtitle file.
@@ -210,7 +212,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 265 passed
+- `python -m pytest -q` -> 266 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 

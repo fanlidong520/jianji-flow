@@ -1,6 +1,6 @@
 ---
 name: jianji-flow
-description: Create auditable preview videos from a reference video, a local asset directory, and optional script text; outputs manifest.json, recipe.json, matches.json, captions.srt, captions.ass, voiceover.wav, remix.mp4, contact-sheet.png, review.md, and review.html after validation.
+description: Create auditable preview videos from a reference video, a local asset directory, and optional script text; outputs diagnosis.md, manifest.json, recipe.json, matches.json, captions.srt, captions.ass, voiceover.wav, remix.mp4, contact-sheet.png, review.md, and review.html after validation.
 ---
 
 # jianji-flow
@@ -29,8 +29,7 @@ For first-time users, prefer:
 2. `jianji-flow demo`
 3. `jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets`
 
-If `quick` writes `diagnosis.md`, report the missing or weak material roles and
-do not describe the run as a completed video.
+For product `quick`, report `diagnosis.md` even when the run continues; it is a filename and duration screening report, not proof of visual correctness.
 If the user runs `quick` without `--script`, say the default script is only for
 cleaning-style home-product examples; other products need their own script.
 
@@ -39,15 +38,16 @@ Detailed workflow:
 1. Run the environment check.
 2. Generate synthetic fixtures only when the user wants a demo run.
 3. Scan the local asset directory and create `manifest.json`.
-4. Build the segment plan and create `matches.json` and `recipe.json`.
-5. Run JSON Schema validation and semantic validation.
-6. Stop before rendering if validation has any blocking failure.
-7. Run source preflight on selected source frames; stop before voiceover/render if severe old subtitles or platform UI are detected.
-8. Write `captions.srt` and `captions.ass`.
-9. Generate `voiceover.wav` with local machine TTS.
-10. Render `remix.mp4` only from validated manifest assets, burned-in captions, and generated voiceover.
-11. Write `contact-sheet.png` with one frame per segment.
-12. Write `review.md` and `review.html` with pass, warning, fail status, and `Story support`.
+4. For product quick runs, write `diagnosis.md`; stop if required material roles are missing.
+5. Build the segment plan and create `matches.json` and `recipe.json`.
+6. Run JSON Schema validation and semantic validation.
+7. Stop before rendering if validation has any blocking failure.
+8. Run source preflight on selected source frames; stop before voiceover/render if severe old subtitles or platform UI are detected.
+9. Write `captions.srt` and `captions.ass`.
+10. Generate `voiceover.wav` with local machine TTS.
+11. Render `remix.mp4` only from validated manifest assets, burned-in captions, and generated voiceover.
+12. Write `contact-sheet.png` with one frame per segment.
+13. Write `review.md` and `review.html` with pass, warning, fail status, and `Story support`.
 
 ## Hard Rules
 
@@ -109,6 +109,7 @@ python -m pytest -q
 On success or warning, report the paths for:
 
 - `manifest.json`
+- `diagnosis.md` for product quick runs
 - `recipe.json`
 - `matches.json`
 - `captions.srt`

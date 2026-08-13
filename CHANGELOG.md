@@ -10,6 +10,8 @@
   as visually verified.
 - Added `Story support` review diagnostics so role-labeled assembly without
   non-filename visual evidence becomes a warning instead of a false pass.
+- Wrote `diagnosis.md` on successful product `quick` runs so material readiness
+  remains visible before the user judges the rendered cut.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while
   still removing stale success artifacts such as `remix.mp4`.
 - Reframed documentation around auditable rough-cut generation, not full editor
