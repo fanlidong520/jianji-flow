@@ -30,3 +30,7 @@ def validate_recipe(data: dict) -> None:
 
 def validate_matches(data: dict) -> None:
     _validate("matches.schema.json", data)
+
+
+def validate_fixes(data: dict) -> None:
+    _validate("fixes.schema.json", data)

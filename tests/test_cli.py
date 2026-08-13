@@ -7,6 +7,8 @@ import shutil
 import struct
 from pathlib import Path
 
+from PIL import Image, ImageChops, ImageStat
+
 from jianji_flow.cli import main
 from jianji_flow.media_probe import run_ffprobe
 from jianji_flow.voiceover import probe_voiceover
@@ -38,6 +40,17 @@ def _patch_voiceover(monkeypatch):
         return output_path
 
     monkeypatch.setattr("jianji_flow.cli.create_voiceover", fake_create_voiceover, raising=False)
+
+
+def _contact_sheet_tile(path: Path, index: int, *, tile_width: int = 220, padding: int = 8) -> Image.Image:
+    image = Image.open(path).convert("RGB")
+    left = padding + index * (tile_width + padding)
+    return image.crop((left, padding, left + tile_width, image.height - padding))
+
+
+def _mean_image_difference(left: Image.Image, right: Image.Image) -> float:
+    diff = ImageChops.difference(left, right)
+    return sum(ImageStat.Stat(diff).mean) / 3
 
 
 def test_cli_version(capsys):
@@ -517,14 +530,20 @@ def test_run_product_fixture_creates_v0_2_experience_outputs(tmp_path, monkeypat
         "voiceover.wav",
         "remix.mp4",
         "contact-sheet.png",
+        "fixes.template.json",
         "review.md",
         "review.html",
     ):
         assert (work_dir / name).exists(), name
     assert run_ffprobe(work_dir / "remix.mp4").has_audio is True
     review_html = (work_dir / "review.html").read_text(encoding="utf-8")
+    review_md = (work_dir / "review.md").read_text(encoding="utf-8")
+    fixes_template = json.loads((work_dir / "fixes.template.json").read_text(encoding="utf-8"))
     assert "<video" in review_html
     assert "voiceover.wav" in review_html
+    assert "fixes.template.json" in review_md
+    assert "fixes.template.json" in review_html
+    assert fixes_template["segments"]
 
 
 def test_run_shortens_voiceover_timeline_instead_of_padding_silent_tail(tmp_path, monkeypatch):
@@ -810,6 +829,275 @@ def test_source_preflight_clean_evidence_is_written_to_matches(tmp_path, monkeyp
     assert code == 0
     assert "source-preflight:clean" in evidence_by_segment["seg-001"]
     assert "source-preflight:clean" in evidence_by_segment["seg-002"]
+
+
+def test_run_applies_fixes_file_to_one_segment(tmp_path, monkeypatch):
+    _patch_voiceover(monkeypatch)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    scenario = fixture_root / "scenario-a-product"
+    work_dir = tmp_path / "work"
+    replacement = scenario / "assets" / "05-cta-packshot-buy.mp4"
+    fixes_path = tmp_path / "fixes.json"
+    fixes_path.write_text(
+        json.dumps(
+            {
+                "version": "0.1",
+                "segments": {
+                    "seg-003": {
+                        "asset_path": str(replacement),
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    code = main(
+        [
+            "run",
+            "--mode",
+            "product",
+            "--reference",
+            str(scenario / "reference.mp4"),
+            "--assets",
+            str(scenario / "assets"),
+            "--script",
+            str(scenario / "script.txt"),
+            "--fixes",
+            str(fixes_path),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    matches = json.loads((work_dir / "matches.json").read_text(encoding="utf-8"))
+    by_segment = {item["segment_id"]: item for item in matches["matches"]}
+    assert code == 0
+    assert by_segment["seg-003"]["source_path"].replace("\\", "/").endswith("05-cta-packshot-buy.mp4")
+    assert "override:seg-003" in by_segment["seg-003"]["evidence"]
+    assert by_segment["seg-003"]["scores"]["override"] == 1.0
+
+
+def test_fixes_file_visibly_changes_replaced_segment(tmp_path, monkeypatch):
+    _patch_voiceover(monkeypatch)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    scenario = fixture_root / "scenario-a-product"
+    base_work_dir = tmp_path / "base"
+    fixed_work_dir = tmp_path / "fixed"
+    base_args = [
+        "run",
+        "--mode",
+        "product",
+        "--reference",
+        str(scenario / "reference.mp4"),
+        "--assets",
+        str(scenario / "assets"),
+        "--script",
+        str(scenario / "script.txt"),
+        "--work-dir",
+        str(base_work_dir),
+        "--target-width",
+        "320",
+        "--target-height",
+        "180",
+        "--target-fps",
+        "12",
+    ]
+
+    assert main(base_args) == 0
+    fixes_path = tmp_path / "fixes.json"
+    fixes_path.write_text(
+        json.dumps(
+            {
+                "version": "0.1",
+                "segments": {
+                    "seg-003": {
+                        "asset_path": str(scenario / "assets" / "05-cta-packshot-buy.mp4"),
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    fixed_args = [
+        "run",
+        "--mode",
+        "product",
+        "--reference",
+        str(scenario / "reference.mp4"),
+        "--assets",
+        str(scenario / "assets"),
+        "--script",
+        str(scenario / "script.txt"),
+        "--fixes",
+        str(fixes_path),
+        "--work-dir",
+        str(fixed_work_dir),
+        "--target-width",
+        "320",
+        "--target-height",
+        "180",
+        "--target-fps",
+        "12",
+    ]
+
+    assert main(fixed_args) == 0
+    base_tile = _contact_sheet_tile(base_work_dir / "contact-sheet.png", 2)
+    fixed_tile = _contact_sheet_tile(fixed_work_dir / "contact-sheet.png", 2)
+
+    assert _mean_image_difference(base_tile, fixed_tile) > 15
+
+
+def test_run_reports_invalid_fixes_file_without_traceback(tmp_path, monkeypatch, capsys):
+    _patch_voiceover(monkeypatch)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    scenario = fixture_root / "scenario-a-product"
+    work_dir = tmp_path / "work"
+    fixes_path = tmp_path / "fixes.json"
+    fixes_path.write_text(
+        json.dumps(
+            {
+                "version": "0.1",
+                "segments": {"seg-003": {"asset_path": str(scenario / "assets" / "missing.mp4")}},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    code = main(
+        [
+            "run",
+            "--mode",
+            "product",
+            "--reference",
+            str(scenario / "reference.mp4"),
+            "--assets",
+            str(scenario / "assets"),
+            "--script",
+            str(scenario / "script.txt"),
+            "--fixes",
+            str(fixes_path),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+    output = capsys.readouterr()
+
+    assert code == 1
+    assert "jianji-flow failed" in output.err
+    assert "Traceback" not in output.err
+    review = (work_dir / "review.md").read_text(encoding="utf-8")
+    assert "asset_path not found" in review
+    assert "missing.mp4" in review
+    assert not (work_dir / "remix.mp4").exists()
+
+
+def test_run_reports_fixes_schema_errors_concisely(tmp_path, monkeypatch, capsys):
+    _patch_voiceover(monkeypatch)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    scenario = fixture_root / "scenario-a-product"
+    work_dir = tmp_path / "work"
+    fixes_path = tmp_path / "fixes.json"
+    fixes_path.write_text(json.dumps({"segments": {"seg-003": {"asset_path": "assets/demo.mp4"}}}), encoding="utf-8")
+
+    code = main(
+        [
+            "run",
+            "--mode",
+            "product",
+            "--reference",
+            str(scenario / "reference.mp4"),
+            "--assets",
+            str(scenario / "assets"),
+            "--script",
+            str(scenario / "script.txt"),
+            "--fixes",
+            str(fixes_path),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+    output = capsys.readouterr()
+    review = (work_dir / "review.md").read_text(encoding="utf-8")
+
+    assert code == 1
+    assert "fixes file schema error" in output.err
+    assert "fixes file schema error" in review
+    assert "required property" in review
+    assert "$schema" not in review
+    assert "json-schema.org" not in review
+
+
+def test_run_accepts_utf8_sig_fixes_file_from_windows_editors(tmp_path, monkeypatch):
+    _patch_voiceover(monkeypatch)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    scenario = fixture_root / "scenario-a-product"
+    work_dir = tmp_path / "work"
+    fixes_path = tmp_path / "fixes.json"
+    fixes_path.write_text(
+        json.dumps(
+            {
+                "version": "0.1",
+                "segments": {
+                    "seg-003": {
+                        "asset_path": str(scenario / "assets" / "05-cta-packshot-buy.mp4"),
+                    }
+                },
+            }
+        ),
+        encoding="utf-8-sig",
+    )
+
+    code = main(
+        [
+            "run",
+            "--mode",
+            "product",
+            "--reference",
+            str(scenario / "reference.mp4"),
+            "--assets",
+            str(scenario / "assets"),
+            "--script",
+            str(scenario / "script.txt"),
+            "--fixes",
+            str(fixes_path),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    assert code == 0
+    matches = json.loads((work_dir / "matches.json").read_text(encoding="utf-8"))
+    assert "override:seg-003" in {item["segment_id"]: item["evidence"] for item in matches["matches"]}["seg-003"]
 
 
 def test_run_passes_visual_window_scorer_to_matcher(tmp_path, monkeypatch):

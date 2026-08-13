@@ -24,6 +24,8 @@
 - Scans local video assets and writes `manifest.json`.
 - Writes `diagnosis.md` for product quick runs so material readiness and source-frame risks are visible before judging the cut.
 - Matches timeline segments to assets and writes `matches.json`.
+- Writes `fixes.template.json` so weak or low-confidence segments can be replaced one by one.
+- Accepts `--fixes fixes.template.json` to pin a segment or role to a replacement asset, with the override recorded in `matches.json`.
 - Writes the authoritative timeline to `recipe.json`.
 - Runs source preflight checks on selected source frames before voiceover and rendering.
 - Generates `captions.srt` and `captions.ass`.
@@ -168,6 +170,7 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 - `contact-sheet.png`: one representative frame per segment.
 - `review.md`: review status and checklist.
 - `review.html`: local visual review page.
+- `fixes.template.json`: editable repair file for replacing weak or low-confidence segments on the next run.
 
 ## 状态怎么理解
 
@@ -188,6 +191,18 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 - `fail`: no selected clips support the story. Do not use the output.
 
 Current matching is intentionally conservative. On real local素材, `weak` is common because the tool can assemble role-labeled clips but cannot yet truly see and understand the product story.
+
+## Segment Fixes
+
+When `Story support` is `weak`, open `fixes.template.json`. Fill only the `asset_path` for the segment you want to replace, leave the other blank entries as they are, then rerun with `--fixes`.
+
+Example:
+
+```powershell
+jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --fixes out\jianji-flow-quick\fixes.template.json
+```
+
+Blank `asset_path` entries are ignored. A filled path that does not exist in the scanned asset folder, a too-short replacement clip, or an unknown segment/role fails clearly and writes the reason to `review.md`. After rerun, check `matches.json` for `override:seg-xxx` or `override:role:xxx`, then compare `contact-sheet.png` to confirm the replaced segment actually changed.
 
 ## 怎么判断结果能不能用
 
@@ -213,7 +228,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 268 passed
+- `python -m pytest -q` -> 299 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 

@@ -368,6 +368,49 @@ def test_review_warns_when_story_roles_have_no_visual_evidence():
     assert any("Story support is weak" in warning for warning in review["warnings"])
 
 
+def test_review_warns_when_adjacent_segments_use_same_source():
+    recipe = {
+        "mode": "product",
+        "segments": [
+            {"id": "seg-001", "role": "feature", "match_id": "match-001", "caption": "Feature"},
+            {"id": "seg-002", "role": "evidence", "match_id": "match-002", "caption": "Evidence"},
+        ],
+    }
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "selected",
+                "asset_id": "asset-demo",
+                "source_path": "assets/demo.mp4",
+                "confidence": 0.9,
+                "evidence": ["visual-frame:matches-caption"],
+            },
+            {
+                "id": "match-002",
+                "segment_id": "seg-002",
+                "status": "selected",
+                "asset_id": "asset-demo",
+                "source_path": "assets/demo.mp4",
+                "confidence": 0.9,
+                "evidence": ["visual-frame:matches-caption"],
+            },
+        ]
+    }
+
+    review = build_review(
+        recipe,
+        matches,
+        remix_path=Path("work/remix.mp4"),
+        captions_path=Path("work/captions.srt"),
+        check_artifacts=False,
+    )
+
+    assert review["status"] == "warning"
+    assert any("Adjacent segments seg-001 and seg-002 use the same source video" in warning for warning in review["warnings"])
+
+
 def test_review_story_support_warning_uses_talking_head_language():
     recipe = {
         "mode": "talking-head",

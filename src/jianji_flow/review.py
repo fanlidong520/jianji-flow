@@ -62,6 +62,7 @@ def build_review(
             low_confidence_segments.append(str(segment_id))
 
     warnings.extend(_source_diversity_warnings(recipe, matches))
+    warnings.extend(_adjacent_source_warnings(recipe, matches))
     warnings.extend(_match_evidence_warnings(recipe, matches))
     story_support = _story_support(recipe, matches)
     if story_support["status"] == "fail":
@@ -119,6 +120,30 @@ def _source_diversity_warnings(recipe: dict, matches: dict) -> list[str]:
         "the result may look like a voiceover shell instead of a true remix. "
         "Compare it with the original before using."
     ]
+
+
+def _adjacent_source_warnings(recipe: dict, matches: dict) -> list[str]:
+    by_id = _match_by_id(matches)
+    warnings: list[str] = []
+    previous_segment_id = ""
+    previous_source = ""
+    for segment in recipe.get("segments", []):
+        match = by_id.get(segment.get("match_id"))
+        if not match or match.get("status") not in {"selected", "low_confidence"}:
+            previous_segment_id = ""
+            previous_source = ""
+            continue
+        source_path = match.get("source_path")
+        source = Path(source_path).as_posix().casefold() if isinstance(source_path, str) and source_path else ""
+        segment_id = str(segment.get("id", "unknown"))
+        if source and previous_source and source == previous_source:
+            warnings.append(
+                f"Adjacent segments {previous_segment_id} and {segment_id} use the same source video; "
+                "the cut may feel repetitive after fixes."
+            )
+        previous_segment_id = segment_id
+        previous_source = source
+    return warnings
 
 
 def _match_evidence_warnings(recipe: dict, matches: dict) -> list[str]:
@@ -444,6 +469,7 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
   <ul>
     <li>Voiceover: <code>{escape(str(outputs.get('voiceover', '')))}</code></li>
     <li>Captions: <code>{escape(str(outputs.get('captions', '')))}</code></li>
+    <li>Fixes template: <code>{escape(str(outputs.get('fixes_template', '')))}</code></li>
     <li>Review HTML: <code>{escape(str(outputs.get('review_html', '')))}</code></li>
   </ul>
   <h2>Warnings</h2>

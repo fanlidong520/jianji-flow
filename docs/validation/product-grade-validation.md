@@ -42,6 +42,7 @@ These gates should be implemented before public launch:
 - "visual shell" detector comparing source frames and output frames;
 - review status escalation when platform UI warnings are severe or repeated;
 - story-support review that warns or fails when clips can render but do not provide enough evidence for the script;
+- repair-loop report that turns weak or low-confidence review findings into an editable fix file;
 - README quickstart test on a clean checkout.
 
 ## Manual Review Checklist
@@ -101,6 +102,20 @@ Latest local checkpoint after material diagnosis visibility:
 - `source-window` evidence must not be treated as visual evidence.
 - `window-score` evidence must not be treated as story-match evidence.
 - `source-preflight:clean` evidence must not be treated as story-match evidence.
+
+Latest local checkpoint after segment-fix workflow:
+
+- `fixes.template.json` is generated on successful or warning runs;
+- `--fixes` supports segment-id and role-based replacement;
+- blank template entries are ignored;
+- unknown targets, unknown paths, invalid source ranges, and too-short replacements fail clearly;
+- `matches.json` records override evidence when a fix is applied;
+- targeted regression proves the replaced contact-sheet segment visibly changes;
+- `out/real-material-remix-v24-fixed-seg003/matches.json` records `override:seg-003`;
+- v24 fixed third contact-sheet tile differs from base v24 by mean pixel difference about 51.9;
+- v24 fixed remains `warning`, because the replacement creates repeated adjacent visuals and source-preflight warnings remain;
+- v24 fixed `review.md` now warns that adjacent segments `seg-003` and `seg-004` use the same source video;
+- this is a repair-loop improvement, not proof of visual semantic matching.
 
 ## Launch Rule
 

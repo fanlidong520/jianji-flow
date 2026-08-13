@@ -23,6 +23,8 @@
   while keeping it separate from product-story visual evidence.
 - Added frame-information window scoring with auditable `window-diagnostics`
   frames, while keeping `window-score` separate from story-match evidence.
+- Added `fixes.template.json` and `--fixes` so weak or low-confidence segments
+  can be replaced one by one, with override evidence recorded in `matches.json`.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while
   still removing stale success artifacts such as `remix.mp4`.
 - Reframed documentation around auditable rough-cut generation, not full editor

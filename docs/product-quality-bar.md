@@ -12,7 +12,8 @@ The output does not need to replace a professional editor, but it must clearly s
 - produces synchronized voiceover and readable captions;
 - avoids obvious platform UI, old subtitles, blank frames, and stale artifacts;
 - explains exactly why an output is usable, needs review, or should not be used;
-- gives the user a clear next action within 30 seconds.
+- gives the user a clear next action within 30 seconds;
+- lets the user repair one weak segment without blindly rebuilding the whole cut.
 
 ## Non-Negotiable Standards
 
@@ -87,6 +88,7 @@ Passes:
 - source preflight runs before voiceover/render;
 - review status must be `warning`, not `pass`, when most story roles have no non-filename visual evidence.
 - `Story support` must name the weak roles in `next_action` so a non-technical user knows what to replace or manually verify.
+- `fixes.template.json` should convert weak or low-confidence segments into editable repair entries.
 
 Still not good enough:
 
@@ -98,6 +100,28 @@ Still not good enough:
 - the system still does not truly understand product visuals;
 - full test runtime increased after frame scoring and needs follow-up optimization;
 - this should be treated as a local validation artifact, not a public launch demo.
+
+## Current v24 Judgment
+
+The segment-fix workflow is a usability improvement, not a launch pass.
+
+Passes:
+
+- `fixes.template.json` is generated for weak or low-confidence segments;
+- `--fixes` can pin a segment id or role to a replacement asset;
+- blank template entries are ignored so a user can fill only one segment;
+- filled fixes entries fail clearly when the target, replacement path, source range, or duration is invalid;
+- `matches.json` records `override:seg-xxx` or `override:role:xxx` when a fix is applied;
+- automated regression verifies that replacing one segment visibly changes the corresponding contact-sheet tile.
+- real-material `out/real-material-remix-v24-fixed-seg003` records `override:seg-003` and changes the third contact-sheet tile from the base v24 run.
+- review now warns when adjacent segments use the same source after a fix.
+
+Still not good enough:
+
+- fixes make correction easier, but do not prove semantic visual understanding;
+- real-material segment replacement can create repeated adjacent visuals; the new adjacent-source warning catches this, but it still requires a better automatic replacement recommender;
+- the repair file is still JSON, so a non-technical UI or copyable review action is still needed;
+- real-material v24 must be judged as a repair-loop checkpoint, not a public launch demo.
 
 ## Product Principle
 

@@ -4,6 +4,7 @@ import pytest
 from jsonschema.exceptions import ValidationError
 
 from jianji_flow.contracts import (
+    validate_fixes,
     validate_manifest,
     validate_matches,
     validate_recipe,
@@ -73,12 +74,29 @@ def valid_matches():
     }
 
 
+def valid_fixes():
+    return {
+        "version": "0.1",
+        "segments": {
+            "seg-003": {
+                "asset_path": "assets/new-demo.mp4",
+                "source_start_ms": 1000,
+            },
+            "feature": {
+                "asset_path": "",
+                "candidate_asset_paths": ["assets/feature-a.mp4", "assets/feature-b.mp4"],
+            },
+        },
+    }
+
+
 @pytest.mark.parametrize(
     ("validator", "factory"),
     [
         (validate_manifest, valid_manifest),
         (validate_recipe, valid_recipe),
         (validate_matches, valid_matches),
+        (validate_fixes, valid_fixes),
     ],
 )
 def test_valid_minimal_data_passes(validator, factory):
@@ -91,6 +109,7 @@ def test_valid_minimal_data_passes(validator, factory):
         (validate_manifest, valid_manifest),
         (validate_recipe, valid_recipe),
         (validate_matches, valid_matches),
+        (validate_fixes, valid_fixes),
     ],
 )
 def test_unknown_top_level_fields_fail(validator, factory):
@@ -107,6 +126,7 @@ def test_unknown_top_level_fields_fail(validator, factory):
         (validate_manifest, valid_manifest, ("assets", 0, "unexpected")),
         (validate_recipe, valid_recipe, ("segments", 0, "unexpected")),
         (validate_matches, valid_matches, ("matches", 0, "unexpected")),
+        (validate_fixes, valid_fixes, ("segments", "seg-003", "unexpected")),
     ],
 )
 def test_unknown_nested_fields_fail(validator, factory, path):
@@ -158,6 +178,7 @@ def test_invalid_mode_fails():
         (validate_manifest, valid_manifest),
         (validate_recipe, valid_recipe),
         (validate_matches, valid_matches),
+        (validate_fixes, valid_fixes),
     ],
 )
 def test_version_must_be_exact_v0_1(validator, factory):
@@ -337,3 +358,18 @@ def test_rejected_requires_reason_and_has_distinct_structure():
     invalid["matches"][0]["asset_id"] = "asset-001"
     with pytest.raises(ValidationError):
         validate_matches(invalid)
+
+
+def test_fixes_rejects_negative_source_start():
+    data = valid_fixes()
+    data["segments"]["seg-003"]["source_start_ms"] = -1
+
+    with pytest.raises(ValidationError):
+        validate_fixes(data)
+
+
+def test_fixes_allows_blank_template_asset_path():
+    data = valid_fixes()
+    data["segments"]["seg-003"]["asset_path"] = ""
+
+    validate_fixes(data)

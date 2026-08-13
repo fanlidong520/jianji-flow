@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+import jianji_flow.matcher as matcher_module
 from jianji_flow.contracts import validate_matches, validate_recipe
 from jianji_flow.matcher import build_recipe, match_segments, retime_recipe_and_matches
 
@@ -113,6 +114,113 @@ def test_match_segments_marks_missing_when_asset_duration_too_short():
 
     assert result["matches"][0]["status"] == "missing"
     assert "duration" in result["matches"][0]["missing_reason"]
+
+
+def test_apply_match_overrides_replaces_one_segment_by_id():
+    segments = _segments()
+    assets = [
+        FakeAsset("asset-hook", Path("assets/hook.mp4"), 5000),
+        FakeAsset("asset-feature", Path("assets/feature.mp4"), 5000),
+        FakeAsset("asset-manual", Path("assets/manual-clean-demo.mp4"), 5000),
+    ]
+    matches = match_segments(segments, assets)
+    override_fn = getattr(matcher_module, "apply_match_overrides", None)
+
+    assert override_fn is not None, "matcher should expose apply_match_overrides"
+    result = override_fn(
+        segments,
+        matches,
+        assets,
+        {"version": "0.1", "segments": {"seg-002": {"asset_path": "assets/manual-clean-demo.mp4"}}},
+    )
+
+    validate_matches(result)
+    by_segment = {match["segment_id"]: match for match in result["matches"]}
+    assert by_segment["seg-001"]["asset_id"] == matches["matches"][0]["asset_id"]
+    assert by_segment["seg-002"]["asset_id"] == "asset-manual"
+    assert by_segment["seg-002"]["source_path"] == "assets/manual-clean-demo.mp4"
+    assert by_segment["seg-002"]["confidence"] == 1.0
+    assert "override:seg-002" in by_segment["seg-002"]["evidence"]
+    assert by_segment["seg-002"]["scores"]["override"] == 1.0
+
+
+def test_apply_match_overrides_can_pin_role_and_source_window():
+    segment = {"id": "seg-002", "role": "feature", "start_ms": 1000, "end_ms": 2500, "caption": "Feature"}
+    assets = [
+        FakeAsset("asset-feature", Path("assets/feature.mp4"), 5000),
+        FakeAsset("asset-manual", Path("assets/manual-demo.mp4"), 6000),
+    ]
+    matches = match_segments([segment], assets)
+    override_fn = getattr(matcher_module, "apply_match_overrides", None)
+
+    assert override_fn is not None, "matcher should expose apply_match_overrides"
+    result = override_fn(
+        [segment],
+        matches,
+        assets,
+        {"segments": {"feature": {"asset_path": "assets/manual-demo.mp4", "source_start_ms": 2000}}},
+    )
+
+    match = result["matches"][0]
+    assert match["asset_id"] == "asset-manual"
+    assert match["source_start_ms"] == 2000
+    assert match["source_end_ms"] == 3500
+    assert "override:role:feature" in match["evidence"]
+
+
+def test_apply_match_overrides_rejects_unknown_asset_path():
+    override_fn = getattr(matcher_module, "apply_match_overrides", None)
+
+    assert override_fn is not None, "matcher should expose apply_match_overrides"
+    try:
+        override_fn(
+            _segments(),
+            match_segments(_segments(), [FakeAsset("asset-hook", Path("assets/hook.mp4"), 5000)]),
+            [FakeAsset("asset-hook", Path("assets/hook.mp4"), 5000)],
+            {"segments": {"seg-002": {"asset_path": "assets/missing.mp4"}}},
+        )
+    except ValueError as exc:
+        assert "assets/missing.mp4" in str(exc)
+    else:
+        raise AssertionError("unknown override asset should fail")
+
+
+def test_apply_match_overrides_rejects_unknown_target():
+    override_fn = getattr(matcher_module, "apply_match_overrides", None)
+
+    assert override_fn is not None, "matcher should expose apply_match_overrides"
+    try:
+        override_fn(
+            _segments(),
+            match_segments(_segments(), [FakeAsset("asset-hook", Path("assets/hook.mp4"), 5000)]),
+            [FakeAsset("asset-hook", Path("assets/hook.mp4"), 5000)],
+            {"segments": {"seg-999": {"asset_path": "assets/hook.mp4"}}},
+        )
+    except ValueError as exc:
+        assert "seg-999" in str(exc)
+        assert "target" in str(exc)
+    else:
+        raise AssertionError("unknown override target should fail")
+
+
+def test_apply_match_overrides_ignores_blank_template_entries():
+    segments = _segments()
+    assets = [
+        FakeAsset("asset-hook", Path("assets/hook.mp4"), 5000),
+        FakeAsset("asset-feature", Path("assets/feature.mp4"), 5000),
+    ]
+    matches = match_segments(segments, assets)
+    override_fn = getattr(matcher_module, "apply_match_overrides", None)
+
+    assert override_fn is not None, "matcher should expose apply_match_overrides"
+    result = override_fn(
+        segments,
+        matches,
+        assets,
+        {"segments": {"seg-002": {"asset_path": "", "candidate_asset_paths": ["assets/other.mp4"]}}},
+    )
+
+    assert result == matches
 
 
 def test_build_recipe_adds_match_ids_and_validates_schema():

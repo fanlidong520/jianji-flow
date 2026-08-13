@@ -5,13 +5,16 @@ import json
 import sys
 from pathlib import Path
 
+from jsonschema.exceptions import ValidationError
+
 from jianji_flow import __version__
 from jianji_flow.asset_diagnosis import diagnose_product_assets, format_asset_diagnosis
 from jianji_flow.contact_sheet import write_contact_sheet
-from jianji_flow.contracts import validate_manifest, validate_matches, validate_recipe
+from jianji_flow.contracts import validate_fixes, validate_manifest, validate_matches, validate_recipe
 from jianji_flow.environment import check_environment, format_environment_report
 from jianji_flow.fixtures import generate_fixtures
-from jianji_flow.matcher import build_recipe, match_segments, retime_recipe_and_matches
+from jianji_flow.fixes import build_fixes_template
+from jianji_flow.matcher import apply_match_overrides, build_recipe, match_segments, retime_recipe_and_matches
 from jianji_flow.media_probe import run_ffprobe
 from jianji_flow.media_scan import scan_assets, write_manifest
 from jianji_flow.paths import make_output_dir, resolve_existing_dir, resolve_existing_file
@@ -38,6 +41,7 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--assets", required=True)
     run.add_argument("--work-dir", required=True)
     run.add_argument("--script")
+    run.add_argument("--fixes", help="optional JSON file that pins selected segments or roles to replacement assets")
     run.add_argument("--confidence-threshold", type=float)
     run.add_argument("--target-width", type=int)
     run.add_argument("--target-height", type=int)
@@ -56,6 +60,7 @@ def _build_parser() -> argparse.ArgumentParser:
     quick.add_argument("--reference", required=True)
     quick.add_argument("--assets", required=True)
     quick.add_argument("--script")
+    quick.add_argument("--fixes", help="optional JSON file that pins selected segments or roles to replacement assets")
     quick.add_argument("--work-dir")
     quick.add_argument("--mode", choices=("product", "talking-head"), default="product")
     quick.add_argument("--confidence-threshold", type=float)
@@ -75,8 +80,27 @@ def _read_script(path_text: str | None) -> str | None:
     return resolve_existing_file(path_text).read_text(encoding="utf-8")
 
 
+def _read_fixes(path_text: str | None) -> dict | None:
+    if path_text is None:
+        return None
+    path = resolve_existing_file(path_text)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"fixes file is not valid JSON: {path}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ValueError(f"fixes file must contain a JSON object: {path}")
+    try:
+        validate_fixes(data)
+    except ValidationError as exc:
+        error_path = ".".join(str(part) for part in exc.absolute_path)
+        location = f" at {error_path}" if error_path else ""
+        raise ValueError(f"fixes file schema error{location}: {exc.message}") from exc
+    return data
+
+
 def _success_artifact_names() -> tuple[str, ...]:
-    return ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png", "review.html")
+    return ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png", "fixes.template.json", "review.html")
 
 
 def _run_state_artifact_names() -> tuple[str, ...]:
@@ -91,6 +115,7 @@ def _run_state_artifact_names() -> tuple[str, ...]:
         "voiceover.wav",
         "remix.mp4",
         "contact-sheet.png",
+        "fixes.template.json",
     )
 
 
@@ -178,7 +203,7 @@ def _apply_source_preflight_evidence(matches: dict, clean_segment_ids: list[str]
 
 def _remove_success_outputs_from_review(review: dict, *, keep_diagnostics: bool = False) -> None:
     outputs = review.get("outputs", {})
-    removable_outputs = ["remix", "voiceover", "captions_ass", "review_html"]
+    removable_outputs = ["remix", "voiceover", "captions_ass", "fixes_template", "review_html"]
     if not keep_diagnostics:
         removable_outputs.append("contact_sheet")
     for name in removable_outputs:
@@ -222,12 +247,14 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         validate_manifest(manifest)
 
         segments = build_segment_plan(args.mode, reference_info.duration_ms, script_text)
+        window_scorer = _build_window_scorer(work_dir)
         matches = match_segments(
             segments,
             records,
             threshold=args.confidence_threshold or 0.6,
-            window_scorer=_build_window_scorer(work_dir),
+            window_scorer=window_scorer,
         )
+        matches = apply_match_overrides(segments, matches, records, _read_fixes(args.fixes), window_scorer=window_scorer)
         recipe = build_recipe(
             args.mode,
             target,
@@ -240,6 +267,7 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         )
         validate_matches(matches)
         validate_recipe(recipe)
+        pretime_recipe = recipe
 
         matches_path = work_dir / "matches.json"
         recipe_path = work_dir / "recipe.json"
@@ -250,6 +278,7 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         source_diagnostics_dir = work_dir / "source-diagnostics"
         review_path = work_dir / "review.md"
         review_html_path = work_dir / "review.html"
+        fixes_template_path = work_dir / "fixes.template.json"
         _write_json(matches_path, matches)
         _write_json(recipe_path, recipe)
         write_srt(recipe, captions_path)
@@ -360,6 +389,11 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         review["outputs"]["recipe"] = recipe_path.as_posix()
         review["outputs"]["matches"] = matches_path.as_posix()
         review["outputs"]["captions_ass"] = ass_path.as_posix()
+        _write_json(
+            fixes_template_path,
+            build_fixes_template(recipe, matches, records, review, minimum_duration_recipe=pretime_recipe),
+        )
+        review["outputs"]["fixes_template"] = fixes_template_path.as_posix()
         if source_preflight["status"] == "warning":
             review["warnings"].extend(source_preflight["warnings"])
             review["outputs"]["source_diagnostics"] = source_preflight["diagnostics_dir"]
@@ -395,6 +429,7 @@ def _run_demo_command(args: argparse.Namespace) -> int:
             assets=str(fixture_root / "scenario-a-product" / "assets"),
             script=str(fixture_root / "scenario-a-product" / "script.txt"),
             work_dir=str(work_dir),
+            fixes=None,
             confidence_threshold=None,
             target_width=args.target_width,
             target_height=args.target_height,

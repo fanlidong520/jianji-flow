@@ -93,6 +93,10 @@ def _source_path(asset: Any) -> str:
     return str(path).replace("\\", "/")
 
 
+def _normalized_path_text(path_text: str) -> str:
+    return Path(path_text).as_posix().replace("\\", "/")
+
+
 def _role_score(role: str, asset: Any) -> tuple[float, list[str]]:
     if primary_role_for_asset({"path": _source_path(asset)}) == role:
         return 0.92, [f"filename-role:{role}"]
@@ -197,6 +201,167 @@ def match_segments(
     result = {"version": "0.1", "matches": matches}
     validate_matches(result)
     return result
+
+
+def apply_match_overrides(
+    segments: list[dict],
+    matches: dict,
+    assets: list[Any],
+    overrides: dict | None,
+    *,
+    window_scorer: WindowScorer | None = None,
+) -> dict:
+    override_entries = _override_entries(overrides)
+    if not override_entries:
+        return matches
+    _validate_override_targets(segments, override_entries)
+
+    existing_by_segment = {str(match.get("segment_id")): match for match in matches.get("matches", [])}
+    updated_matches = []
+    for index, segment in enumerate(segments, start=1):
+        segment_id = str(segment["id"])
+        existing = existing_by_segment.get(segment_id, {"id": f"match-{index:03d}", "segment_id": segment_id})
+        override, override_key = _override_for_segment(segment, override_entries)
+        if override is None:
+            updated_matches.append(dict(existing))
+            continue
+
+        asset = _find_override_asset(assets, override["asset_path"])
+        needed = _duration(segment)
+        asset_duration = _asset_duration_ms(asset)
+        if asset_duration < needed:
+            raise ValueError(
+                f"override {override_key} asset is too short: needs {needed}ms, "
+                f"got {asset_duration}ms from {override['asset_path']}"
+            )
+
+        candidate = _override_candidate(segment, asset, override, window_scorer)
+        output_candidate = {key: value for key, value in candidate.items() if key != "window_score"}
+        scores = {"override": 1.0}
+        if "window_score" in candidate:
+            scores["window"] = float(candidate["window_score"])
+        updated_matches.append(
+            {
+                "id": str(existing["id"]),
+                "segment_id": segment_id,
+                "status": "selected",
+                "asset_id": str(candidate["asset_id"]),
+                "source_path": str(candidate["source_path"]),
+                "source_start_ms": int(candidate["source_start_ms"]),
+                "source_end_ms": int(candidate["source_end_ms"]),
+                "asset_duration_ms": int(candidate["asset_duration_ms"]),
+                "confidence": 1.0,
+                "scores": scores,
+                "candidates": [output_candidate],
+                "evidence": [*candidate["evidence"], f"override:{override_key}"],
+            }
+        )
+
+    result = {"version": "0.1", "matches": updated_matches}
+    validate_matches(result)
+    return result
+
+
+def _validate_override_targets(segments: list[dict], entries: dict[str, dict]) -> None:
+    segment_ids = {str(segment["id"]) for segment in segments}
+    roles = {str(segment.get("role", "")).strip().casefold() for segment in segments}
+    for key in entries:
+        if key in segment_ids or key.casefold() in roles:
+            continue
+        raise ValueError(f"override target not found in recipe segments or roles: {key}")
+
+
+def _override_entries(overrides: dict | None) -> dict[str, dict]:
+    if not overrides:
+        return {}
+    raw_entries = overrides.get("segments", overrides)
+    if not isinstance(raw_entries, dict):
+        raise ValueError("overrides must contain a 'segments' object")
+
+    entries: dict[str, dict] = {}
+    for key, value in raw_entries.items():
+        if isinstance(value, str):
+            entry = {"asset_path": value}
+        elif isinstance(value, dict):
+            entry = dict(value)
+        else:
+            raise ValueError(f"override {key!r} must be a path string or object")
+        asset_path = entry.get("asset_path")
+        if not isinstance(asset_path, str) or not asset_path.strip():
+            continue
+        entries[str(key).strip()] = {**entry, "asset_path": asset_path.strip()}
+    return entries
+
+
+def _override_for_segment(segment: dict, entries: dict[str, dict]) -> tuple[dict | None, str]:
+    segment_id = str(segment["id"])
+    if segment_id in entries:
+        return entries[segment_id], segment_id
+    role = str(segment.get("role", "")).strip()
+    role_key = next((key for key in entries if key.casefold() == role.casefold()), None)
+    if role_key is not None:
+        return entries[role_key], f"role:{role}"
+    return None, ""
+
+
+def _find_override_asset(assets: list[Any], requested_path: str) -> Any:
+    requested = _normalized_path_text(requested_path)
+    requested_casefold = requested.casefold()
+    matches = []
+    for asset in assets:
+        source = _source_path(asset)
+        source_casefold = source.casefold()
+        if source_casefold == requested_casefold or source_casefold.endswith(f"/{requested_casefold}"):
+            matches.append(asset)
+            continue
+        try:
+            if Path(source).resolve() == Path(requested_path).resolve():
+                matches.append(asset)
+        except (OSError, RuntimeError):
+            continue
+
+    if not matches:
+        raise ValueError(f"override asset_path not found in scanned assets: {requested_path}")
+    if len(matches) > 1:
+        raise ValueError(f"override asset_path is ambiguous, use a more specific path: {requested_path}")
+    return matches[0]
+
+
+def _override_candidate(
+    segment: dict,
+    asset: Any,
+    override: dict,
+    window_scorer: WindowScorer | None,
+) -> dict:
+    forced_start = override.get("source_start_ms")
+    candidate = _candidate_for(segment, asset, None if forced_start is not None else window_scorer)
+    if forced_start is None:
+        return {**candidate, "score": 1.0}
+
+    source_start_ms = int(forced_start)
+    duration_ms = _duration(segment)
+    source_end_ms = source_start_ms + duration_ms
+    asset_duration = _asset_duration_ms(asset)
+    if source_start_ms < 0 or source_end_ms > asset_duration:
+        raise ValueError(
+            f"override {override['asset_path']} source_start_ms is outside asset duration: "
+            f"{source_start_ms}-{source_end_ms}ms exceeds {asset_duration}ms"
+        )
+
+    evidence = [
+        item
+        for item in candidate["evidence"]
+        if not item.startswith("source-window:") and not item.startswith("window-score:")
+    ]
+    if source_start_ms > 0:
+        evidence.append(f"source-window:{source_start_ms}-{source_end_ms}")
+    return {
+        **candidate,
+        "source_start_ms": source_start_ms,
+        "source_end_ms": source_end_ms,
+        "score": 1.0,
+        "evidence": evidence,
+    }
 
 
 def build_recipe(

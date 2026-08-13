@@ -34,6 +34,8 @@ def test_readme_mentions_v0_2_experience_boundaries():
     assert "remix.mp4" in text
     assert "filename-only" in text
     assert "source preflight" in text
+    assert "fixes.template.json" in text
+    assert "--fixes" in text
 
 
 def test_readme_has_open_source_getting_started_sections():
@@ -80,6 +82,8 @@ def test_skill_documents_quick_start_commands():
     assert "diagnosis.md" in text
     assert "filename-only" in text
     assert "source-diagnostics" in text
+    assert "fixes.template.json" in text
+    assert "--fixes" in text
     assert "examples\\reference.mp4" not in text
     assert "fixtures\\scenario-a-product\\reference.mp4" in text
 

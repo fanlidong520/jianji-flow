@@ -1,6 +1,6 @@
 ---
 name: jianji-flow
-description: Create auditable preview videos from a reference video, a local asset directory, and optional script text; outputs diagnosis.md, manifest.json, recipe.json, matches.json, captions.srt, captions.ass, voiceover.wav, remix.mp4, contact-sheet.png, review.md, and review.html after validation.
+description: Create auditable preview videos from a reference video, a local asset directory, and optional script text; outputs diagnosis.md, manifest.json, recipe.json, matches.json, captions.srt, captions.ass, voiceover.wav, remix.mp4, contact-sheet.png, fixes.template.json, review.md, and review.html after validation.
 ---
 
 # jianji-flow
@@ -48,7 +48,8 @@ Detailed workflow:
 10. Generate `voiceover.wav` with local machine TTS.
 11. Render `remix.mp4` only from validated manifest assets, burned-in captions, and generated voiceover.
 12. Write `contact-sheet.png` with one frame per segment.
-13. Write `review.md` and `review.html` with pass, warning, fail status, and `Story support`.
+13. Write `fixes.template.json` for weak or low-confidence segments.
+14. Write `review.md` and `review.html` with pass, warning, fail status, and `Story support`.
 
 ## Hard Rules
 
@@ -62,6 +63,7 @@ Detailed workflow:
 - Do not call a filename-only warning visually verified; tell the user it must be checked in `contact-sheet.png`.
 - Do not describe `diagnosis.md` `CANDIDATE` clips as visually ready; they only passed pre-render filename/duration screening.
 - Do not call weak `Story support` usable; tell the user to confirm hook, pain, feature, evidence, and CTA in `contact-sheet.png`.
+- Do not silently ignore filled fixes entries. Unknown segment/role targets, missing replacement paths, and too-short clips must fail clearly.
 - Do not claim image support, music, effects, publishing, source-audio preservation, true reference decomposition, or editor draft export.
 
 ## Commands
@@ -84,6 +86,12 @@ Quick home-product draft:
 
 ```powershell
 jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets
+```
+
+Rerun with a segment repair file:
+
+```powershell
+jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --fixes out\jianji-flow-quick\fixes.template.json
 ```
 
 Product smoke:
@@ -119,6 +127,7 @@ On success or warning, report the paths for:
 - `voiceover.wav`
 - `remix.mp4`
 - `contact-sheet.png`
+- `fixes.template.json`
 - `review.md`
 - `review.html`
 
@@ -131,4 +140,4 @@ Never describe a failed run as completed video output.
 - `warning`: generated artifacts only for manual review; do not imply the video is usable yet.
 - `fail`: blocking issue; do not point to stale success artifacts as output.
 
-If `Story support` is `weak`, report its `next_action` exactly. Explain that the named roles lack non-filename visual evidence, then ask the user to replace or manually verify those clips in `contact-sheet.png`.
+If `Story support` is `weak`, report its `next_action` exactly. Explain that the named roles lack non-filename visual evidence, then ask the user to replace or manually verify those clips in `contact-sheet.png`. If the user wants to repair one segment, point them to `fixes.template.json`: fill one `asset_path`, rerun with `--fixes`, then compare the same segment in the new `contact-sheet.png`.

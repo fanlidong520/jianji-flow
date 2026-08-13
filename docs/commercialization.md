@@ -65,6 +65,7 @@ Keep these free and open:
 - local single-video rough-cut generation;
 - open `manifest.json`, `recipe.json`, `matches.json`, caption files, and review reports;
 - material diagnosis, source-preflight warnings, and story-support warnings;
+- segment repair through `fixes.template.json` and `--fixes`;
 - safety gates that prevent false pass or reference-video leakage.
 
 Paid offerings can sit around the workflow:
