@@ -159,6 +159,22 @@ def _append_existing_diagnosis(work_dir: Path, text: str) -> Path | None:
     return path
 
 
+def _apply_source_preflight_evidence(matches: dict, clean_segment_ids: list[str]) -> dict:
+    clean_ids = {str(segment_id) for segment_id in clean_segment_ids}
+    if not clean_ids:
+        return matches
+    updated = []
+    for match in matches.get("matches", []):
+        if str(match.get("segment_id")) in clean_ids and match.get("status") in {"selected", "low_confidence"}:
+            evidence = list(match.get("evidence", []))
+            if "source-preflight:clean" not in evidence:
+                evidence.append("source-preflight:clean")
+            updated.append({**match, "evidence": evidence})
+        else:
+            updated.append(dict(match))
+    return {**matches, "matches": updated}
+
+
 def _remove_success_outputs_from_review(review: dict, *, keep_diagnostics: bool = False) -> None:
     outputs = review.get("outputs", {})
     removable_outputs = ["remix", "voiceover", "captions_ass", "review_html"]
@@ -245,6 +261,8 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             return 1
 
         source_preflight = diagnose_source_matches(recipe, matches, source_diagnostics_dir)
+        matches = _apply_source_preflight_evidence(matches, source_preflight.get("clean_segment_ids", []))
+        _write_json(matches_path, matches)
         _append_existing_diagnosis(work_dir, _source_preflight_diagnosis_text(source_preflight))
         if source_preflight["status"] == "fail":
             _clear_success_artifacts(work_dir)

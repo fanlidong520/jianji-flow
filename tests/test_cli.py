@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 import wave
@@ -762,6 +763,53 @@ def test_source_preflight_warning_is_reported_in_final_review(tmp_path, monkeypa
     assert "source_diagnostics" in review
     assert (work_dir / "source-diagnostics" / "seg-001-01.png").exists()
     assert (work_dir / "remix.mp4").exists()
+
+
+def test_source_preflight_clean_evidence_is_written_to_matches(tmp_path, monkeypatch):
+    _patch_voiceover(monkeypatch)
+
+    def fake_source_preflight(recipe, matches, diagnostics_dir, **kwargs):
+        return {
+            "status": "pass",
+            "failures": [],
+            "warnings": [],
+            "metrics": {},
+            "diagnostics_dir": diagnostics_dir.as_posix(),
+            "clean_segment_ids": ["seg-001", "seg-002"],
+        }
+
+    monkeypatch.setattr("jianji_flow.cli.diagnose_source_matches", fake_source_preflight)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    work_dir = tmp_path / "work"
+
+    code = main(
+        [
+            "run",
+            "--mode",
+            "product",
+            "--reference",
+            str(fixture_root / "scenario-a-product" / "reference.mp4"),
+            "--assets",
+            str(fixture_root / "scenario-a-product" / "assets"),
+            "--script",
+            str(fixture_root / "scenario-a-product" / "script.txt"),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    matches = json.loads((work_dir / "matches.json").read_text(encoding="utf-8"))
+    evidence_by_segment = {item["segment_id"]: item["evidence"] for item in matches["matches"]}
+    assert code == 0
+    assert "source-preflight:clean" in evidence_by_segment["seg-001"]
+    assert "source-preflight:clean" in evidence_by_segment["seg-002"]
 
 
 def test_semantic_failure_removes_generated_success_artifacts(tmp_path, monkeypatch):

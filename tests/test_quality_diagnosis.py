@@ -204,4 +204,5 @@ def test_diagnose_source_matches_removes_clean_diagnostics_by_default(tmp_path: 
     assert result["status"] == "pass"
     assert result["failures"] == []
     assert result["warnings"] == []
+    assert result["clean_segment_ids"] == ["seg-001"]
     assert not (tmp_path / "source-diagnostics").exists()

@@ -218,6 +218,7 @@ def diagnose_source_matches(
     failures: list[str] = []
     warnings: list[str] = []
     metrics: dict[str, list[dict]] = {}
+    clean_segment_ids: list[str] = []
     by_id = _match_by_id(matches)
     diagnostics_dir.mkdir(parents=True, exist_ok=True)
 
@@ -236,6 +237,7 @@ def diagnose_source_matches(
             continue
 
         metrics[segment_id] = []
+        segment_issue_count = 0
         for index, time_ms in enumerate(times, start=1):
             frame_path = diagnostics_dir / f"{segment_id}-{index:02d}.png"
             try:
@@ -243,18 +245,23 @@ def diagnose_source_matches(
                 result = diagnose_image(frame_path)
             except (OSError, RuntimeError, ValueError) as exc:
                 warnings.append(f"{segment_id}: source preflight skipped at frame {index}: {exc}")
+                segment_issue_count += 1
                 continue
             metrics[segment_id].append(result.get("metrics", {}))
             if result.get("severity") == "fail":
+                segment_issue_count += 1
                 failures.append(
                     f"{segment_id} source frame {index}: severe platform UI or original subtitles before rendering; "
                     "replace this source clip."
                 )
             elif result.get("warnings"):
+                segment_issue_count += 1
                 warnings.append(
                     f"{segment_id} source frame {index}: possible platform UI or original subtitles before rendering; "
                     "review this source clip."
                 )
+        if metrics[segment_id] and segment_issue_count == 0:
+            clean_segment_ids.append(segment_id)
 
     if not failures and not warnings and diagnostics_dir.exists():
         shutil.rmtree(diagnostics_dir)
@@ -264,6 +271,7 @@ def diagnose_source_matches(
         "failures": failures,
         "warnings": warnings,
         "metrics": metrics,
+        "clean_segment_ids": clean_segment_ids,
         "diagnostics_dir": diagnostics_dir.as_posix(),
     }
 

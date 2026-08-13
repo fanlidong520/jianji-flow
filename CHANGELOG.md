@@ -19,6 +19,8 @@
   certainty.
 - Added stable non-zero source-window selection for longer matched clips while
   keeping `source-window` separate from visual evidence in review warnings.
+- Added `source-preflight:clean` match evidence after clean source-frame sampling,
+  while keeping it separate from product-story visual evidence.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while
   still removing stale success artifacts such as `remix.mp4`.
 - Reframed documentation around auditable rough-cut generation, not full editor

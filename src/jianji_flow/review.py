@@ -204,7 +204,7 @@ def _story_support(recipe: dict, matches: dict) -> dict:
 
 
 def _is_visual_evidence(item: str) -> bool:
-    return item.startswith(("visual-frame:", "visual-review:", "source-preflight:clean"))
+    return item.startswith(("visual-frame:", "visual-review:"))
 
 
 def _story_label(mode: object) -> str:

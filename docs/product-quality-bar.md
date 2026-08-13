@@ -66,9 +66,9 @@ Still not good enough:
 - source preflight warnings now appear in material diagnosis, but the tool still cannot judge whether clean clips truly support the product story;
 - no independent real-material packs have passed the same bar yet.
 
-## Current v21 Judgment
+## Current v22 Judgment
 
-`out/real-material-remix-v21` should be judged as an honesty checkpoint, not a launch demo.
+`out/real-material-remix-v22` should be judged as an honesty checkpoint, not a launch demo.
 The review layer now exposes `Story support` so a run can distinguish "enough clips to render" from "enough evidence to trust the product story."
 
 Passes:
@@ -78,9 +78,10 @@ Passes:
 - product `quick` writes `diagnosis.md` even when material roles can be tried, so filename/duration screening remains visible without calling them visually ready;
 - product `quick` labels filename/duration-ready clips as `CANDIDATE`, not user-visible `READY`;
 - product `quick` appends source preflight warnings/failures to `diagnosis.md` when risky source frames are found;
-- `out/real-material-remix-v21/diagnosis.md` shows all five roles as `CANDIDATE`, not visually ready;
-- `out/real-material-remix-v21/matches.json` uses non-zero source windows for 4 of 5 segments while staying inside asset duration;
-- `out/real-material-remix-v21/remix.mp4` is 37.907s, 592x1280, with audio present;
+- `out/real-material-remix-v22/diagnosis.md` shows all five roles as `CANDIDATE`, not visually ready;
+- `out/real-material-remix-v22/matches.json` uses non-zero source windows for 4 of 5 segments while staying inside asset duration;
+- `out/real-material-remix-v22/matches.json` records `source-preflight:clean` for all five selected segments after clean source-frame sampling;
+- `out/real-material-remix-v22/remix.mp4` is 37.907s, 592x1280, with audio present;
 - source preflight runs before voiceover/render;
 - review status must be `warning`, not `pass`, when most story roles have no non-filename visual evidence.
 - `Story support` must name the weak roles in `next_action` so a non-technical user knows what to replace or manually verify.
@@ -89,6 +90,7 @@ Still not good enough:
 
 - every segment is matched by filename evidence only;
 - `source-window` evidence is only a clip-window selection signal, not visual understanding;
+- `source-preflight:clean` means sampled source frames did not trigger platform UI / old-subtitle checks; it is not story-matching evidence;
 - the contact sheet shows a rough assembly, but not a strong product-story edit;
 - the system still does not truly understand product visuals;
 - this should be treated as a local validation artifact, not a public launch demo.
