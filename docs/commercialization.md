@@ -29,12 +29,13 @@ Likely paid users:
 
 Recommended path:
 
-1. Open-source CLI and Codex skill.
-2. Service-led setup for one concrete niche, delivering a validated local workflow and accepted rough cuts.
-3. Paid templates and validation packs for specific niches.
-4. Hosted or desktop wrapper for non-technical users.
-5. Team features: batch processing, shared brand presets, review queues.
-6. Services: customization, private deployment, agency workflow design.
+1. Stop launch packaging until the workflow produces visibly re-edited real-material outputs.
+2. Service-led setup for one concrete niche, delivering accepted rough cuts from the customer's own material.
+3. Open-source the CLI and Codex skill only after the public quickstart has a reproducible real-material showcase and blind-user evidence.
+4. Paid vertical workflow configuration for specific product categories.
+5. Hosted or desktop wrapper for non-technical users.
+6. Team features: batch processing, shared brand presets, review queues.
+7. Services: customization, private deployment, agency workflow design.
 
 Avoid early monetization that weakens trust:
 
@@ -46,17 +47,20 @@ Avoid early monetization that weakens trust:
 
 The first realistic paid offer should be service-led:
 
-"I help you build a repeatable local AI editing workflow for your product-video niche."
+"I help you build a repeatable local AI editing workflow for your product-video niche, using your own product material."
 
 Deliverables:
 
 - material naming rules;
 - product script template;
 - validated `jianji-flow` workflow;
-- three manually accepted rough cuts, including review reports and contact sheets;
+- three customer-accepted rough cuts, including review reports, contact sheets, and before/after change summaries;
 - 1-2 custom presets for the user's content type.
 
 This can validate demand before building a polished SaaS.
+
+The first target should be narrow: small sellers or agencies that already have product clips and need repeated weekly product videos.
+Do not sell a generic "AI video editor" promise.
 
 ## Open-Core Boundary
 
@@ -96,3 +100,6 @@ Do not build paid SaaS until at least one real user outside this workspace:
 - produces a rough cut they would continue editing or publish after small changes;
 - asks for repeated use, customization, or batch support;
 - is willing to pay for saved time or setup.
+
+Do not monetize an open-source launch until the free workflow passes the product-quality launch rule:
+three independent real-material packs pass, one non-semantic filename pack passes, one dirty pack fails correctly, and outside users can complete the README flow without developer help.

@@ -41,6 +41,13 @@
 - Added `--apply-recommendation SEGMENT_ID` so a clean recommendation from
   `fixes.template.json` can be applied without manually editing JSON.
 - Blocked automatic application of warned or missing repair recommendations.
+- Added multi-frame visual similarity checks for same-role repair candidates so
+  duplicate-looking replacement files are downgraded instead of being presented
+  as clean recommendations.
+- Added `visual-similarity-diagnostics` output when repair recommendation checks
+  extract frames for audit.
+- Changed warning CLI output from `completed` to `review required` so review-only
+  rough cuts are not mistaken for passed outputs.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while
   still removing stale success artifacts such as `remix.mp4`.
 - Reframed documentation around auditable rough-cut generation, not full editor

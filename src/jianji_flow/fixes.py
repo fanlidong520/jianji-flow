@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from jianji_flow.asset_diagnosis import primary_role_for_asset
+
+VisualSimilarityChecker = Callable[[str, str, int, int, int], bool]
 
 
 def build_fixes_template(
@@ -13,6 +15,7 @@ def build_fixes_template(
     review: dict,
     *,
     minimum_duration_recipe: dict | None = None,
+    visual_similarity_checker: VisualSimilarityChecker | None = None,
 ) -> dict:
     match_by_id = {str(match.get("id")): match for match in matches.get("matches", [])}
     weak_roles = {str(role).casefold() for role in review.get("story_support", {}).get("weak_evidence_roles", [])}
@@ -30,12 +33,17 @@ def build_fixes_template(
             continue
 
         current_path = _current_source_path(match)
+        current_start_ms = _current_source_start_ms(match)
         candidate_assets = _candidate_assets(
             role,
             assets,
             exclude_path=current_path,
             minimum_duration_ms=duration_by_segment_id.get(segment_id, _segment_duration_ms(segment)),
+            visual_duration_ms=_current_source_duration_ms(match) or _segment_duration_ms(segment),
             adjacent_sources=adjacent_sources_by_segment_id.get(segment_id, set()),
+            visual_source_path=current_path,
+            visual_source_start_ms=current_start_ms,
+            visual_similarity_checker=visual_similarity_checker,
         )
         recommended = _recommended_candidate(candidate_assets, used_recommendation_keys)
         if recommended:
@@ -167,6 +175,26 @@ def _current_source_path(match: dict | None) -> str:
     return str(value) if isinstance(value, str) else ""
 
 
+def _current_source_start_ms(match: dict | None) -> int:
+    if not match:
+        return 0
+    try:
+        return max(0, int(match.get("source_start_ms", 0)))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _current_source_duration_ms(match: dict | None) -> int:
+    if not match:
+        return 0
+    try:
+        start_ms = int(match.get("source_start_ms", 0))
+        end_ms = int(match.get("source_end_ms", 0))
+    except (TypeError, ValueError):
+        return 0
+    return max(0, end_ms - start_ms)
+
+
 def _segment_duration_ms(segment: dict) -> int:
     try:
         return max(0, int(segment.get("end_ms", 0)) - int(segment.get("start_ms", 0)))
@@ -180,11 +208,27 @@ def _candidate_assets(
     *,
     exclude_path: str,
     minimum_duration_ms: int,
+    visual_duration_ms: int,
     adjacent_sources: set[str],
+    visual_source_path: str,
+    visual_source_start_ms: int,
+    visual_similarity_checker: VisualSimilarityChecker | None,
 ) -> list[dict]:
     exclude = _path_key(exclude_path)
     candidates = [
-        (index, _candidate_asset(role, asset, adjacent_sources))
+        (
+            index,
+            _candidate_asset(
+                role,
+                asset,
+                adjacent_sources,
+                visual_source_path=visual_source_path,
+                visual_source_start_ms=visual_source_start_ms,
+                visual_duration_ms=visual_duration_ms,
+                minimum_duration_ms=minimum_duration_ms,
+                visual_similarity_checker=visual_similarity_checker,
+            ),
+        )
         for index, asset in enumerate(assets)
         if _asset_duration_ms(asset) >= minimum_duration_ms and _path_key(_asset_path(asset)) != exclude
     ]
@@ -194,7 +238,17 @@ def _candidate_assets(
     ]
 
 
-def _candidate_asset(role: str, asset: Any, adjacent_sources: set[str]) -> dict:
+def _candidate_asset(
+    role: str,
+    asset: Any,
+    adjacent_sources: set[str],
+    *,
+    visual_source_path: str,
+    visual_source_start_ms: int,
+    visual_duration_ms: int,
+    minimum_duration_ms: int,
+    visual_similarity_checker: VisualSimilarityChecker | None,
+) -> dict:
     asset_path = _asset_path(asset)
     asset_role = primary_role_for_asset({"path": asset_path})
     repeats_adjacent = _path_key(asset_path) in adjacent_sources
@@ -213,6 +267,26 @@ def _candidate_asset(role: str, asset: Any, adjacent_sources: set[str]) -> dict:
     else:
         reasons.append("avoids adjacent repetition")
         score += 50
+    if visual_similarity_checker is not None and visual_source_path and asset_role == role:
+        visual_candidate_start_ms = min(visual_source_start_ms, max(0, _asset_duration_ms(asset) - visual_duration_ms))
+        try:
+            visually_similar = visual_similarity_checker(
+                visual_source_path,
+                asset_path,
+                visual_duration_ms,
+                visual_source_start_ms,
+                visual_candidate_start_ms,
+            )
+        except (OSError, RuntimeError, ValueError):
+            warnings.append("visual similarity check failed")
+            score -= 40
+        else:
+            if not visually_similar:
+                reasons.append("visually distinct from current segment")
+                score += 10
+            else:
+                warnings.append("visually similar to current segment")
+                score -= 60
     return {
         "asset_path": asset_path,
         "score": score,

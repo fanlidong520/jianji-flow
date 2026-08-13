@@ -1,6 +1,6 @@
 # jianji-flow
 
-`jianji-flow` 是一个开源 Codex 自动剪辑 skill：输入参考视频、本地素材目录和可选文案，输出一条可人工复核的短视频粗剪预览。
+`jianji-flow` 是一个正在打磨中的 Codex 自动剪辑 skill：输入参考视频、本地素材目录和可选文案，输出一条可人工复核的短视频粗剪预览。
 
 当前版本更像一个“本地自动粗剪工作流底座”，不是完整替代剪映的桌面剪辑软件。它会生成机器配音、烧录字幕、可播放预览视频、分段复核图和本地复核页，也会在素材明显不够、源片段疑似有旧字幕/平台 UI、或匹配证据太弱时给出 warning/fail，而不是假装成片已经可发。
 
@@ -36,6 +36,7 @@
 - Shows `CANDIDATE` in `diagnosis.md` for filename/duration-ready clips, because that is not visual proof.
 - Marks filename-only matching as `warning` because it does not prove visual understanding.
 - Adds a `Story support` review section that warns when most story roles have no non-filename visual evidence.
+- Checks same-role repair recommendations with sampled frames and downgrades replacement files that still look like the current segment.
 
 ## What It Does Not Do
 
@@ -171,6 +172,7 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 - `review.md`: review status and checklist.
 - `review.html`: local visual review page.
 - `fixes.template.json`: editable repair file for replacing weak or low-confidence segments on the next run.
+- `visual-similarity-diagnostics/`: sampled frames used to audit visually similar or unchecked repair recommendations.
 
 `review.md` and `review.html` also include a `Storyboard` section. It lists each segment's role, caption, selected asset, source range, matching evidence, and risk, so a user can see what was cut without opening `matches.json`.
 
@@ -210,9 +212,11 @@ To apply one clean recommendation without editing JSON, pass the segment id:
 jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --fixes out\jianji-flow-quick\fixes.template.json --apply-recommendation seg-003
 ```
 
-Blank `asset_path` entries are ignored. Each segment also includes `recommended_asset_path`, `recommendation_status`, and scored `candidate_assets`; when the best available option would repeat an adjacent source, the status becomes `best_available_with_warnings` instead of pretending the recommendation is clean. A filled path that does not exist in the scanned asset folder, a too-short replacement clip, or an unknown segment/role fails clearly and writes the reason to `review.md`. After rerun, check `matches.json` for `override:seg-xxx` or `override:role:xxx`, then compare `contact-sheet.png` to confirm the replaced segment actually changed.
+Blank `asset_path` entries are ignored. Each segment also includes `recommended_asset_path`, `recommendation_status`, and scored `candidate_assets`; when the best available option would repeat an adjacent source, look visually similar to the current segment, or fail visual checking, the status becomes `best_available_with_warnings` instead of pretending the recommendation is clean. A filled path that does not exist in the scanned asset folder, a too-short replacement clip, or an unknown segment/role fails clearly and writes the reason to `review.md`. After rerun, check `matches.json` for `override:seg-xxx` or `override:role:xxx`, then compare `contact-sheet.png` to confirm the replaced segment actually changed.
 `--apply-recommendation` only accepts `recommendation_status: recommended`; it fails clearly for `best_available_with_warnings` or `no_candidate`.
 If `recommendation_status` is `no_candidate`, do not copy a fallback candidate blindly. It means no duration-ready same-role replacement was found; add or choose clearer material for that story role instead. `candidate_assets` can still show wrong-role clips for manual inspection, but they include `role_match: false` and a role-mismatch warning.
+
+Visual similarity checking samples three frames from the actual selected source window and the candidate clip. It is a guard against duplicate-looking replacements, not proof that the clip semantically matches the script.
 
 ## 怎么判断结果能不能用
 
@@ -225,6 +229,7 @@ If `recommendation_status` is `no_candidate`, do not copy a fallback candidate b
 - `remix.mp4` 有声音，字幕可读，画面没有明显黑屏、卡帧或严重拉伸。
 - `matches.json` 里的素材路径确实来自你的 `assets/` 文件夹。
 - 如果报告出现 `filename-only`，说明系统只是按文件名角色组装，必须看 `contact-sheet.png` 确认画面是否真的对上文案。
+- 如果报告出现 `visual_similarity_diagnostics`，说明有推荐被视觉相似或无法确认降级，先看诊断图再决定是否手动替换。
 - 如果 `Story support` 是 `weak`，说明这条视频可能只是按角色拼接，还没有足够证据证明产品故事成立。先看 `next_action` 里点名的角色，替换或人工确认对应素材，再确认开头、痛点、卖点、证据、行动提醒是否都被画面支撑。
 - 如果报告出现 `source_diagnostics` 或 `source-diagnostics`，说明源素材预检发现问题，优先替换对应素材。
 
@@ -238,12 +243,13 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 310 passed
+- `python -m pytest -q` -> 325 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 
 ## Safety Rules
 
+- Warning runs print `jianji-flow review required`, not `completed`.
 - Reference video picture and audio are never copied into `remix.mp4`.
 - URL, protocol, protocol-relative, and network paths are rejected.
 - Outputs must stay inside the requested work directory.
@@ -255,6 +261,7 @@ Latest local result:
 
 - 当前默认使用 Windows 本地中文 TTS；没有中文语音包的机器会失败。
 - 当前匹配主要依赖文件名、结构和可审计证据，不是完整多模态理解。
+- 视觉相似检查只比较采样帧；它能减少重复画面修复建议，但不能证明语义匹配。
 - 当前不会自动寻找素材、生成素材、发布视频或创建剪映草稿。
 - 字幕字体默认使用 `Microsoft YaHei`；非 Windows 环境需要后续适配字体。
 - `remix.mp4` 是自动剪辑预览，发布前仍需要人工复核。

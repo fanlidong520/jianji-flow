@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -26,6 +27,7 @@ from jianji_flow.review import build_review, write_review_html, write_review_mar
 from jianji_flow.review_summary import build_review_summary
 from jianji_flow.semantics import validate_semantics
 from jianji_flow.subtitles import write_ass, write_srt
+from jianji_flow.visual_similarity import is_visually_similar
 from jianji_flow.voiceover import create_voiceover, probe_voiceover, validate_voiceover
 from jianji_flow.window_scoring import score_source_window
 
@@ -110,6 +112,10 @@ def _success_artifact_names() -> tuple[str, ...]:
     return ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png", "fixes.template.json", "review.html")
 
 
+def _run_diagnostic_dir_names() -> tuple[str, ...]:
+    return ("visual-similarity-diagnostics",)
+
+
 def _run_state_artifact_names() -> tuple[str, ...]:
     return (
         "review.md",
@@ -134,6 +140,15 @@ def _clear_success_artifacts(work_dir: Path, *, keep_diagnostics: bool = False) 
         path = work_dir / name
         if path.exists():
             path.unlink()
+    if not keep_diagnostics:
+        _clear_run_diagnostic_dirs(work_dir)
+
+
+def _clear_run_diagnostic_dirs(work_dir: Path) -> None:
+    for name in _run_diagnostic_dir_names():
+        path = work_dir / name
+        if path.exists():
+            shutil.rmtree(path)
 
 
 def _clear_run_state_artifacts(work_dir: Path) -> None:
@@ -228,6 +243,28 @@ def _build_window_scorer(work_dir: Path):
         return score_source_window(Path(str(asset.path)), start_ms, end_ms, diagnostics_dir)
 
     return scorer
+
+
+def _build_visual_similarity_checker(work_dir: Path):
+    diagnostics_dir = work_dir / "visual-similarity-diagnostics"
+
+    def checker(
+        current_path: str,
+        candidate_path: str,
+        segment_duration_ms: int,
+        current_start_ms: int,
+        candidate_start_ms: int,
+    ) -> bool:
+        return is_visually_similar(
+            Path(current_path),
+            Path(candidate_path),
+            duration_ms=segment_duration_ms,
+            diagnostics_dir=diagnostics_dir,
+            left_start_ms=current_start_ms,
+            right_start_ms=candidate_start_ms,
+        )
+
+    return checker
 
 
 def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None = None) -> int:
@@ -404,9 +441,19 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         review["outputs"]["captions_ass"] = ass_path.as_posix()
         _write_json(
             fixes_template_path,
-            build_fixes_template(recipe, matches, records, review, minimum_duration_recipe=pretime_recipe),
+            build_fixes_template(
+                recipe,
+                matches,
+                records,
+                review,
+                minimum_duration_recipe=pretime_recipe,
+                visual_similarity_checker=_build_visual_similarity_checker(work_dir),
+            ),
         )
         review["outputs"]["fixes_template"] = fixes_template_path.as_posix()
+        visual_similarity_diagnostics = work_dir / "visual-similarity-diagnostics"
+        if visual_similarity_diagnostics.exists() and any(visual_similarity_diagnostics.glob("*.png")):
+            review["outputs"]["visual_similarity_diagnostics"] = visual_similarity_diagnostics.as_posix()
         if source_preflight["status"] == "warning":
             review["warnings"].extend(source_preflight["warnings"])
             review["outputs"]["source_diagnostics"] = source_preflight["diagnostics_dir"]
@@ -420,7 +467,10 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             return 1
         write_review_markdown(review, review_path, recipe, matches)
         write_review_html(review, recipe, matches, review_html_path)
-        print(f"jianji-flow completed: {review_path}")
+        if review["status"] == "warning":
+            print(f"jianji-flow review required: {review_path}")
+        else:
+            print(f"jianji-flow passed review: {review_path}")
         return 0 if review["status"] in {"pass", "warning"} else 1
     except Exception as exc:
         if work_dir is not None:

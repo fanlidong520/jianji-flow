@@ -11,7 +11,7 @@ This is the validation plan for making `jianji-flow` good enough to open source.
 | P0 | prove critical safety paths | every commit/PR |
 | Synthetic fixture review | stable regression evidence | every release candidate |
 | Real-material review | product usefulness evidence | open-source launch |
-| Blind-user trial | first-time usability evidence | monetization push |
+| Blind-user trial | first-time usability evidence | open-source launch |
 
 ## Required Real-Material Packs
 
@@ -38,6 +38,7 @@ These gates should be implemented before public launch:
 - preflight material quality diagnosis for platform UI and old subtitles;
 - source-diversity check that detects clips split from the same mother video when possible;
 - multi-frame sampling inside each segment, not only one contact-sheet midpoint;
+- visual-similarity checks for same-role repair candidates, with duplicate-looking or unchecked recommendations blocked from one-command application;
 - caption placement check against lower safe-area residue;
 - "visual shell" detector comparing source frames and output frames;
 - review status escalation when platform UI warnings are severe or repeated;
@@ -159,11 +160,33 @@ Latest local checkpoint after one-command recommendation application:
 - `out/real-material-apply-rec-v30-fixed/matches.json` records `override:seg-003` from `--apply-recommendation seg-003`;
 - the v30 contact-sheet third tile mean difference is 0.0 because the alternate file was a duplicate copy, proving the next gate must detect visually duplicate candidates.
 
+Latest local checkpoint after visual duplicate recommendation checks:
+
+- same-role repair candidates are compared against the current selected source window with three sampled frames;
+- visually similar candidates are downgraded to `best_available_with_warnings`;
+- visual-check failures are also downgraded instead of failing the whole run;
+- wrong-role fallback candidates skip visual comparison and remain manual-inspection candidates only;
+- `review.md` lists `visual_similarity_diagnostics` when sampled diagnostic frames are written;
+- warning CLI output now says `jianji-flow review required`, not `completed`;
+- real-material duplicate-feature validation downgraded `seg-003` because the copied candidate looked like the current segment;
+- `--apply-recommendation seg-003` rejected the warned recommendation and did not render stale success artifacts.
+
+Strict product audit after v31:
+
+- current outputs are still not launch-quality automatic editing;
+- recent improvements make the review and repair loop more honest, but v29 and v31 video outputs can remain visually unchanged;
+- public launch requires actual visual shot selection, not only safer reports around filename-based assembly;
+- first-run validation must include one real product-material pack with non-semantic filenames such as `IMG_001.mp4`;
+- a blind baseline comparison must show that `jianji-flow` beats simple file-order concatenation with voiceover and captions.
+
 ## Launch Rule
 
 Do not announce the project publicly until:
 
-- at least three real-material packs reach `pass` or actionable `warning`;
+- at least three real-material packs reach `pass`;
+- at least one real-material pack uses non-semantic filenames and still reaches `pass`;
+- at least one dirty-material pack is correctly blocked as `fail`;
+- at least five outside users try the README quickstart, with four finishing in 10 minutes and four judging the output as visibly re-edited;
 - no known false pass remains;
 - installation and quickstart are verified from a clean environment;
 - README shows honest examples, including a warning case.

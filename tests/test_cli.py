@@ -736,7 +736,7 @@ def test_source_preflight_failure_stops_before_voiceover_and_render(tmp_path, mo
         assert not (work_dir / name).exists(), name
 
 
-def test_source_preflight_warning_is_reported_in_final_review(tmp_path, monkeypatch):
+def test_source_preflight_warning_is_reported_in_final_review(tmp_path, monkeypatch, capsys):
     _patch_voiceover(monkeypatch)
 
     def fake_source_preflight(recipe, matches, diagnostics_dir, **kwargs):
@@ -776,9 +776,12 @@ def test_source_preflight_warning_is_reported_in_final_review(tmp_path, monkeypa
             "12",
         ]
     )
+    output = capsys.readouterr()
 
     review = (work_dir / "review.md").read_text(encoding="utf-8")
     assert code == 0
+    assert "review required" in output.out
+    assert "completed" not in output.out
     assert "Status: warning" in review
     assert "source frame 1" in review
     assert "source_diagnostics" in review
@@ -1261,6 +1264,92 @@ def test_run_passes_visual_window_scorer_to_matcher(tmp_path, monkeypatch):
 
     assert code == 0
     assert seen["window_scorer"] is True
+
+
+def test_run_reports_visual_similarity_diagnostics_for_duplicate_recommendation(tmp_path, monkeypatch):
+    _patch_voiceover(monkeypatch)
+    monkeypatch.setattr("jianji_flow.cli.score_source_window", lambda asset, start_ms, end_ms, diagnostics_dir: -float(start_ms))
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    scenario = fixture_root / "scenario-a-product"
+    original = scenario / "assets" / "03-feature-product-detail.mp4"
+    duplicate = scenario / "assets" / "03b-feature-product-detail-copy.mp4"
+    shutil.copy(original, duplicate)
+    work_dir = tmp_path / "work"
+
+    code = main(
+        [
+            "run",
+            "--mode",
+            "product",
+            "--reference",
+            str(scenario / "reference.mp4"),
+            "--assets",
+            str(scenario / "assets"),
+            "--script",
+            str(scenario / "script.txt"),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    fixes_template = json.loads((work_dir / "fixes.template.json").read_text(encoding="utf-8"))
+    segment = fixes_template["segments"]["seg-003"]
+    review = (work_dir / "review.md").read_text(encoding="utf-8")
+
+    assert code == 0
+    assert segment["recommended_asset_path"].replace("\\", "/").endswith("03b-feature-product-detail-copy.mp4")
+    assert segment["recommendation_status"] == "best_available_with_warnings"
+    assert segment["recommendation_warnings"] == ["visually similar to current segment"]
+    assert "visual_similarity_diagnostics" in review
+    assert len(list((work_dir / "visual-similarity-diagnostics").glob("*.png"))) >= 6
+
+
+def test_run_removes_stale_visual_similarity_diagnostics_on_rerun(tmp_path, monkeypatch):
+    _patch_voiceover(monkeypatch)
+    monkeypatch.setattr("jianji_flow.cli.score_source_window", lambda asset, start_ms, end_ms, diagnostics_dir: -float(start_ms))
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    scenario = fixture_root / "scenario-a-product"
+    original = scenario / "assets" / "03-feature-product-detail.mp4"
+    duplicate = scenario / "assets" / "03b-feature-product-detail-copy.mp4"
+    shutil.copy(original, duplicate)
+    work_dir = tmp_path / "work"
+    args = [
+        "run",
+        "--mode",
+        "product",
+        "--reference",
+        str(scenario / "reference.mp4"),
+        "--assets",
+        str(scenario / "assets"),
+        "--script",
+        str(scenario / "script.txt"),
+        "--work-dir",
+        str(work_dir),
+        "--target-width",
+        "320",
+        "--target-height",
+        "180",
+        "--target-fps",
+        "12",
+    ]
+
+    assert main(args) == 0
+    assert (work_dir / "visual-similarity-diagnostics").exists()
+
+    duplicate.unlink()
+    assert main(args) == 0
+
+    review = (work_dir / "review.md").read_text(encoding="utf-8")
+    assert "visual_similarity_diagnostics" not in review
+    assert not (work_dir / "visual-similarity-diagnostics").exists()
 
 
 def test_semantic_failure_removes_generated_success_artifacts(tmp_path, monkeypatch):

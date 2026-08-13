@@ -45,6 +45,9 @@ Minimum open-source bar:
 
 - no area below 2 on synthetic fixtures;
 - no area below 2 on at least three real-material packs;
+- at least three independent real-material packs must reach `pass`, not only actionable `warning`;
+- at least one pack must use non-semantic filenames and still show meaningful visual shot selection;
+- at least five outside users must try the README flow before public launch;
 - review honesty must score 3 before public launch.
 
 ## Current v7 Judgment
@@ -198,6 +201,35 @@ Still not good enough:
 - applying a recommendation does not prove the shot is visually different or better;
 - the v30 real-material validation intentionally duplicated a feature clip to create a clean recommendation, and the contact-sheet tile difference was 0.0 because the alternate file had identical frames;
 - the next product step must detect visually duplicate candidates and prefer or report genuinely different frames.
+
+## Current v31 Judgment
+
+The repair recommender now catches one concrete false-improvement failure: a different file path with the same picture.
+This improves trust, but it is still not real visual editing.
+
+Passes:
+
+- same-role repair candidates are checked with sampled frames before being called clean;
+- the checker samples the current selected source window instead of only the beginning of the file;
+- duplicate-looking candidates are downgraded to `best_available_with_warnings`;
+- failed visual checks downgrade the candidate instead of failing the whole run;
+- wrong-role fallback candidates are not visually checked or promoted as clean recommendations;
+- `review.md` exposes `visual_similarity_diagnostics` when diagnostic frames are written;
+- CLI wording for warning output is now `review required`, not `completed`;
+- `--apply-recommendation` refuses visually similar or visually unchecked recommendations.
+
+Still not good enough:
+
+- this only prevents one kind of false improvement; it does not select semantically better shots;
+- the output can still look unchanged when the local material lacks genuine alternatives;
+- the review page still needs side-by-side candidate frames and plain-language reasons;
+- public launch still requires real product-material packs, non-semantic filename validation, and blind-user trials.
+
+Strict current product judgment:
+
+Do not present `jianji-flow` as a finished automatic editor yet.
+The honest current claim is a local, auditable rough-cut workflow whose repair recommendations are becoming safer.
+The next product milestone is true visual shot selection: given unhelpful filenames, the system must still choose clips that support hook, pain, feature, evidence, and CTA better than a simple file-order baseline.
 
 ## Product Principle
 
