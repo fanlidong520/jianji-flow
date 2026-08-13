@@ -38,6 +38,9 @@
   JSON files.
 - Kept retimed `source-window` evidence synchronized with retimed source ranges
   so review pages do not show conflicting clip windows.
+- Added `--apply-recommendation SEGMENT_ID` so a clean recommendation from
+  `fixes.template.json` can be applied without manually editing JSON.
+- Blocked automatic application of warned or missing repair recommendations.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while
   still removing stale success artifacts such as `remix.mp4`.
 - Reframed documentation around auditable rough-cut generation, not full editor

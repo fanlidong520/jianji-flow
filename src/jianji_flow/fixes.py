@@ -65,6 +65,33 @@ def build_fixes_template(
     }
 
 
+def build_recommended_fixes(fixes: dict, target: str) -> dict:
+    target_key = str(target).strip()
+    segments = fixes.get("segments", {})
+    if not target_key:
+        raise ValueError("apply recommendation target is required")
+    if not isinstance(segments, dict) or target_key not in segments:
+        raise ValueError(f"recommendation target not found: {target_key}")
+
+    segment = segments[target_key]
+    if not isinstance(segment, dict):
+        raise ValueError(f"recommendation target is invalid: {target_key}")
+    status = str(segment.get("recommendation_status", ""))
+    recommended_path = str(segment.get("recommended_asset_path", "")).strip()
+    warnings = [str(item) for item in segment.get("recommendation_warnings", [])]
+    if status != "recommended" or not recommended_path:
+        warning_text = f": {'; '.join(warnings)}" if warnings else ""
+        raise ValueError(f"recommendation for {target_key} is not clean: {status or 'unknown'}{warning_text}")
+    return {
+        "version": "0.1",
+        "segments": {
+            target_key: {
+                "asset_path": recommended_path,
+            }
+        },
+    }
+
+
 def _duration_by_segment_id(recipe: dict) -> dict[str, int]:
     return {
         str(segment.get("id", "")): _segment_duration_ms(segment)

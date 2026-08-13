@@ -181,6 +181,24 @@ Still not good enough:
 - the page still reports evidence strings such as `filename-role` and `window-score`; these need friendlier labels before a non-technical user trial;
 - the next product step should add per-segment candidate frames and a plain-language "why this shot" explanation.
 
+## Current v30 Judgment
+
+The repair loop now has a safer non-JSON path for applying one clean recommendation.
+
+Passes:
+
+- `--apply-recommendation SEGMENT_ID` applies a clean `recommended_asset_path` from `fixes.template.json`;
+- warned recommendations and `no_candidate` entries fail clearly instead of being auto-applied;
+- `matches.json` records `override:seg-xxx` after an applied recommendation;
+- real-material `out/real-material-apply-rec-v30-fixed/matches.json` records `override:seg-003` after applying `seg-003` from the generated template;
+- regression tests cover clean application and warning rejection.
+
+Still not good enough:
+
+- applying a recommendation does not prove the shot is visually different or better;
+- the v30 real-material validation intentionally duplicated a feature clip to create a clean recommendation, and the contact-sheet tile difference was 0.0 because the alternate file had identical frames;
+- the next product step must detect visually duplicate candidates and prefer or report genuinely different frames.
+
 ## Product Principle
 
 Do not optimize for impressive automation claims.

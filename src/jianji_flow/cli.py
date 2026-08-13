@@ -13,7 +13,7 @@ from jianji_flow.contact_sheet import write_contact_sheet
 from jianji_flow.contracts import validate_fixes, validate_manifest, validate_matches, validate_recipe
 from jianji_flow.environment import check_environment, format_environment_report
 from jianji_flow.fixtures import generate_fixtures
-from jianji_flow.fixes import build_fixes_template
+from jianji_flow.fixes import build_fixes_template, build_recommended_fixes
 from jianji_flow.matcher import apply_match_overrides, build_recipe, match_segments, retime_recipe_and_matches
 from jianji_flow.media_probe import run_ffprobe
 from jianji_flow.media_scan import scan_assets, write_manifest
@@ -42,6 +42,7 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--work-dir", required=True)
     run.add_argument("--script")
     run.add_argument("--fixes", help="optional JSON file that pins selected segments or roles to replacement assets")
+    run.add_argument("--apply-recommendation", help="apply a clean recommended fix from --fixes for one segment id")
     run.add_argument("--confidence-threshold", type=float)
     run.add_argument("--target-width", type=int)
     run.add_argument("--target-height", type=int)
@@ -61,6 +62,7 @@ def _build_parser() -> argparse.ArgumentParser:
     quick.add_argument("--assets", required=True)
     quick.add_argument("--script")
     quick.add_argument("--fixes", help="optional JSON file that pins selected segments or roles to replacement assets")
+    quick.add_argument("--apply-recommendation", help="apply a clean recommended fix from --fixes for one segment id")
     quick.add_argument("--work-dir")
     quick.add_argument("--mode", choices=("product", "talking-head"), default="product")
     quick.add_argument("--confidence-threshold", type=float)
@@ -80,8 +82,10 @@ def _read_script(path_text: str | None) -> str | None:
     return resolve_existing_file(path_text).read_text(encoding="utf-8")
 
 
-def _read_fixes(path_text: str | None) -> dict | None:
+def _read_fixes(path_text: str | None, *, apply_recommendation: str | None = None) -> dict | None:
     if path_text is None:
+        if apply_recommendation:
+            raise ValueError("--apply-recommendation requires --fixes")
         return None
     path = resolve_existing_file(path_text)
     try:
@@ -96,6 +100,9 @@ def _read_fixes(path_text: str | None) -> dict | None:
         error_path = ".".join(str(part) for part in exc.absolute_path)
         location = f" at {error_path}" if error_path else ""
         raise ValueError(f"fixes file schema error{location}: {exc.message}") from exc
+    if apply_recommendation:
+        data = build_recommended_fixes(data, apply_recommendation)
+        validate_fixes(data)
     return data
 
 
@@ -254,7 +261,13 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             threshold=args.confidence_threshold or 0.6,
             window_scorer=window_scorer,
         )
-        matches = apply_match_overrides(segments, matches, records, _read_fixes(args.fixes), window_scorer=window_scorer)
+        matches = apply_match_overrides(
+            segments,
+            matches,
+            records,
+            _read_fixes(args.fixes, apply_recommendation=args.apply_recommendation),
+            window_scorer=window_scorer,
+        )
         recipe = build_recipe(
             args.mode,
             target,
@@ -430,6 +443,7 @@ def _run_demo_command(args: argparse.Namespace) -> int:
             script=str(fixture_root / "scenario-a-product" / "script.txt"),
             work_dir=str(work_dir),
             fixes=None,
+            apply_recommendation=None,
             confidence_threshold=None,
             target_width=args.target_width,
             target_height=args.target_height,

@@ -149,6 +149,16 @@ Latest local checkpoint after storyboard review output:
 - storyboard risk remains `filename-only match` for all five real-material roles, which is correct because no visual semantic evidence exists yet;
 - retimed `source-window` evidence now matches the retimed source ranges in `matches.json` and the storyboard.
 
+Latest local checkpoint after one-command recommendation application:
+
+- `--apply-recommendation SEGMENT_ID` applies one clean recommendation from `fixes.template.json` without editing JSON;
+- warned recommendations fail clearly and do not render stale success artifacts;
+- `python -m pytest tests/test_fixes.py tests/test_cli.py::test_run_applies_clean_recommendation_from_fixes_template tests/test_cli.py::test_run_rejects_warning_recommendation_without_traceback tests/test_cli.py::test_run_applies_fixes_file_to_one_segment tests/test_cli.py::test_run_reports_invalid_fixes_file_without_traceback -q` -> 14 passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- `out/real-material-apply-rec-v30-base/fixes.template.json` gives `seg-003` a clean recommendation after adding an alternate same-role feature clip;
+- `out/real-material-apply-rec-v30-fixed/matches.json` records `override:seg-003` from `--apply-recommendation seg-003`;
+- the v30 contact-sheet third tile mean difference is 0.0 because the alternate file was a duplicate copy, proving the next gate must detect visually duplicate candidates.
+
 ## Launch Rule
 
 Do not announce the project publicly until:

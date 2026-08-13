@@ -368,3 +368,60 @@ def test_build_fixes_template_can_filter_by_preretime_segment_duration():
     template = template_fn(final_recipe, matches, assets, review, minimum_duration_recipe=pretime_recipe)
 
     assert template["segments"]["seg-003"]["candidate_asset_paths"] == ["assets/long.mp4"]
+
+
+def test_build_recommended_fixes_applies_clean_segment_recommendation_only():
+    build_recommended = getattr(fixes_module, "build_recommended_fixes", None)
+    fixes = {
+        "version": "0.1",
+        "segments": {
+            "seg-001": {
+                "asset_path": "",
+                "recommended_asset_path": "assets/hook-alt.mp4",
+                "recommendation_status": "recommended",
+                "recommendation_warnings": [],
+            },
+            "seg-002": {
+                "asset_path": "",
+                "recommended_asset_path": "assets/feature-alt.mp4",
+                "recommendation_status": "best_available_with_warnings",
+                "recommendation_warnings": ["would repeat adjacent segment"],
+            },
+        },
+    }
+
+    assert build_recommended is not None, "fixes module should expose build_recommended_fixes"
+    result = build_recommended(fixes, "seg-001")
+
+    assert result == {
+        "version": "0.1",
+        "segments": {
+            "seg-001": {
+                "asset_path": "assets/hook-alt.mp4",
+            }
+        },
+    }
+
+
+def test_build_recommended_fixes_rejects_warning_recommendation():
+    build_recommended = getattr(fixes_module, "build_recommended_fixes", None)
+    fixes = {
+        "version": "0.1",
+        "segments": {
+            "seg-002": {
+                "asset_path": "",
+                "recommended_asset_path": "assets/feature-alt.mp4",
+                "recommendation_status": "best_available_with_warnings",
+                "recommendation_warnings": ["would repeat adjacent segment"],
+            },
+        },
+    }
+
+    assert build_recommended is not None, "fixes module should expose build_recommended_fixes"
+    try:
+        build_recommended(fixes, "seg-002")
+    except ValueError as exc:
+        assert "best_available_with_warnings" in str(exc)
+        assert "would repeat adjacent segment" in str(exc)
+    else:
+        raise AssertionError("warning recommendation should not be auto-applied")

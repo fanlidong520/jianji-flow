@@ -96,6 +96,12 @@ Rerun with a segment repair file:
 jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --fixes out\jianji-flow-quick\fixes.template.json
 ```
 
+Apply one clean recommendation from a repair file:
+
+```powershell
+jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --fixes out\jianji-flow-quick\fixes.template.json --apply-recommendation seg-003
+```
+
 Product smoke:
 
 ```powershell
@@ -142,5 +148,5 @@ Never describe a failed run as completed video output.
 - `warning`: generated artifacts only for manual review; do not imply the video is usable yet.
 - `fail`: blocking issue; do not point to stale success artifacts as output.
 
-If `Story support` is `weak`, report its `next_action` exactly. Explain that the named roles lack non-filename visual evidence, then ask the user to replace or manually verify those clips in `contact-sheet.png`. If the user wants to repair one segment, point them to `fixes.template.json`: check `recommended_asset_path`, `recommendation_status`, `recommendation_warnings`, and `role_match`; fill one `asset_path` only when the candidate is genuinely appropriate, rerun with `--fixes`, then compare the same segment in the new `contact-sheet.png`.
+If `Story support` is `weak`, report its `next_action` exactly. Explain that the named roles lack non-filename visual evidence, then ask the user to replace or manually verify those clips in `contact-sheet.png`. If the user wants to repair one segment, point them to `fixes.template.json`: check `recommended_asset_path`, `recommendation_status`, `recommendation_warnings`, and `role_match`; use `--apply-recommendation SEGMENT_ID` only when the status is `recommended`; otherwise fill one `asset_path` manually only when the candidate is genuinely appropriate, rerun with `--fixes`, then compare the same segment in the new `contact-sheet.png`.
 Use the `Storyboard` section before discussing JSON: it is the fastest way to see each segment's caption, selected asset, source range, evidence, and risk.

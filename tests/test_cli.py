@@ -887,6 +887,123 @@ def test_run_applies_fixes_file_to_one_segment(tmp_path, monkeypatch):
     assert by_segment["seg-003"]["scores"]["override"] == 1.0
 
 
+def test_run_applies_clean_recommendation_from_fixes_template(tmp_path, monkeypatch):
+    _patch_voiceover(monkeypatch)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    scenario = fixture_root / "scenario-a-product"
+    work_dir = tmp_path / "work"
+    replacement = scenario / "assets" / "05-cta-packshot-buy.mp4"
+    fixes_path = tmp_path / "fixes.template.json"
+    fixes_path.write_text(
+        json.dumps(
+            {
+                "version": "0.1",
+                "segments": {
+                    "seg-003": {
+                        "asset_path": "",
+                        "recommended_asset_path": str(replacement),
+                        "recommendation_status": "recommended",
+                        "recommendation_warnings": [],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    code = main(
+        [
+            "run",
+            "--mode",
+            "product",
+            "--reference",
+            str(scenario / "reference.mp4"),
+            "--assets",
+            str(scenario / "assets"),
+            "--script",
+            str(scenario / "script.txt"),
+            "--fixes",
+            str(fixes_path),
+            "--apply-recommendation",
+            "seg-003",
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    matches = json.loads((work_dir / "matches.json").read_text(encoding="utf-8"))
+    by_segment = {item["segment_id"]: item for item in matches["matches"]}
+    assert code == 0
+    assert by_segment["seg-003"]["source_path"].replace("\\", "/").endswith("05-cta-packshot-buy.mp4")
+    assert "override:seg-003" in by_segment["seg-003"]["evidence"]
+
+
+def test_run_rejects_warning_recommendation_without_traceback(tmp_path, monkeypatch, capsys):
+    _patch_voiceover(monkeypatch)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    scenario = fixture_root / "scenario-a-product"
+    work_dir = tmp_path / "work"
+    replacement = scenario / "assets" / "05-cta-packshot-buy.mp4"
+    fixes_path = tmp_path / "fixes.template.json"
+    fixes_path.write_text(
+        json.dumps(
+            {
+                "version": "0.1",
+                "segments": {
+                    "seg-003": {
+                        "asset_path": "",
+                        "recommended_asset_path": str(replacement),
+                        "recommendation_status": "best_available_with_warnings",
+                        "recommendation_warnings": ["would repeat adjacent segment"],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    code = main(
+        [
+            "run",
+            "--mode",
+            "product",
+            "--reference",
+            str(scenario / "reference.mp4"),
+            "--assets",
+            str(scenario / "assets"),
+            "--script",
+            str(scenario / "script.txt"),
+            "--fixes",
+            str(fixes_path),
+            "--apply-recommendation",
+            "seg-003",
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+    output = capsys.readouterr()
+
+    assert code == 1
+    assert "best_available_with_warnings" in output.err
+    assert "Traceback" not in output.err
+    assert "would repeat adjacent segment" in (work_dir / "review.md").read_text(encoding="utf-8")
+    assert not (work_dir / "remix.mp4").exists()
+
+
 def test_fixes_file_visibly_changes_replaced_segment(tmp_path, monkeypatch):
     _patch_voiceover(monkeypatch)
     fixture_root = tmp_path / "fixtures"

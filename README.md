@@ -204,7 +204,14 @@ Example:
 jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --fixes out\jianji-flow-quick\fixes.template.json
 ```
 
+To apply one clean recommendation without editing JSON, pass the segment id:
+
+```powershell
+jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --fixes out\jianji-flow-quick\fixes.template.json --apply-recommendation seg-003
+```
+
 Blank `asset_path` entries are ignored. Each segment also includes `recommended_asset_path`, `recommendation_status`, and scored `candidate_assets`; when the best available option would repeat an adjacent source, the status becomes `best_available_with_warnings` instead of pretending the recommendation is clean. A filled path that does not exist in the scanned asset folder, a too-short replacement clip, or an unknown segment/role fails clearly and writes the reason to `review.md`. After rerun, check `matches.json` for `override:seg-xxx` or `override:role:xxx`, then compare `contact-sheet.png` to confirm the replaced segment actually changed.
+`--apply-recommendation` only accepts `recommendation_status: recommended`; it fails clearly for `best_available_with_warnings` or `no_candidate`.
 If `recommendation_status` is `no_candidate`, do not copy a fallback candidate blindly. It means no duration-ready same-role replacement was found; add or choose clearer material for that story role instead. `candidate_assets` can still show wrong-role clips for manual inspection, but they include `role_match: false` and a role-mismatch warning.
 
 ## 怎么判断结果能不能用
@@ -231,7 +238,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 306 passed
+- `python -m pytest -q` -> 310 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 
