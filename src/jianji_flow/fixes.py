@@ -17,6 +17,7 @@ def build_fixes_template(
     match_by_id = {str(match.get("id")): match for match in matches.get("matches", [])}
     weak_roles = {str(role).casefold() for role in review.get("story_support", {}).get("weak_evidence_roles", [])}
     duration_by_segment_id = _duration_by_segment_id(minimum_duration_recipe or recipe)
+    adjacent_sources_by_segment_id = _adjacent_sources_by_segment_id(recipe, match_by_id)
     segments: dict[str, dict] = {}
 
     for segment in recipe.get("segments", []):
@@ -28,6 +29,14 @@ def build_fixes_template(
             continue
 
         current_path = _current_source_path(match)
+        candidate_assets = _candidate_assets(
+            role,
+            assets,
+            exclude_path=current_path,
+            minimum_duration_ms=duration_by_segment_id.get(segment_id, _segment_duration_ms(segment)),
+            adjacent_sources=adjacent_sources_by_segment_id.get(segment_id, set()),
+        )
+        recommended = candidate_assets[0] if candidate_assets else None
         segments[segment_id] = {
             "role": role,
             "caption": str(segment.get("caption", "")),
@@ -35,12 +44,11 @@ def build_fixes_template(
             "current_asset_path": current_path,
             "asset_path": "",
             "source_start_ms": None,
-            "candidate_asset_paths": _candidate_asset_paths(
-                role,
-                assets,
-                exclude_path=current_path,
-                minimum_duration_ms=duration_by_segment_id.get(segment_id, _segment_duration_ms(segment)),
-            ),
+            "recommended_asset_path": recommended["asset_path"] if recommended else "",
+            "recommendation_status": _recommendation_status(recommended),
+            "recommendation_warnings": list(recommended.get("warnings", [])) if recommended else [],
+            "candidate_asset_paths": [candidate["asset_path"] for candidate in candidate_assets],
+            "candidate_assets": candidate_assets,
         }
 
     return {
@@ -55,6 +63,31 @@ def _duration_by_segment_id(recipe: dict) -> dict[str, int]:
         str(segment.get("id", "")): _segment_duration_ms(segment)
         for segment in recipe.get("segments", [])
     }
+
+
+def _recommendation_status(candidate: dict | None) -> str:
+    if candidate is None:
+        return "no_candidate"
+    if candidate.get("warnings"):
+        return "best_available_with_warnings"
+    return "recommended"
+
+
+def _adjacent_sources_by_segment_id(recipe: dict, match_by_id: dict[str, dict]) -> dict[str, set[str]]:
+    segments = list(recipe.get("segments", []))
+    result: dict[str, set[str]] = {}
+    for index, segment in enumerate(segments):
+        segment_id = str(segment.get("id", ""))
+        adjacent_sources: set[str] = set()
+        for adjacent_index in (index - 1, index + 1):
+            if adjacent_index < 0 or adjacent_index >= len(segments):
+                continue
+            adjacent_match = match_by_id.get(str(segments[adjacent_index].get("match_id")))
+            source_path = _current_source_path(adjacent_match)
+            if source_path:
+                adjacent_sources.add(_path_key(source_path))
+        result[segment_id] = adjacent_sources
+    return result
 
 
 def _fix_reason(role: str, match: dict | None, weak_roles: set[str]) -> str | None:
@@ -81,22 +114,50 @@ def _segment_duration_ms(segment: dict) -> int:
         return 0
 
 
-def _candidate_asset_paths(role: str, assets: list[Any], *, exclude_path: str, minimum_duration_ms: int) -> list[str]:
+def _candidate_assets(
+    role: str,
+    assets: list[Any],
+    *,
+    exclude_path: str,
+    minimum_duration_ms: int,
+    adjacent_sources: set[str],
+) -> list[dict]:
     exclude = _path_key(exclude_path)
-    role_paths = [
-        _asset_path(asset)
-        for asset in assets
-        if _asset_duration_ms(asset) >= minimum_duration_ms
-        and primary_role_for_asset({"path": _asset_path(asset)}) == role
-        and _path_key(_asset_path(asset)) != exclude
-    ]
-    if role_paths:
-        return role_paths
-    return [
-        _asset_path(asset)
-        for asset in assets
+    candidates = [
+        (index, _candidate_asset(role, asset, adjacent_sources))
+        for index, asset in enumerate(assets)
         if _asset_duration_ms(asset) >= minimum_duration_ms and _path_key(_asset_path(asset)) != exclude
     ]
+    return [
+        candidate
+        for _, candidate in sorted(candidates, key=lambda item: (-item[1]["score"], item[0]))
+    ]
+
+
+def _candidate_asset(role: str, asset: Any, adjacent_sources: set[str]) -> dict:
+    asset_path = _asset_path(asset)
+    asset_role = primary_role_for_asset({"path": asset_path})
+    repeats_adjacent = _path_key(asset_path) in adjacent_sources
+    reasons = []
+    warnings = []
+    score = 0
+    if asset_role == role:
+        reasons.append(f"matches role {role}")
+        score += 20
+    else:
+        reasons.append("fallback candidate")
+    if repeats_adjacent:
+        warnings.append("would repeat adjacent segment")
+        score -= 10
+    else:
+        reasons.append("avoids adjacent repetition")
+        score += 50
+    return {
+        "asset_path": asset_path,
+        "score": score,
+        "reasons": reasons,
+        "warnings": warnings,
+    }
 
 
 def _asset_path(asset: Any) -> str:

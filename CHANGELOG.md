@@ -25,6 +25,8 @@
   frames, while keeping `window-score` separate from story-match evidence.
 - Added `fixes.template.json` and `--fixes` so weak or low-confidence segments
   can be replaced one by one, with override evidence recorded in `matches.json`.
+- Added scored repair-template recommendations with explicit warnings when the
+  best available replacement would repeat an adjacent source.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while
   still removing stale success artifacts such as `remix.mp4`.
 - Reframed documentation around auditable rough-cut generation, not full editor

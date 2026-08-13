@@ -19,10 +19,36 @@
           "reason": {"type": "string"},
           "current_asset_path": {"type": "string"},
           "asset_path": {"type": "string"},
+          "recommended_asset_path": {"type": "string"},
+          "recommendation_status": {"enum": ["recommended", "best_available_with_warnings", "no_candidate"]},
+          "recommendation_warnings": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
           "source_start_ms": {"type": ["integer", "null"], "minimum": 0},
           "candidate_asset_paths": {
             "type": "array",
             "items": {"type": "string"}
+          },
+          "candidate_assets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["asset_path", "score", "reasons", "warnings"],
+              "properties": {
+                "asset_path": {"type": "string"},
+                "score": {"type": "number"},
+                "reasons": {
+                  "type": "array",
+                  "items": {"type": "string"}
+                },
+                "warnings": {
+                  "type": "array",
+                  "items": {"type": "string"}
+                }
+              }
+            }
           }
         }
       }

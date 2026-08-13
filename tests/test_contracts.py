@@ -84,7 +84,24 @@ def valid_fixes():
             },
             "feature": {
                 "asset_path": "",
+                "recommended_asset_path": "assets/feature-a.mp4",
+                "recommendation_status": "recommended",
+                "recommendation_warnings": [],
                 "candidate_asset_paths": ["assets/feature-a.mp4", "assets/feature-b.mp4"],
+                "candidate_assets": [
+                    {
+                        "asset_path": "assets/feature-a.mp4",
+                        "score": 70,
+                        "reasons": ["matches role feature", "avoids adjacent repetition"],
+                        "warnings": [],
+                    },
+                    {
+                        "asset_path": "assets/feature-b.mp4",
+                        "score": 10,
+                        "reasons": ["matches role feature"],
+                        "warnings": ["would repeat adjacent segment"],
+                    },
+                ],
             },
         },
     }

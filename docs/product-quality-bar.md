@@ -123,6 +123,25 @@ Still not good enough:
 - the repair file is still JSON, so a non-technical UI or copyable review action is still needed;
 - real-material v24 must be judged as a repair-loop checkpoint, not a public launch demo.
 
+## Current v25 Judgment
+
+The repair template now ranks candidates and labels risky recommendations instead of presenting every candidate as equally safe.
+
+Passes:
+
+- `fixes.template.json` includes `candidate_assets` with score, reasons, and warnings;
+- `recommended_asset_path` is the highest-ranked candidate for each weak segment;
+- `recommendation_status` is `recommended`, `best_available_with_warnings`, or `no_candidate`;
+- candidate ranking prioritizes avoiding adjacent repeated source videos before weaker fallback role matching;
+- real-material `out/real-material-remix-v25/fixes.template.json` marks `seg-003` as `best_available_with_warnings` because the only long-enough candidate would repeat adjacent `seg-004`;
+- `out/real-material-remix-v25-fixed-seg003` still records `override:seg-003`, changes the third contact-sheet tile, and keeps the adjacent-source warning in `review.md`.
+
+Still not good enough:
+
+- the recommender can identify risk, but cannot yet find or create a better semantic replacement when the local asset pool is too small;
+- fallback candidate reasons are still structural, not visual-semantic;
+- a non-technical review action should make the recommended path copyable without editing JSON manually.
+
 ## Product Principle
 
 Do not optimize for impressive automation claims.

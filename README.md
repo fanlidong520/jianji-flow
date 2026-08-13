@@ -202,7 +202,7 @@ Example:
 jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --fixes out\jianji-flow-quick\fixes.template.json
 ```
 
-Blank `asset_path` entries are ignored. A filled path that does not exist in the scanned asset folder, a too-short replacement clip, or an unknown segment/role fails clearly and writes the reason to `review.md`. After rerun, check `matches.json` for `override:seg-xxx` or `override:role:xxx`, then compare `contact-sheet.png` to confirm the replaced segment actually changed.
+Blank `asset_path` entries are ignored. Each segment also includes `recommended_asset_path`, `recommendation_status`, and scored `candidate_assets`; when the best available option would repeat an adjacent source, the status becomes `best_available_with_warnings` instead of pretending the recommendation is clean. A filled path that does not exist in the scanned asset folder, a too-short replacement clip, or an unknown segment/role fails clearly and writes the reason to `review.md`. After rerun, check `matches.json` for `override:seg-xxx` or `override:role:xxx`, then compare `contact-sheet.png` to confirm the replaced segment actually changed.
 
 ## 怎么判断结果能不能用
 
@@ -228,7 +228,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 299 passed
+- `python -m pytest -q` -> 301 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 

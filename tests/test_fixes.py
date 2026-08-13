@@ -134,6 +134,116 @@ def test_build_fixes_template_falls_back_to_other_assets_when_role_has_no_altern
     assert template["segments"]["seg-001"]["candidate_asset_paths"] == ["assets/feature.mp4", "assets/cta.mp4"]
 
 
+def test_build_fixes_template_ranks_non_adjacent_candidates_first():
+    template_fn = getattr(fixes_module, "build_fixes_template", None)
+    recipe = {
+        "segments": [
+            {"id": "seg-001", "role": "hook", "match_id": "match-001", "caption": "Hook", "start_ms": 0, "end_ms": 1000},
+            {"id": "seg-002", "role": "feature", "match_id": "match-002", "caption": "Feature", "start_ms": 1000, "end_ms": 3000},
+            {"id": "seg-003", "role": "evidence", "match_id": "match-003", "caption": "Evidence", "start_ms": 3000, "end_ms": 5000},
+        ]
+    }
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "selected",
+                "asset_id": "asset-hook",
+                "source_path": "assets/hook.mp4",
+                "confidence": 0.92,
+                "evidence": ["filename-role:hook"],
+            },
+            {
+                "id": "match-002",
+                "segment_id": "seg-002",
+                "status": "selected",
+                "asset_id": "asset-current",
+                "source_path": "assets/current-feature.mp4",
+                "confidence": 0.92,
+                "evidence": ["filename-role:feature"],
+            },
+            {
+                "id": "match-003",
+                "segment_id": "seg-003",
+                "status": "selected",
+                "asset_id": "asset-adjacent",
+                "source_path": "assets/feature-adjacent.mp4",
+                "confidence": 0.92,
+                "evidence": ["filename-role:evidence"],
+            },
+        ]
+    }
+    review = {"story_support": {"weak_evidence_roles": ["feature"]}}
+    assets = [
+        FakeAsset("asset-current", Path("assets/current-feature.mp4"), 6000),
+        FakeAsset("asset-adjacent", Path("assets/feature-adjacent.mp4"), 6000),
+        FakeAsset("asset-alt", Path("assets/feature-alt.mp4"), 6000),
+        FakeAsset("asset-cta", Path("assets/cta.mp4"), 6000),
+    ]
+
+    assert template_fn is not None, "fixes module should expose build_fixes_template"
+    template = template_fn(recipe, matches, assets, review)
+
+    segment = template["segments"]["seg-002"]
+    assert segment["recommended_asset_path"] == "assets/feature-alt.mp4"
+    assert segment["candidate_asset_paths"] == [
+        "assets/feature-alt.mp4",
+        "assets/cta.mp4",
+        "assets/feature-adjacent.mp4",
+    ]
+    adjacent = next(item for item in segment["candidate_assets"] if item["asset_path"] == "assets/feature-adjacent.mp4")
+    assert adjacent["warnings"] == ["would repeat adjacent segment"]
+    assert "matches role feature" in segment["candidate_assets"][0]["reasons"]
+    assert "avoids adjacent repetition" in segment["candidate_assets"][0]["reasons"]
+
+
+def test_build_fixes_template_marks_warning_recommendation_as_best_available():
+    template_fn = getattr(fixes_module, "build_fixes_template", None)
+    recipe = {
+        "segments": [
+            {"id": "seg-001", "role": "hook", "match_id": "match-001", "caption": "Hook", "start_ms": 0, "end_ms": 1000},
+            {"id": "seg-002", "role": "feature", "match_id": "match-002", "caption": "Feature", "start_ms": 1000, "end_ms": 5000},
+        ]
+    }
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "selected",
+                "asset_id": "asset-adjacent",
+                "source_path": "assets/long-adjacent.mp4",
+                "confidence": 0.92,
+                "evidence": ["filename-role:hook"],
+            },
+            {
+                "id": "match-002",
+                "segment_id": "seg-002",
+                "status": "selected",
+                "asset_id": "asset-current",
+                "source_path": "assets/current-feature.mp4",
+                "confidence": 0.92,
+                "evidence": ["filename-role:feature"],
+            },
+        ]
+    }
+    review = {"story_support": {"weak_evidence_roles": ["feature"]}}
+    assets = [
+        FakeAsset("asset-current", Path("assets/current-feature.mp4"), 6000),
+        FakeAsset("asset-adjacent", Path("assets/long-adjacent.mp4"), 6000),
+        FakeAsset("asset-short", Path("assets/short-safe.mp4"), 3000),
+    ]
+
+    assert template_fn is not None, "fixes module should expose build_fixes_template"
+    template = template_fn(recipe, matches, assets, review)
+
+    segment = template["segments"]["seg-002"]
+    assert segment["recommended_asset_path"] == "assets/long-adjacent.mp4"
+    assert segment["recommendation_status"] == "best_available_with_warnings"
+    assert segment["recommendation_warnings"] == ["would repeat adjacent segment"]
+
+
 def test_build_fixes_template_filters_candidates_shorter_than_segment():
     template_fn = getattr(fixes_module, "build_fixes_template", None)
     recipe = {

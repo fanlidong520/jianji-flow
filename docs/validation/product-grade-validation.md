@@ -117,6 +117,16 @@ Latest local checkpoint after segment-fix workflow:
 - v24 fixed `review.md` now warns that adjacent segments `seg-003` and `seg-004` use the same source video;
 - this is a repair-loop improvement, not proof of visual semantic matching.
 
+Latest local checkpoint after candidate-ranking repair template:
+
+- `fixes.template.json` now includes `recommended_asset_path`, `recommendation_status`, `recommendation_warnings`, and scored `candidate_assets`;
+- candidate ranking prioritizes avoiding adjacent repeated sources before fallback role matching;
+- real-material `out/real-material-remix-v25/fixes.template.json` marks `seg-003` as `best_available_with_warnings`, not a clean recommendation;
+- `out/real-material-remix-v25-fixed-seg003/matches.json` records `override:seg-003`;
+- v25 fixed third contact-sheet tile differs from base v25 by mean pixel difference about 51.9;
+- v25 fixed `review.md` remains `warning` and preserves the adjacent-source warning for `seg-003` and `seg-004`;
+- this improves recommendation honesty, but still does not solve semantic visual matching.
+
 ## Launch Rule
 
 Do not announce the project publicly until:
