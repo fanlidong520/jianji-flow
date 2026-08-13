@@ -231,6 +231,26 @@ Do not present `jianji-flow` as a finished automatic editor yet.
 The honest current claim is a local, auditable rough-cut workflow whose repair recommendations are becoming safer.
 The next product milestone is true visual shot selection: given unhelpful filenames, the system must still choose clips that support hook, pain, feature, evidence, and CTA better than a simple file-order baseline.
 
+## Current v32 Judgment
+
+The review layer now shows repair candidates visually instead of hiding them in JSON.
+This improves usability and trust, but it still does not prove the automatic cut is good.
+
+Passes:
+
+- `candidate-review.html` is generated on successful or warning runs;
+- `candidate-frames/` contains current-segment and candidate thumbnails used by that page;
+- `review.md` and `review.html` link to the candidate review output;
+- candidate panels show recommendation status, reasons, warnings, role-match risk, and frame extraction failures;
+- failed artifact-review runs remove stale candidate-review artifacts so a failed run does not look repair-ready.
+
+Still not good enough:
+
+- the candidate page makes choices inspectable, but it does not choose better semantic shots by itself;
+- wrong-role fallback candidates can still appear for manual inspection when the local asset pool lacks same-role alternatives;
+- the output may still be a role-labeled rough cut rather than a visibly improved product edit;
+- the next product milestone remains true visual shot selection and before/after change reporting.
+
 ## Product Principle
 
 Do not optimize for impressive automation claims.

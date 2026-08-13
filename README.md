@@ -32,6 +32,7 @@
 - Generates `voiceover.wav` with a local Windows Chinese TTS voice when available.
 - Renders `remix.mp4` with burned-in captions and voiceover audio.
 - Writes `contact-sheet.png` with one frame per timeline segment.
+- Writes `candidate-review.html` and `candidate-frames/` so weak segments can be compared against visible repair candidates.
 - Writes `review.md` and `review.html` for manual inspection.
 - Shows `CANDIDATE` in `diagnosis.md` for filename/duration-ready clips, because that is not visual proof.
 - Marks filename-only matching as `warning` because it does not prove visual understanding.
@@ -169,12 +170,15 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 - `voiceover.wav`: generated machine voiceover.
 - `remix.mp4`: rendered preview video.
 - `contact-sheet.png`: one representative frame per segment.
+- `candidate-review.html`: side-by-side visual review of weak segments, current frames, candidate frames, recommendation status, reasons, and warnings.
+- `candidate-frames/`: images used by `candidate-review.html`.
 - `review.md`: review status and checklist.
 - `review.html`: local visual review page.
 - `fixes.template.json`: editable repair file for replacing weak or low-confidence segments on the next run.
 - `visual-similarity-diagnostics/`: sampled frames used to audit visually similar or unchecked repair recommendations.
 
 `review.md` and `review.html` also include a `Storyboard` section. It lists each segment's role, caption, selected asset, source range, matching evidence, and risk, so a user can see what was cut without opening `matches.json`.
+When fixes are generated, open `candidate-review.html` from the same work directory. It shows the current segment frame next to up to three candidate frames, including whether a candidate is a clean recommendation, a warning-only option, or a wrong-role manual-inspection fallback.
 
 ## 状态怎么理解
 
@@ -217,6 +221,7 @@ Blank `asset_path` entries are ignored. Each segment also includes `recommended_
 If `recommendation_status` is `no_candidate`, do not copy a fallback candidate blindly. It means no duration-ready same-role replacement was found; add or choose clearer material for that story role instead. `candidate_assets` can still show wrong-role clips for manual inspection, but they include `role_match: false` and a role-mismatch warning.
 
 Visual similarity checking samples three frames from the actual selected source window and the candidate clip. It is a guard against duplicate-looking replacements, not proof that the clip semantically matches the script.
+`candidate-review.html` makes those repair choices visible. Use it to see what the system might change before editing JSON or applying a recommendation; if the page shows role mismatch, frame-unavailable, or visually similar warnings, treat the candidate as manual review only.
 
 ## 怎么判断结果能不能用
 
@@ -243,7 +248,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 325 passed
+- `python -m pytest -q` -> 328 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 

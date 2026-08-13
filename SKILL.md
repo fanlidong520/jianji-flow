@@ -1,6 +1,6 @@
 ---
 name: jianji-flow
-description: Create auditable preview videos from a reference video, a local asset directory, and optional script text; outputs diagnosis.md, manifest.json, recipe.json, matches.json, captions.srt, captions.ass, voiceover.wav, remix.mp4, contact-sheet.png, fixes.template.json, review.md, and review.html after validation.
+description: Create auditable preview videos from a reference video, a local asset directory, and optional script text; outputs diagnosis.md, manifest.json, recipe.json, matches.json, captions.srt, captions.ass, voiceover.wav, remix.mp4, contact-sheet.png, candidate-review.html, fixes.template.json, review.md, and review.html after validation.
 ---
 
 # jianji-flow
@@ -49,7 +49,8 @@ Detailed workflow:
 11. Render `remix.mp4` only from validated manifest assets, burned-in captions, and generated voiceover.
 12. Write `contact-sheet.png` with one frame per segment.
 13. Write `fixes.template.json` for weak or low-confidence segments, including same-role visual-similarity checks for repair recommendations.
-14. Write `review.md` and `review.html` with pass, warning, fail status, `Story support`, a per-segment `Storyboard`, and visual-similarity diagnostics when present.
+14. Write `candidate-review.html` and `candidate-frames/` so current weak-segment frames can be compared with visible repair candidates.
+15. Write `review.md` and `review.html` with pass, warning, fail status, `Story support`, a per-segment `Storyboard`, candidate-review link, and visual-similarity diagnostics when present.
 
 ## Hard Rules
 
@@ -66,6 +67,7 @@ Detailed workflow:
 - Do not silently ignore filled fixes entries. Unknown segment/role targets, missing replacement paths, and too-short clips must fail clearly.
 - Do not present a risky replacement as clean. If `recommendation_status` is `best_available_with_warnings`, report the warning before suggesting the fix.
 - Do not auto-apply a visually similar or visually unchecked recommendation. Treat `visually similar to current segment` and `visual similarity check failed` as review-required warnings.
+- Do not treat `candidate-review.html` as proof of semantic visual matching. It is a human-facing evidence page for current frames, candidates, reasons, and warnings.
 - Do not present wrong-role fallback candidates as recommendations. If `recommendation_status` is `no_candidate`, explain that no same-role replacement was found; fallback candidates are manual-inspection options only.
 - Do not claim image support, music, effects, publishing, source-audio preservation, true reference decomposition, or editor draft export.
 
@@ -136,6 +138,8 @@ On success or warning, report the paths for:
 - `voiceover.wav`
 - `remix.mp4`
 - `contact-sheet.png`
+- `candidate-review.html`
+- `candidate-frames/`
 - `fixes.template.json`
 - `visual-similarity-diagnostics` when listed in `review.md`
 - `review.md`
@@ -153,3 +157,4 @@ Never describe a failed or warning run as completed video output.
 If `Story support` is `weak`, report its `next_action` exactly. Explain that the named roles lack non-filename visual evidence, then ask the user to replace or manually verify those clips in `contact-sheet.png`. If the user wants to repair one segment, point them to `fixes.template.json`: check `recommended_asset_path`, `recommendation_status`, `recommendation_warnings`, and `role_match`; use `--apply-recommendation SEGMENT_ID` only when the status is `recommended`; otherwise fill one `asset_path` manually only when the candidate is genuinely appropriate, rerun with `--fixes`, then compare the same segment in the new `contact-sheet.png`.
 If `review.md` lists `visual_similarity_diagnostics`, explain that the folder contains sampled frames used to downgrade duplicate-looking or unchecked recommendations. Do not describe those checks as semantic understanding.
 Use the `Storyboard` section before discussing JSON: it is the fastest way to see each segment's caption, selected asset, source range, evidence, and risk.
+Use `candidate-review.html` before suggesting a fix: it is the fastest way to show what the current segment looks like, what candidate frames are available, and whether warnings make the candidate manual-review only.

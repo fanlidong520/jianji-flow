@@ -28,6 +28,8 @@ Each pack needs:
 - generated `review.md`;
 - generated `review.html`;
 - `contact-sheet.png`;
+- `candidate-review.html` when fixes are generated;
+- candidate-frame screenshots when fixes are generated;
 - final `remix.mp4`;
 - written manual judgment: pass, warning, or fail with reason.
 
@@ -57,6 +59,7 @@ For every real-material run:
 - Are old captions, platform UI, comments, or creator handles visible?
 - Are captions readable on a phone screen?
 - Does `review.md` match what the human sees?
+- If a candidate review exists, can the human see what would change before applying a fix?
 - Is the next action clear enough for a non-technical creator?
 
 ## Current Evidence
@@ -178,6 +181,16 @@ Strict product audit after v31:
 - public launch requires actual visual shot selection, not only safer reports around filename-based assembly;
 - first-run validation must include one real product-material pack with non-semantic filenames such as `IMG_001.mp4`;
 - a blind baseline comparison must show that `jianji-flow` beats simple file-order concatenation with voiceover and captions.
+
+Latest local checkpoint after candidate visual review:
+
+- `candidate-review.html` is generated from `fixes.template.json` on successful or warning runs;
+- `candidate-frames/` is regenerated on rerun so stale candidate screenshots are removed;
+- main `review.md` and `review.html` expose the candidate review path;
+- failed artifact-review runs remove candidate-review outputs while preserving diagnostic contact-sheet evidence;
+- real-material `out/real-material-candidate-review-v32/candidate-review.html` shows current and candidate frames for all five weak home-product roles;
+- real-material v32 correctly remains `warning`: all five roles are filename-only story support and the candidate page exposes wrong-role fallbacks instead of inventing clean replacements;
+- this makes repair candidates easier to judge, but it is not yet semantic visual shot selection.
 
 ## Launch Rule
 

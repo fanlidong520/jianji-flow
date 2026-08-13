@@ -10,6 +10,7 @@ from jsonschema.exceptions import ValidationError
 
 from jianji_flow import __version__
 from jianji_flow.asset_diagnosis import diagnose_product_assets, format_asset_diagnosis
+from jianji_flow.candidate_review import write_candidate_review
 from jianji_flow.contact_sheet import write_contact_sheet
 from jianji_flow.contracts import validate_fixes, validate_manifest, validate_matches, validate_recipe
 from jianji_flow.environment import check_environment, format_environment_report
@@ -109,11 +110,23 @@ def _read_fixes(path_text: str | None, *, apply_recommendation: str | None = Non
 
 
 def _success_artifact_names() -> tuple[str, ...]:
-    return ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png", "fixes.template.json", "review.html")
+    return (
+        "remix.mp4",
+        "voiceover.wav",
+        "captions.ass",
+        "contact-sheet.png",
+        "candidate-review.html",
+        "fixes.template.json",
+        "review.html",
+    )
 
 
 def _run_diagnostic_dir_names() -> tuple[str, ...]:
     return ("visual-similarity-diagnostics",)
+
+
+def _success_artifact_dir_names() -> tuple[str, ...]:
+    return ("candidate-frames",)
 
 
 def _run_state_artifact_names() -> tuple[str, ...]:
@@ -128,6 +141,7 @@ def _run_state_artifact_names() -> tuple[str, ...]:
         "voiceover.wav",
         "remix.mp4",
         "contact-sheet.png",
+        "candidate-review.html",
         "fixes.template.json",
     )
 
@@ -142,6 +156,10 @@ def _clear_success_artifacts(work_dir: Path, *, keep_diagnostics: bool = False) 
             path.unlink()
     if not keep_diagnostics:
         _clear_run_diagnostic_dirs(work_dir)
+    for name in _success_artifact_dir_names():
+        path = work_dir / name
+        if path.exists():
+            shutil.rmtree(path)
 
 
 def _clear_run_diagnostic_dirs(work_dir: Path) -> None:
@@ -225,7 +243,15 @@ def _apply_source_preflight_evidence(matches: dict, clean_segment_ids: list[str]
 
 def _remove_success_outputs_from_review(review: dict, *, keep_diagnostics: bool = False) -> None:
     outputs = review.get("outputs", {})
-    removable_outputs = ["remix", "voiceover", "captions_ass", "fixes_template", "review_html"]
+    removable_outputs = [
+        "remix",
+        "voiceover",
+        "captions_ass",
+        "fixes_template",
+        "candidate_review",
+        "candidate_frames",
+        "review_html",
+    ]
     if not keep_diagnostics:
         removable_outputs.append("contact_sheet")
     for name in removable_outputs:
@@ -329,6 +355,8 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         review_path = work_dir / "review.md"
         review_html_path = work_dir / "review.html"
         fixes_template_path = work_dir / "fixes.template.json"
+        candidate_review_path = work_dir / "candidate-review.html"
+        candidate_frames_dir = work_dir / "candidate-frames"
         _write_json(matches_path, matches)
         _write_json(recipe_path, recipe)
         write_srt(recipe, captions_path)
@@ -439,18 +467,25 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         review["outputs"]["recipe"] = recipe_path.as_posix()
         review["outputs"]["matches"] = matches_path.as_posix()
         review["outputs"]["captions_ass"] = ass_path.as_posix()
-        _write_json(
-            fixes_template_path,
-            build_fixes_template(
+        fixes_template = build_fixes_template(
+            recipe,
+            matches,
+            records,
+            review,
+            minimum_duration_recipe=pretime_recipe,
+            visual_similarity_checker=_build_visual_similarity_checker(work_dir),
+        )
+        _write_json(fixes_template_path, fixes_template)
+        review["outputs"]["fixes_template"] = fixes_template_path.as_posix()
+        review["outputs"].update(
+            write_candidate_review(
                 recipe,
                 matches,
-                records,
-                review,
-                minimum_duration_recipe=pretime_recipe,
-                visual_similarity_checker=_build_visual_similarity_checker(work_dir),
-            ),
+                fixes_template,
+                candidate_review_path,
+                frames_dir=candidate_frames_dir,
+            )
         )
-        review["outputs"]["fixes_template"] = fixes_template_path.as_posix()
         visual_similarity_diagnostics = work_dir / "visual-similarity-diagnostics"
         if visual_similarity_diagnostics.exists() and any(visual_similarity_diagnostics.glob("*.png")):
             review["outputs"]["visual_similarity_diagnostics"] = visual_similarity_diagnostics.as_posix()

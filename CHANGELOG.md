@@ -46,6 +46,10 @@
   as clean recommendations.
 - Added `visual-similarity-diagnostics` output when repair recommendation checks
   extract frames for audit.
+- Added `candidate-review.html` and `candidate-frames/` so weak segments show
+  current frames beside visible repair candidates, reasons, and warnings.
+- Removed stale candidate-review artifacts on failed review runs so failed
+  outputs do not look repair-ready.
 - Changed warning CLI output from `completed` to `review required` so review-only
   rough cuts are not mistaken for passed outputs.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while

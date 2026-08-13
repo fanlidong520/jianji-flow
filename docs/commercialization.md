@@ -74,7 +74,8 @@ Keep these free and open:
 
 Paid offerings can sit around the workflow:
 
-- niche-specific templates, validation packs, and example material rules;
+- niche-specific templates, validation packs, candidate-review examples, and example material rules;
+- material organization and naming/tagging services that make local clips easier for the open workflow to select and audit;
 - non-technical desktop or hosted UI;
 - batch queues, team presets, review history, and collaboration;
 - private deployment, custom rules, and workflow onboarding.

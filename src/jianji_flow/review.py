@@ -462,6 +462,21 @@ def _storyboard_html(recipe: dict | None, matches: dict | None, review: dict) ->
     return "".join(body)
 
 
+def _outputs_html(outputs: dict) -> str:
+    if not outputs:
+        return "<li>none</li>"
+    items = []
+    for name, value in outputs.items():
+        label = str(name).replace("_", " ").title()
+        value_text = str(value)
+        if value_text.endswith(".html"):
+            value_html = f'<a href="{escape(value_text)}">{escape(value_text)}</a>'
+        else:
+            value_html = f"<code>{escape(value_text)}</code>"
+        items.append(f"<li>{escape(label)}: {value_html}</li>")
+    return "".join(items)
+
+
 def build_review_markdown(review: dict, recipe: dict | None = None, matches: dict | None = None) -> str:
     summary = review.get("summary", build_review_summary(review))
     lines = [
@@ -539,6 +554,7 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
     warnings = "".join(f"<li>{escape(str(item))}</li>" for item in review.get("warnings", [])) or "<li>none</li>"
     failures = "".join(f"<li>{escape(str(item))}</li>" for item in review.get("failures", [])) or "<li>none</li>"
     story_support = _story_support_html(review.get("story_support"))
+    outputs_list = _outputs_html(outputs)
     return f"""<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -578,12 +594,7 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
   <h2>Contact Sheet</h2>
   <img alt="contact sheet" src="{escape(str(outputs.get('contact_sheet', '')))}">
   <h2>Outputs</h2>
-  <ul>
-    <li>Voiceover: <code>{escape(str(outputs.get('voiceover', '')))}</code></li>
-    <li>Captions: <code>{escape(str(outputs.get('captions', '')))}</code></li>
-    <li>Fixes template: <code>{escape(str(outputs.get('fixes_template', '')))}</code></li>
-    <li>Review HTML: <code>{escape(str(outputs.get('review_html', '')))}</code></li>
-  </ul>
+  <ul>{outputs_list}</ul>
   <h2>Warnings</h2>
   <ul>{warnings}</ul>
   <h2>Failures</h2>

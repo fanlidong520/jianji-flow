@@ -935,6 +935,7 @@ def test_build_review_html_contains_outputs_and_match_evidence():
             "remix": "work/remix.mp4",
             "contact_sheet": "work/contact-sheet.png",
             "voiceover": "work/voiceover.wav",
+            "candidate_review": "work/candidate-review.html",
         },
         "warnings": [],
         "failures": [],
@@ -968,6 +969,7 @@ def test_build_review_html_contains_outputs_and_match_evidence():
     assert "work/remix.mp4" in html
     assert "work/contact-sheet.png" in html
     assert "work/voiceover.wav" in html
+    assert "candidate-review.html" in html
     assert "家里难刷角落" in html
     assert "filename-role:hook" in html
 

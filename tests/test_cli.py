@@ -531,18 +531,27 @@ def test_run_product_fixture_creates_v0_2_experience_outputs(tmp_path, monkeypat
         "voiceover.wav",
         "remix.mp4",
         "contact-sheet.png",
+        "candidate-review.html",
         "fixes.template.json",
         "review.md",
         "review.html",
     ):
         assert (work_dir / name).exists(), name
+    assert (work_dir / "candidate-frames").is_dir()
     assert run_ffprobe(work_dir / "remix.mp4").has_audio is True
     review_html = (work_dir / "review.html").read_text(encoding="utf-8")
     review_md = (work_dir / "review.md").read_text(encoding="utf-8")
+    candidate_html = (work_dir / "candidate-review.html").read_text(encoding="utf-8")
     fixes_template = json.loads((work_dir / "fixes.template.json").read_text(encoding="utf-8"))
     validate_fixes(fixes_template)
     assert "<video" in review_html
     assert "voiceover.wav" in review_html
+    assert "candidate-review.html" in review_md
+    assert "candidate-review.html" in review_html
+    assert "Current segment" in candidate_html
+    assert "Candidate" in candidate_html
+    assert "role mismatch" in candidate_html
+    assert list((work_dir / "candidate-frames").glob("*.png"))
     assert "fixes.template.json" in review_md
     assert "fixes.template.json" in review_html
     assert fixes_template["segments"]
@@ -678,10 +687,13 @@ def test_failed_review_keeps_diagnostic_contact_sheet_without_success_artifacts(
     review = (work_dir / "review.md").read_text(encoding="utf-8")
     assert "forced artifact failure" in review
     assert "contact_sheet" in review
+    assert "candidate_review" not in review
+    assert "candidate_frames" not in review
     assert (work_dir / "contact-sheet.png").exists()
     assert (work_dir / "contact-sheet.png").stat().st_size > 0
-    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "review.html"):
+    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "candidate-review.html", "review.html"):
         assert not (work_dir / name).exists(), name
+    assert not (work_dir / "candidate-frames").exists()
 
 
 def test_source_preflight_failure_stops_before_voiceover_and_render(tmp_path, monkeypatch):
@@ -1350,6 +1362,42 @@ def test_run_removes_stale_visual_similarity_diagnostics_on_rerun(tmp_path, monk
     review = (work_dir / "review.md").read_text(encoding="utf-8")
     assert "visual_similarity_diagnostics" not in review
     assert not (work_dir / "visual-similarity-diagnostics").exists()
+
+
+def test_run_removes_stale_candidate_frames_on_rerun(tmp_path, monkeypatch):
+    _patch_voiceover(monkeypatch)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    scenario = fixture_root / "scenario-a-product"
+    work_dir = tmp_path / "work"
+    args = [
+        "run",
+        "--mode",
+        "product",
+        "--reference",
+        str(scenario / "reference.mp4"),
+        "--assets",
+        str(scenario / "assets"),
+        "--script",
+        str(scenario / "script.txt"),
+        "--work-dir",
+        str(work_dir),
+        "--target-width",
+        "320",
+        "--target-height",
+        "180",
+        "--target-fps",
+        "12",
+    ]
+
+    assert main(args) == 0
+    stale_frame = work_dir / "candidate-frames" / "stale.png"
+    stale_frame.write_bytes(b"stale")
+
+    assert main(args) == 0
+
+    assert (work_dir / "candidate-review.html").exists()
+    assert not stale_frame.exists()
 
 
 def test_semantic_failure_removes_generated_success_artifacts(tmp_path, monkeypatch):
