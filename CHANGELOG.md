@@ -3,7 +3,15 @@
 ## Unreleased
 
 - Planned v0.3 usability layer: `doctor`, `demo`, `quick`, material diagnosis,
-  and plain-language review summary.
+  source preflight, and plain-language review summary.
+- Added source preflight checks that stop before voiceover/render when selected
+  source frames show severe old-subtitle or platform-UI residue.
+- Added filename-only review warnings so role-labeled assembly is not reported
+  as visually verified.
+- Preserved diagnostic `contact-sheet.png` on artifact-review failures while
+  still removing stale success artifacts such as `remix.mp4`.
+- Reframed documentation around auditable rough-cut generation, not full editor
+  replacement or true viral-reference decomposition.
 
 ## 0.2.0
 

@@ -234,6 +234,30 @@ def test_render_command_uses_voiceover_audio_and_burned_captions(tmp_path: Path)
     assert any("subtitles=" in part for part in command)
 
 
+def test_render_command_uses_default_remix_visual_treatment_for_vertical_preview():
+    recipe, matches = _recipe(Path("assets/hook.mp4"))
+    recipe["target"] = {"width": 592, "height": 1280, "fps": 30}
+    recipe["caption_burn_in"] = True
+
+    command = build_ffmpeg_plan(
+        recipe,
+        matches,
+        _manifest("assets/hook.mp4"),
+        Path("out/remix.mp4"),
+        work_dir=Path("out"),
+        reference_path=Path("reference.mp4"),
+        asset_root=Path("assets"),
+        captions_path=Path("out/captions.ass"),
+    )
+
+    filter_complex = command[command.index("-filter_complex") + 1]
+    assert "crop=iw*0.76:ih*0.58" in filter_complex
+    assert "force_original_aspect_ratio=increase" in filter_complex
+    assert "crop=592:1280" in filter_complex
+    assert "drawbox=x=0:y=0" in filter_complex
+    assert "drawbox=x=0:y=1119" in filter_complex
+
+
 @pytest.mark.skipif(shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None, reason="ffmpeg required")
 def test_render_preview_creates_probeable_mp4(tmp_path: Path):
     fixture_root = tmp_path / "fixtures"

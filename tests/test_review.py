@@ -73,6 +73,86 @@ def test_review_passes_when_all_segments_are_selected():
     assert review["warnings"] == []
 
 
+def test_review_warns_when_most_segments_come_from_same_source():
+    recipe = {
+        "segments": [
+            {"id": "seg-001", "match_id": "match-001", "caption": "Hook"},
+            {"id": "seg-002", "match_id": "match-002", "caption": "Pain"},
+            {"id": "seg-003", "match_id": "match-003", "caption": "Feature"},
+        ]
+    }
+    matches = {
+        "matches": [
+            {"id": "match-001", "segment_id": "seg-001", "status": "selected", "asset_id": "asset-001", "source_path": "assets/mother.mp4", "confidence": 0.9},
+            {"id": "match-002", "segment_id": "seg-002", "status": "selected", "asset_id": "asset-002", "source_path": "assets/mother.mp4", "confidence": 0.9},
+            {"id": "match-003", "segment_id": "seg-003", "status": "selected", "asset_id": "asset-003", "source_path": "assets/mother.mp4", "confidence": 0.9},
+        ]
+    }
+
+    review = build_review(
+        recipe,
+        matches,
+        remix_path=Path("work/remix.mp4"),
+        captions_path=Path("work/captions.srt"),
+        check_artifacts=False,
+    )
+
+    assert review["status"] == "warning"
+    assert any("same source video" in warning for warning in review["warnings"])
+
+
+def test_review_warns_when_selected_segments_are_filename_only_matches():
+    recipe = {
+        "segments": [
+            {"id": "seg-001", "match_id": "match-001", "caption": "Hook"},
+            {"id": "seg-002", "match_id": "match-002", "caption": "Pain"},
+            {"id": "seg-003", "match_id": "match-003", "caption": "Feature"},
+        ]
+    }
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "selected",
+                "asset_id": "asset-001",
+                "source_path": "assets/01-hook.mp4",
+                "confidence": 0.92,
+                "evidence": ["filename-role:hook"],
+            },
+            {
+                "id": "match-002",
+                "segment_id": "seg-002",
+                "status": "selected",
+                "asset_id": "asset-002",
+                "source_path": "assets/02-pain.mp4",
+                "confidence": 0.92,
+                "evidence": ["filename-role:pain"],
+            },
+            {
+                "id": "match-003",
+                "segment_id": "seg-003",
+                "status": "selected",
+                "asset_id": "asset-003",
+                "source_path": "assets/03-feature.mp4",
+                "confidence": 0.92,
+                "evidence": ["filename-role:feature"],
+            },
+        ]
+    }
+
+    review = build_review(
+        recipe,
+        matches,
+        remix_path=Path("work/remix.mp4"),
+        captions_path=Path("work/captions.srt"),
+        check_artifacts=False,
+    )
+
+    assert review["status"] == "warning"
+    assert any("filename only" in warning for warning in review["warnings"])
+
+
 def test_review_fails_when_rendered_video_is_missing():
     recipe = {"duration_ms": 1000, "segments": [{"id": "seg-001", "match_id": "match-001", "caption": "Hook"}]}
     matches = {"matches": [{"id": "match-001", "segment_id": "seg-001", "status": "selected", "asset_id": "asset-001", "confidence": 0.9}]}
@@ -181,10 +261,132 @@ def test_review_warns_when_contact_sheet_has_platform_ui_risk(tmp_path: Path):
         remix_path=Path("work/missing.mp4"),
         captions_path=Path("work/missing.srt"),
         contact_sheet_path=contact_sheet,
+        check_artifacts=False,
+    )
+
+    diagnosis_review = build_review(
+        recipe,
+        matches,
+        remix_path=Path("work/missing.mp4"),
+        captions_path=Path("work/missing.srt"),
+        contact_sheet_path=contact_sheet,
+    )
+
+    assert diagnosis_review["status"] == "fail"
+    assert review["status"] == "pass"
+
+
+def test_review_artifact_review_warns_when_contact_sheet_has_platform_ui_risk(tmp_path: Path, monkeypatch):
+    contact_sheet = tmp_path / "contact-sheet.png"
+    image = Image.new("RGB", (592, 1280), "#c8d8d0")
+    from PIL import ImageDraw
+
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((100, 250, 500, 760), fill="#557a95")
+    for row in range(6):
+        y = 1010 + row * 28
+        for col in range(18):
+            x = 24 + col * 30
+            draw.rectangle((x, y, x + 18, y + 9), fill="white")
+    image.save(contact_sheet)
+    remix = tmp_path / "remix.mp4"
+    captions = tmp_path / "captions.srt"
+    remix.write_bytes(b"probe is monkeypatched")
+    captions.write_text("1\n00:00:00,000 --> 00:00:01,000\nHook\n", encoding="utf-8")
+
+    class ProbeInfo:
+        has_audio = True
+        duration_ms = 1000
+
+    monkeypatch.setattr("jianji_flow.review.run_ffprobe", lambda path: ProbeInfo())
+    recipe = {
+        "duration_ms": 1000,
+        "segments": [{"id": "seg-001", "match_id": "match-001", "caption": "Hook"}],
+    }
+    matches = {"matches": [{"id": "match-001", "segment_id": "seg-001", "status": "selected", "asset_id": "asset-001", "confidence": 0.9}]}
+
+    review = build_review(
+        recipe,
+        matches,
+        remix_path=remix,
+        captions_path=captions,
+        contact_sheet_path=contact_sheet,
+    )
+
+    assert review["status"] == "warning"
+    assert any("seg-001:" in warning and "platform UI" in warning for warning in review["warnings"])
+
+
+def test_review_fails_when_contact_sheet_has_severe_platform_ui_risk(tmp_path: Path):
+    contact_sheet = tmp_path / "contact-sheet.png"
+    image = Image.new("RGB", (592, 1280), "#c8d8d0")
+    from PIL import ImageDraw
+
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((100, 250, 500, 760), fill="#557a95")
+    for row in range(18):
+        y = 910 + row * 18
+        for col in range(24):
+            x = 12 + col * 24
+            draw.rectangle((x, y, x + 16, y + 8), fill="white")
+    image.save(contact_sheet)
+    recipe = {
+        "duration_ms": 1000,
+        "segments": [{"id": "seg-001", "match_id": "match-001", "caption": "Hook"}],
+    }
+    matches = {"matches": [{"id": "match-001", "segment_id": "seg-001", "status": "selected", "asset_id": "asset-001", "confidence": 0.9}]}
+
+    review = build_review(
+        recipe,
+        matches,
+        remix_path=Path("work/missing.mp4"),
+        captions_path=Path("work/missing.srt"),
+        contact_sheet_path=contact_sheet,
+        check_artifacts=False,
+    )
+
+    assert review["status"] == "pass"
+
+
+def test_review_artifact_review_fails_when_contact_sheet_has_severe_platform_ui_risk(tmp_path: Path, monkeypatch):
+    contact_sheet = tmp_path / "contact-sheet.png"
+    image = Image.new("RGB", (592, 1280), "#c8d8d0")
+    from PIL import ImageDraw
+
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((100, 250, 500, 760), fill="#557a95")
+    for row in range(18):
+        y = 910 + row * 18
+        for col in range(24):
+            x = 12 + col * 24
+            draw.rectangle((x, y, x + 16, y + 8), fill="white")
+    image.save(contact_sheet)
+    remix = tmp_path / "remix.mp4"
+    captions = tmp_path / "captions.srt"
+    remix.write_bytes(b"probe is monkeypatched")
+    captions.write_text("1\n00:00:00,000 --> 00:00:01,000\nHook\n", encoding="utf-8")
+
+    class ProbeInfo:
+        has_audio = True
+        duration_ms = 1000
+
+    monkeypatch.setattr("jianji_flow.review.run_ffprobe", lambda path: ProbeInfo())
+    recipe = {
+        "duration_ms": 1000,
+        "segments": [{"id": "seg-001", "match_id": "match-001", "caption": "Hook"}],
+    }
+    matches = {"matches": [{"id": "match-001", "segment_id": "seg-001", "status": "selected", "asset_id": "asset-001", "confidence": 0.9}]}
+
+    review = build_review(
+        recipe,
+        matches,
+        remix_path=remix,
+        captions_path=captions,
+        contact_sheet_path=contact_sheet,
     )
 
     assert review["status"] == "fail"
-    assert any("seg-001:" in warning and "platform UI" in warning for warning in review["warnings"])
+    assert any("severe platform UI" in failure for failure in review["failures"])
 
 
 def test_build_review_markdown_contains_checklist_and_outputs():

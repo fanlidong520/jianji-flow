@@ -44,6 +44,16 @@ def test_script_lines_are_used_as_captions_before_role_fallback():
     assert segments[2]["caption"] == "feature"
 
 
+def test_script_section_headings_are_not_used_as_captions():
+    script = "[01 开头吸引]\n清洁死角不用硬擦。\n[02 使用前痛点]\n换对工具更省力。"
+
+    segments = build_segment_plan("product", 15000, script)
+
+    assert segments[0]["caption"] == "清洁死角不用硬擦。"
+    assert segments[1]["caption"] == "换对工具更省力。"
+    assert all("[" not in segment["caption"] for segment in segments[:2])
+
+
 def test_default_beats_return_dataclasses():
     beats = default_beats("talking-head", 5000)
 

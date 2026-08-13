@@ -28,10 +28,12 @@ def test_license_is_mit():
 
 def test_readme_mentions_v0_2_experience_boundaries():
     text = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "What v0.2 Does" in text
+    assert "What It Does Now" in text
     assert "It does not create Jianying or CapCut draft projects." in text
     assert "voiceover.wav" in text
     assert "remix.mp4" in text
+    assert "filename-only" in text
+    assert "source preflight" in text
 
 
 def test_readme_has_open_source_getting_started_sections():
@@ -76,6 +78,8 @@ def test_skill_documents_quick_start_commands():
     assert "demo" in text
     assert "quick" in text
     assert "diagnosis.md" in text
+    assert "filename-only" in text
+    assert "source-diagnostics" in text
     assert "examples\\reference.mp4" not in text
     assert "fixtures\\scenario-a-product\\reference.mp4" in text
 
@@ -93,6 +97,8 @@ def test_changelog_documents_public_versions():
     assert "## 0.2.0" in text
     assert "## 0.1.0" in text
     assert "voiceover.wav" in text
+    assert "filename-only" in text
+    assert "source preflight" in text
 
 
 def test_github_ci_runs_unit_tests_without_local_tts_smoke():

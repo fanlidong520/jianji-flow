@@ -480,7 +480,7 @@ def test_failed_rerun_removes_stale_remix(tmp_path, monkeypatch):
         assert not (work_dir / name).exists(), name
 
 
-def test_failed_review_removes_generated_success_artifacts(tmp_path, monkeypatch):
+def test_failed_review_keeps_diagnostic_contact_sheet_without_success_artifacts(tmp_path, monkeypatch):
     _patch_voiceover(monkeypatch)
 
     def fake_build_review(*args, **kwargs):
@@ -490,7 +490,13 @@ def test_failed_review_removes_generated_success_artifacts(tmp_path, monkeypatch
             "warnings": [],
             "missing_segments": [],
             "low_confidence_segments": [],
-            "outputs": {},
+            "outputs": {
+                "remix": (work_dir / "remix.mp4").as_posix(),
+                "voiceover": (work_dir / "voiceover.wav").as_posix(),
+                "captions_ass": (work_dir / "captions.ass").as_posix(),
+                "contact_sheet": (work_dir / "contact-sheet.png").as_posix(),
+                "review_html": (work_dir / "review.html").as_posix(),
+            },
         }
 
     monkeypatch.setattr("jianji_flow.cli.build_review", fake_build_review)
@@ -521,9 +527,115 @@ def test_failed_review_removes_generated_success_artifacts(tmp_path, monkeypatch
     )
 
     assert code == 1
-    assert "forced artifact failure" in (work_dir / "review.md").read_text(encoding="utf-8")
+    review = (work_dir / "review.md").read_text(encoding="utf-8")
+    assert "forced artifact failure" in review
+    assert "contact_sheet" in review
+    assert (work_dir / "contact-sheet.png").exists()
+    assert (work_dir / "contact-sheet.png").stat().st_size > 0
+    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "review.html"):
+        assert not (work_dir / name).exists(), name
+
+
+def test_source_preflight_failure_stops_before_voiceover_and_render(tmp_path, monkeypatch):
+    def forbidden_create_voiceover(*args, **kwargs):
+        raise AssertionError("voiceover should not run after source preflight failure")
+
+    def fake_source_preflight(recipe, matches, diagnostics_dir, **kwargs):
+        diagnostics_dir.mkdir(parents=True, exist_ok=True)
+        (diagnostics_dir / "seg-001-01.png").write_bytes(b"diagnostic frame")
+        return {
+            "status": "fail",
+            "failures": ["seg-001 source frame 1: severe platform UI before rendering"],
+            "warnings": [],
+            "metrics": {},
+            "diagnostics_dir": diagnostics_dir.as_posix(),
+        }
+
+    monkeypatch.setattr("jianji_flow.cli.create_voiceover", forbidden_create_voiceover)
+    monkeypatch.setattr("jianji_flow.cli.diagnose_source_matches", fake_source_preflight)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    work_dir = tmp_path / "work"
+
+    code = main(
+        [
+            "run",
+            "--mode",
+            "product",
+            "--reference",
+            str(fixture_root / "scenario-a-product" / "reference.mp4"),
+            "--assets",
+            str(fixture_root / "scenario-a-product" / "assets"),
+            "--script",
+            str(fixture_root / "scenario-a-product" / "script.txt"),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    review = (work_dir / "review.md").read_text(encoding="utf-8")
+    assert code == 1
+    assert "source frame 1" in review
+    assert "source_diagnostics" in review
+    assert (work_dir / "source-diagnostics" / "seg-001-01.png").exists()
     for name in ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png", "review.html"):
         assert not (work_dir / name).exists(), name
+
+
+def test_source_preflight_warning_is_reported_in_final_review(tmp_path, monkeypatch):
+    _patch_voiceover(monkeypatch)
+
+    def fake_source_preflight(recipe, matches, diagnostics_dir, **kwargs):
+        diagnostics_dir.mkdir(parents=True, exist_ok=True)
+        (diagnostics_dir / "seg-001-01.png").write_bytes(b"diagnostic frame")
+        return {
+            "status": "warning",
+            "failures": [],
+            "warnings": ["seg-001 source frame 1: possible platform UI before rendering"],
+            "metrics": {},
+            "diagnostics_dir": diagnostics_dir.as_posix(),
+        }
+
+    monkeypatch.setattr("jianji_flow.cli.diagnose_source_matches", fake_source_preflight)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    work_dir = tmp_path / "work"
+
+    code = main(
+        [
+            "run",
+            "--mode",
+            "product",
+            "--reference",
+            str(fixture_root / "scenario-a-product" / "reference.mp4"),
+            "--assets",
+            str(fixture_root / "scenario-a-product" / "assets"),
+            "--script",
+            str(fixture_root / "scenario-a-product" / "script.txt"),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    review = (work_dir / "review.md").read_text(encoding="utf-8")
+    assert code == 0
+    assert "Status: warning" in review
+    assert "source frame 1" in review
+    assert "source_diagnostics" in review
+    assert (work_dir / "source-diagnostics" / "seg-001-01.png").exists()
+    assert (work_dir / "remix.mp4").exists()
 
 
 def test_semantic_failure_removes_generated_success_artifacts(tmp_path, monkeypatch):

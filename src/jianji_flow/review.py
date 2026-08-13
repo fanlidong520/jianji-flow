@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from collections import Counter
 from html import escape
 from pathlib import Path
 
@@ -60,6 +61,9 @@ def build_review(
             warnings.append(f"{segment_id} low confidence: {confidence}")
             low_confidence_segments.append(str(segment_id))
 
+    warnings.extend(_source_diversity_warnings(recipe, matches))
+    warnings.extend(_match_evidence_warnings(recipe, matches))
+
     if check_artifacts:
         artifact_result = _artifact_review(recipe, remix_path, captions_path, ass_path, voiceover_path, contact_sheet_path)
         failures.extend(artifact_result["failures"])
@@ -85,6 +89,54 @@ def build_review(
         contact_sheet=contact_sheet_path,
         review_html=review_html_path,
     )
+
+
+def _source_diversity_warnings(recipe: dict, matches: dict) -> list[str]:
+    by_id = _match_by_id(matches)
+    sources: list[str] = []
+    for segment in recipe.get("segments", []):
+        match = by_id.get(segment.get("match_id"))
+        if not match or match.get("status") not in {"selected", "low_confidence"}:
+            continue
+        source_path = match.get("source_path")
+        if isinstance(source_path, str) and source_path.strip():
+            sources.append(Path(source_path).as_posix().casefold())
+
+    if len(sources) < 3:
+        return []
+    source, count = Counter(sources).most_common(1)[0]
+    threshold = max(3, round(len(sources) * 0.67))
+    if count < threshold:
+        return []
+    return [
+        f"{count} of {len(sources)} segments come from the same source video; "
+        "the result may look like a voiceover shell instead of a true remix. "
+        "Compare it with the original before using."
+    ]
+
+
+def _match_evidence_warnings(recipe: dict, matches: dict) -> list[str]:
+    by_id = _match_by_id(matches)
+    selected = []
+    filename_only = []
+    for segment in recipe.get("segments", []):
+        match = by_id.get(segment.get("match_id"))
+        if not match or match.get("status") not in {"selected", "low_confidence"}:
+            continue
+        selected.append(match)
+        evidence = [str(item) for item in match.get("evidence", [])]
+        if evidence and all(item.startswith("filename-role:") for item in evidence):
+            filename_only.append(str(segment.get("id", "unknown")))
+
+    if len(selected) < 3:
+        return []
+    if len(filename_only) < max(3, round(len(selected) * 0.8)):
+        return []
+    return [
+        f"{len(filename_only)} of {len(selected)} selected segments are filename only matches; "
+        "jianji-flow assembled role-labeled clips but did not verify the visuals. "
+        "Watch the contact sheet before treating this as a usable cut."
+    ]
 
 
 def _duration_tolerance_ms(duration_ms: int) -> int:
@@ -149,6 +201,7 @@ def _artifact_review(
                     failures.append(f"contact sheet has insufficient visual detail: {contact_sheet_path}")
                 else:
                     diagnosis = diagnose_contact_sheet_segments(contact_sheet_path, recipe)
+                    failures.extend(diagnosis.get("failures", []))
                     warnings.extend(diagnosis.get("warnings", []))
         except (OSError, UnidentifiedImageError) as exc:
             failures.append(f"contact sheet is not a readable image: {exc}")

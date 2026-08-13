@@ -130,7 +130,7 @@ def write_srt(recipe: dict, output_path: Path) -> None:
 
 
 def _ass_caption_margin_v(height: int) -> int:
-    return max(120, min(320, round(height * 0.18)))
+    return max(180, min(420, round(height * 0.28)))
 
 
 def ass_from_recipe(recipe: dict, *, width: int, height: int, font_name: str = "Microsoft YaHei") -> str:

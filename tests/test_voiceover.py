@@ -179,3 +179,33 @@ def test_create_voiceover_invokes_local_tts_and_validates_output(tmp_path: Path,
 
     assert result == output
     assert probe_voiceover(output).duration_ms > 0
+
+
+def test_create_voiceover_allows_shorter_audio_before_timeline_retime(tmp_path: Path, monkeypatch):
+    output = tmp_path / "voiceover.wav"
+    real_run = subprocess.run
+
+    def fake_run(command, **kwargs):
+        if command[:3] != ["powershell", "-NoProfile", "-EncodedCommand"]:
+            return real_run(command, **kwargs)
+        _write_tone_wav(output, seconds=0.25)
+
+        class Result:
+            returncode = 0
+            stderr = ""
+            stdout = ""
+
+        return Result()
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fake_run)
+
+    result = create_voiceover(
+        {
+            "duration_ms": 43_933,
+            "segments": [{"caption": "\u5bb6\u5c45\u6e05\u6d01"}],
+        },
+        output,
+    )
+
+    assert result == output
+    assert probe_voiceover(output).duration_ms < 43_933

@@ -1,8 +1,8 @@
 # jianji-flow
 
-`jianji-flow` 是一个开源 Codex 自动剪辑 skill：输入参考视频、本地素材目录和可选文案，输出一条可人工复核的短视频预览。
+`jianji-flow` 是一个开源 Codex 自动剪辑 skill：输入参考视频、本地素材目录和可选文案，输出一条可人工复核的短视频粗剪预览。
 
-当前 v0.2 已经能生成机器配音、烧录字幕、可播放预览视频、分段复核图和本地复核页。它更像一个“自动剪辑工作流底座”，不是完整替代剪映的桌面剪辑软件。
+当前版本更像一个“本地自动粗剪工作流底座”，不是完整替代剪映的桌面剪辑软件。它会生成机器配音、烧录字幕、可播放预览视频、分段复核图和本地复核页，也会在素材明显不够、源片段疑似有旧字幕/平台 UI、或匹配证据太弱时给出 warning/fail，而不是假装成片已经可发。
 
 ## 效果预览
 
@@ -13,22 +13,24 @@
 ## 适合谁
 
 - 想用 Codex 自动跑短视频粗剪的人。
-- 想先验证“参考视频拆解 -> 本地素材匹配 -> 自动生成预览”的创作者。
+- 想先验证“固定短视频结构 -> 本地素材匹配 -> 自动生成预览”的创作者。
 - 想做带货、口播切片、素材复用流程，但仍愿意人工复核结果的人。
 
-## What v0.2 Does
+## What It Does Now
 
 - Builds a structured timeline for `product` or `talking-head` videos.
 - Scans local video assets and writes `manifest.json`.
 - Matches timeline segments to assets and writes `matches.json`.
 - Writes the authoritative timeline to `recipe.json`.
+- Runs source preflight checks on selected source frames before voiceover and rendering.
 - Generates `captions.srt` and `captions.ass`.
 - Generates `voiceover.wav` with a local Windows Chinese TTS voice when available.
 - Renders `remix.mp4` with burned-in captions and voiceover audio.
 - Writes `contact-sheet.png` with one frame per timeline segment.
 - Writes `review.md` and `review.html` for manual inspection.
+- Marks filename-only matching as `warning` because it does not prove visual understanding.
 
-## What v0.2 Does Not Do
+## What It Does Not Do
 
 - It does not create Jianying or CapCut draft projects.
 - It does not build a full desktop editing application.
@@ -36,6 +38,7 @@
 - It does not publish videos.
 - It does not preserve source audio by default.
 - It does not generate music, effects, or beat-synced edits.
+- It does not truly decompose a viral reference video into camera moves, hooks, or pacing yet.
 - It does not guarantee semantic matching beyond the current auditable matching evidence.
 
 ## 安装
@@ -165,11 +168,12 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 
 重点检查：
 
-- `review.md` 的状态是 `pass` 或 `warning`，不是 `fail`。
+- `review.md` 的状态是 `pass` 或 `warning`，不是 `fail`。`warning` 不是可直接发布，它表示需要人工确认。
 - `contact-sheet.png` 里每一段都有不同画面，不是纯色背景或空白图。
 - `remix.mp4` 有声音，字幕可读，画面没有明显黑屏、卡帧或严重拉伸。
 - `matches.json` 里的素材路径确实来自你的 `assets/` 文件夹。
-- 低置信度片段要人工确认，不要直接发布。
+- 如果报告出现 `filename-only`，说明系统只是按文件名角色组装，必须看 `contact-sheet.png` 确认画面是否真的对上文案。
+- 如果报告出现 `source_diagnostics` 或 `source-diagnostics`，说明源素材预检发现问题，优先替换对应素材。
 
 ## Validation
 
@@ -181,7 +185,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 177 passed
+- `python -m pytest -q` -> 249 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 
@@ -191,6 +195,7 @@ Latest local result:
 - URL, protocol, protocol-relative, and network paths are rejected.
 - Outputs must stay inside the requested work directory.
 - Blocking failures remove stale success artifacts.
+- Failed artifact review keeps diagnostic screenshots when they explain the failure.
 - `review.md` must report failures and warnings honestly.
 
 ## Known Limitations

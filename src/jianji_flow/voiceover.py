@@ -197,7 +197,7 @@ try {{
             if output_path.exists():
                 output_path.unlink()
             raise RuntimeError(detail)
-        validate_voiceover(output_path, expected_duration_ms=int(recipe.get("duration_ms", 0) or 0))
+        validate_voiceover(output_path)
         return output_path
     finally:
         if text_path.exists():

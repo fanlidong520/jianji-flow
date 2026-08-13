@@ -134,7 +134,7 @@ def test_ass_from_recipe_places_vertical_captions_above_platform_ui():
     ass = ass_from_recipe(recipe, width=592, height=1280)
 
     style_line = next(line for line in ass.splitlines() if line.startswith("Style: Default"))
-    assert style_line.endswith(",230,1")
+    assert style_line.endswith(",358,1")
 
 
 def test_ass_from_recipe_does_not_double_escape_caption_text():

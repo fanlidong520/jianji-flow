@@ -16,9 +16,11 @@ from jianji_flow.media_probe import run_ffprobe
 from jianji_flow.media_scan import scan_assets, write_manifest
 from jianji_flow.paths import make_output_dir, resolve_existing_dir, resolve_existing_file
 from jianji_flow.planner import build_segment_plan
+from jianji_flow.quality_diagnosis import diagnose_source_matches
 from jianji_flow.quickstart import default_product_script, default_quick_work_dir
 from jianji_flow.render import render_preview
 from jianji_flow.review import build_review, write_review_html, write_review_markdown
+from jianji_flow.review_summary import build_review_summary
 from jianji_flow.semantics import validate_semantics
 from jianji_flow.subtitles import write_ass, write_srt
 from jianji_flow.voiceover import create_voiceover, probe_voiceover, validate_voiceover
@@ -91,8 +93,11 @@ def _run_state_artifact_names() -> tuple[str, ...]:
     )
 
 
-def _clear_success_artifacts(work_dir: Path) -> None:
+def _clear_success_artifacts(work_dir: Path, *, keep_diagnostics: bool = False) -> None:
+    diagnostic_names = {"contact-sheet.png"} if keep_diagnostics else set()
     for name in _success_artifact_names():
+        if name in diagnostic_names:
+            continue
         path = work_dir / name
         if path.exists():
             path.unlink()
@@ -125,10 +130,17 @@ def _write_diagnosis(work_dir: Path, text: str) -> Path:
     return path
 
 
-def _remove_success_outputs_from_review(review: dict) -> None:
+def _remove_success_outputs_from_review(review: dict, *, keep_diagnostics: bool = False) -> None:
     outputs = review.get("outputs", {})
-    for name in ("remix", "voiceover", "captions_ass", "contact_sheet", "review_html"):
+    removable_outputs = ["remix", "voiceover", "captions_ass", "review_html"]
+    if not keep_diagnostics:
+        removable_outputs.append("contact_sheet")
+    for name in removable_outputs:
         outputs.pop(name, None)
+
+
+def _minimum_viable_voiceover_duration_ms(segment_count: int) -> int:
+    return max(1000, segment_count * 250)
 
 
 def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None = None) -> int:
@@ -175,6 +187,7 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         ass_path = work_dir / "captions.ass"
         voiceover_path = work_dir / "voiceover.wav"
         contact_sheet_path = work_dir / "contact-sheet.png"
+        source_diagnostics_dir = work_dir / "source-diagnostics"
         review_path = work_dir / "review.md"
         review_html_path = work_dir / "review.html"
         _write_json(matches_path, matches)
@@ -202,9 +215,36 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             print(f"validation failed; review written to {review_path}", file=sys.stderr)
             return 1
 
+        source_preflight = diagnose_source_matches(recipe, matches, source_diagnostics_dir)
+        if source_preflight["status"] == "fail":
+            _clear_success_artifacts(work_dir)
+            review = {
+                "status": "fail",
+                "failures": source_preflight["failures"],
+                "warnings": source_preflight["warnings"],
+                "missing_segments": [],
+                "low_confidence_segments": [],
+                "outputs": {
+                    "manifest": manifest_path.as_posix(),
+                    "recipe": recipe_path.as_posix(),
+                    "matches": matches_path.as_posix(),
+                    "captions": captions_path.as_posix(),
+                    "source_diagnostics": source_preflight["diagnostics_dir"],
+                },
+            }
+            write_review_markdown(review, review_path)
+            print(f"source preflight failed; review written to {review_path}", file=sys.stderr)
+            return 1
+
         create_voiceover(recipe, voiceover_path)
-        validate_voiceover(voiceover_path, expected_duration_ms=int(recipe["duration_ms"]))
+        validate_voiceover(voiceover_path)
         voiceover_duration_ms = probe_voiceover(voiceover_path).duration_ms
+        minimum_voiceover_ms = _minimum_viable_voiceover_duration_ms(len(recipe.get("segments", [])))
+        if voiceover_duration_ms < minimum_voiceover_ms:
+            raise ValueError(
+                f"voiceover duration {voiceover_duration_ms}ms is too short for "
+                f"{len(recipe.get('segments', []))} segments"
+            )
         recipe, matches = retime_recipe_and_matches(recipe, matches, voiceover_duration_ms)
         validate_voiceover(voiceover_path, expected_duration_ms=int(recipe["duration_ms"]))
         semantic_errors = validate_semantics(recipe, matches, manifest, str(reference_path), str(asset_root), str(work_dir))
@@ -257,9 +297,14 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         review["outputs"]["recipe"] = recipe_path.as_posix()
         review["outputs"]["matches"] = matches_path.as_posix()
         review["outputs"]["captions_ass"] = ass_path.as_posix()
+        if source_preflight["status"] == "warning":
+            review["warnings"].extend(source_preflight["warnings"])
+            review["outputs"]["source_diagnostics"] = source_preflight["diagnostics_dir"]
+            review["status"] = "fail" if review["failures"] else "warning"
+            review["summary"] = build_review_summary(review)
         if review["status"] == "fail":
-            _clear_success_artifacts(work_dir)
-            _remove_success_outputs_from_review(review)
+            _clear_success_artifacts(work_dir, keep_diagnostics=True)
+            _remove_success_outputs_from_review(review, keep_diagnostics=True)
             write_review_markdown(review, review_path)
             print(f"jianji-flow failed review: {review_path}", file=sys.stderr)
             return 1

@@ -6,8 +6,9 @@ description: Create auditable preview videos from a reference video, a local ass
 # jianji-flow
 
 Use this skill when the user wants an automatic local preview-video workflow.
-Version 0.2 creates inspectable intermediate files, machine voiceover, burned-in captions, a playable MP4 preview, and a local review page.
+Current versions create inspectable intermediate files, machine voiceover, burned-in captions, a playable MP4 preview, and a local review page.
 It does not create Jianying, CapCut, or other editor draft projects.
+Treat it as a local auditable rough-cut workflow, not as a full editor or a true viral-reference decomposition engine.
 
 ## Required Inputs
 
@@ -40,11 +41,12 @@ Detailed workflow:
 4. Build the segment plan and create `matches.json` and `recipe.json`.
 5. Run JSON Schema validation and semantic validation.
 6. Stop before rendering if validation has any blocking failure.
-7. Write `captions.srt` and `captions.ass`.
-8. Generate `voiceover.wav` with local machine TTS.
-9. Render `remix.mp4` only from validated manifest assets, burned-in captions, and generated voiceover.
-10. Write `contact-sheet.png` with one frame per segment.
-11. Write `review.md` and `review.html` with pass, warning, or fail status.
+7. Run source preflight on selected source frames; stop before voiceover/render if severe old subtitles or platform UI are detected.
+8. Write `captions.srt` and `captions.ass`.
+9. Generate `voiceover.wav` with local machine TTS.
+10. Render `remix.mp4` only from validated manifest assets, burned-in captions, and generated voiceover.
+11. Write `contact-sheet.png` with one frame per segment.
+12. Write `review.md` and `review.html` with pass, warning, or fail status.
 
 ## Hard Rules
 
@@ -54,8 +56,9 @@ Detailed workflow:
 - Do not render a segment whose match is missing or rejected.
 - Do not hide low-confidence matches; report them in `review.md`.
 - Do not leave stale success artifacts after a failed rerun.
-- Do not describe a run as successful unless `review.md` is pass or warning and the requested output artifacts exist.
-- Do not claim image support, music, effects, publishing, source-audio preservation, or editor draft export in v0.2.
+- Do not describe a run as successful unless `review.md` is pass or actionable warning and the requested output artifacts exist.
+- Do not call a filename-only warning visually verified; tell the user it must be checked in `contact-sheet.png`.
+- Do not claim image support, music, effects, publishing, source-audio preservation, true reference decomposition, or editor draft export.
 
 ## Commands
 
@@ -114,5 +117,5 @@ On success or warning, report the paths for:
 - `review.md`
 - `review.html`
 
-On fail, report `review.md` and any diagnostic JSON files that were written.
+On fail, report `review.md` and any diagnostic files that were written, including `source-diagnostics` or preserved `contact-sheet.png`.
 Never describe a failed run as completed video output.

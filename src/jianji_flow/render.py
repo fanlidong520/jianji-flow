@@ -44,6 +44,15 @@ def _subtitle_filter_path(path: Path) -> str:
     return normalized.replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
 
 
+def _safe_area_boxes(width: int, height: int) -> tuple[str, str]:
+    top_height = max(0, round(height * 0.0875))
+    bottom_height = max(0, round(height * 0.126))
+    bottom_y = max(0, height - bottom_height)
+    top = f"drawbox=x=0:y=0:w=iw:h={top_height}:color=black@0.42:t=fill"
+    bottom = f"drawbox=x=0:y={bottom_y}:w=iw:h={bottom_height}:color=black@0.42:t=fill"
+    return top, bottom
+
+
 def _filter_complex(recipe: dict, source_count: int, captions_path: Path | None = None) -> str:
     target = recipe["target"]
     width = int(target["width"])
@@ -55,17 +64,20 @@ def _filter_complex(recipe: dict, source_count: int, captions_path: Path | None 
         label = f"v{index}"
         video_filters.append(
             f"[{index}:v:0]"
-            f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
-            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,"
+            "crop=iw*0.76:ih*0.58:(iw-iw*0.76)/2:ih*0.08,"
+            f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height},"
             f"fps={fps},setsar=1,setpts=PTS-STARTPTS"
             f"[{label}]"
         )
         video_labels.append(f"[{label}]")
     concat_filter = f"{''.join(video_labels)}concat=n={source_count}:v=1:a=0"
+    top_box, bottom_box = _safe_area_boxes(width, height)
+    visual_treatment = f"{top_box},{bottom_box}"
     if captions_path is None:
-        return ";".join(video_filters + [f"{concat_filter}[vout]"])
+        return ";".join(video_filters + [f"{concat_filter},{visual_treatment}[vout]"])
     subtitles = f"subtitles=filename='{_subtitle_filter_path(captions_path)}'"
-    return ";".join(video_filters + [f"{concat_filter}[vcat]", f"[vcat]{subtitles}[vout]"])
+    return ";".join(video_filters + [f"{concat_filter},{visual_treatment}[vcat]", f"[vcat]{subtitles}[vout]"])
 
 
 def build_ffmpeg_plan(
