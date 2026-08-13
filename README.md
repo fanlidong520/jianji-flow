@@ -22,7 +22,7 @@
 
 - Builds a structured timeline for `product` or `talking-head` videos.
 - Scans local video assets and writes `manifest.json`.
-- Writes `diagnosis.md` for product quick runs so material readiness is visible before judging the cut.
+- Writes `diagnosis.md` for product quick runs so material readiness and source-frame risks are visible before judging the cut.
 - Matches timeline segments to assets and writes `matches.json`.
 - Writes the authoritative timeline to `recipe.json`.
 - Runs source preflight checks on selected source frames before voiceover and rendering.
@@ -31,6 +31,7 @@
 - Renders `remix.mp4` with burned-in captions and voiceover audio.
 - Writes `contact-sheet.png` with one frame per timeline segment.
 - Writes `review.md` and `review.html` for manual inspection.
+- Shows `CANDIDATE` in `diagnosis.md` for filename/duration-ready clips, because that is not visual proof.
 - Marks filename-only matching as `warning` because it does not prove visual understanding.
 - Adds a `Story support` review section that warns when most story roles have no non-filename visual evidence.
 
@@ -157,7 +158,7 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 ## 输出文件
 
 - `manifest.json`: local asset inventory.
-- `diagnosis.md`: product material readiness report from filename and duration screening.
+- `diagnosis.md`: product material readiness report from filename/duration screening, with source preflight warnings or failures when found. `CANDIDATE` means the clip can be tried in a rough cut; it is not visual proof.
 - `recipe.json`: authoritative timeline.
 - `matches.json`: selected assets, confidence, and evidence.
 - `captions.srt`: editable subtitle file.
@@ -212,7 +213,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 266 passed
+- `python -m pytest -q` -> 268 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 

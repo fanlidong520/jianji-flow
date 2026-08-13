@@ -12,6 +12,11 @@
   non-filename visual evidence becomes a warning instead of a false pass.
 - Wrote `diagnosis.md` on successful product `quick` runs so material readiness
   remains visible before the user judges the rendered cut.
+- Appended source preflight warnings and failures to product `quick`
+  `diagnosis.md` so risky source frames are visible before judging the cut.
+- Changed product `quick` material diagnosis wording from user-visible `READY`
+  to `CANDIDATE` for filename/duration-ready clips, avoiding false visual
+  certainty.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while
   still removing stale success artifacts such as `remix.mp4`.
 - Reframed documentation around auditable rough-cut generation, not full editor

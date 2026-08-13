@@ -30,10 +30,11 @@ Likely paid users:
 Recommended path:
 
 1. Open-source CLI and Codex skill.
-2. Paid templates and validation packs for specific niches.
-3. Hosted or desktop wrapper for non-technical users.
-4. Team features: batch processing, shared brand presets, review queues.
-5. Services: setup, customization, private deployment, agency workflow design.
+2. Service-led setup for one concrete niche, delivering a validated local workflow and accepted rough cuts.
+3. Paid templates and validation packs for specific niches.
+4. Hosted or desktop wrapper for non-technical users.
+5. Team features: batch processing, shared brand presets, review queues.
+6. Services: customization, private deployment, agency workflow design.
 
 Avoid early monetization that weakens trust:
 
@@ -52,10 +53,28 @@ Deliverables:
 - material naming rules;
 - product script template;
 - validated `jianji-flow` workflow;
-- example outputs and review checklist;
+- three manually accepted rough cuts, including review reports and contact sheets;
 - 1-2 custom presets for the user's content type.
 
 This can validate demand before building a polished SaaS.
+
+## Open-Core Boundary
+
+Keep these free and open:
+
+- local single-video rough-cut generation;
+- open `manifest.json`, `recipe.json`, `matches.json`, caption files, and review reports;
+- material diagnosis, source-preflight warnings, and story-support warnings;
+- safety gates that prevent false pass or reference-video leakage.
+
+Paid offerings can sit around the workflow:
+
+- niche-specific templates, validation packs, and example material rules;
+- non-technical desktop or hosted UI;
+- batch queues, team presets, review history, and collaboration;
+- private deployment, custom rules, and workflow onboarding.
+
+Do not monetize by hiding risk reports or weakening the free workflow. Trust is the product.
 
 ## Business Metrics
 
@@ -76,4 +95,3 @@ Do not build paid SaaS until at least one real user outside this workspace:
 - produces a rough cut they would continue editing or publish after small changes;
 - asks for repeated use, customization, or batch support;
 - is willing to pay for saved time or setup.
-

@@ -144,9 +144,13 @@ def diagnose_product_assets(assets: list[dict], segments: list[dict]) -> dict:
 def format_asset_diagnosis(report: dict) -> str:
     lines = ["# Material diagnosis", "Filename and duration screening only; watch the video before publishing.", ""]
     for role, item in report.get("roles", {}).items():
-        label = item.get("status", "unknown").upper()
+        status = item.get("status", "unknown")
+        label = "CANDIDATE" if status == "ready" else status.upper()
         role_label = f"{role} / {ROLE_LABELS.get(role, role)}"
-        lines.append(f"- {role_label}: {label} - {item.get('message', '')}")
+        message = item.get("message", "")
+        if status == "ready":
+            message = f"{message}; not visual proof"
+        lines.append(f"- {role_label}: {label} - {message}")
     actions = report.get("actions", [])
     if actions:
         lines.append("")
@@ -161,7 +165,7 @@ def format_asset_diagnosis(report: dict) -> str:
         if not report.get("roles"):
             lines.extend(f"- {action}" for action in actions)
     decision = {
-        "pass": "Ready to run quick draft",
+        "pass": "Can run quick draft; inspect contact-sheet before publishing",
         "warning": "Can run, but review carefully",
         "fail": "Not ready",
     }.get(report.get("status"), "Not ready")

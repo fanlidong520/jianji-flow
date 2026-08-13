@@ -130,6 +130,35 @@ def _write_diagnosis(work_dir: Path, text: str) -> Path:
     return path
 
 
+def _source_preflight_diagnosis_text(source_preflight: dict) -> str:
+    failures = list(source_preflight.get("failures", []))
+    warnings = list(source_preflight.get("warnings", []))
+    if not failures and not warnings:
+        return ""
+
+    lines = ["", "## Source preflight", "Source frame screening before voiceover and rendering.", ""]
+    lines.extend(f"- FAIL - {failure}" for failure in failures)
+    lines.extend(f"- WARNING - {warning}" for warning in warnings)
+    diagnostics_dir = source_preflight.get("diagnostics_dir")
+    if diagnostics_dir:
+        lines.append(f"- Diagnostics: `{diagnostics_dir}`")
+    lines.append("")
+    lines.append("Replace source clips with platform UI, old subtitles, or damaged frames before publishing.")
+    return "\n".join(lines) + "\n"
+
+
+def _append_existing_diagnosis(work_dir: Path, text: str) -> Path | None:
+    if not text:
+        return None
+    path = work_dir / "diagnosis.md"
+    if not path.exists():
+        return None
+    existing = path.read_text(encoding="utf-8")
+    separator = "" if existing.endswith("\n") else "\n"
+    path.write_text(existing + separator + text, encoding="utf-8")
+    return path
+
+
 def _remove_success_outputs_from_review(review: dict, *, keep_diagnostics: bool = False) -> None:
     outputs = review.get("outputs", {})
     removable_outputs = ["remix", "voiceover", "captions_ass", "review_html"]
@@ -216,6 +245,7 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             return 1
 
         source_preflight = diagnose_source_matches(recipe, matches, source_diagnostics_dir)
+        _append_existing_diagnosis(work_dir, _source_preflight_diagnosis_text(source_preflight))
         if source_preflight["status"] == "fail":
             _clear_success_artifacts(work_dir)
             review = {

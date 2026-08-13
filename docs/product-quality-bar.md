@@ -63,19 +63,23 @@ Still not good enough:
 
 - material came from one already-posted video, so old embedded text remains;
 - one warned segment still has lower-safe-area residue;
-- review warns, but material diagnosis should stop earlier and say the source clips are not clean enough;
+- source preflight warnings now appear in material diagnosis, but the tool still cannot judge whether clean clips truly support the product story;
 - no independent real-material packs have passed the same bar yet.
 
-## Current v17 Judgment
+## Current v19 Judgment
 
-`out/real-material-remix-v17` should be judged as an honesty checkpoint, not a launch demo.
+`out/real-material-remix-v19` should be judged as an honesty checkpoint, not a launch demo.
 The review layer now exposes `Story support` so a run can distinguish "enough clips to render" from "enough evidence to trust the product story."
 
 Passes:
 
-- full test suite passed with 266 tests;
+- full test suite passed with 268 tests;
 - smoke and P0 passed;
-- product `quick` writes `diagnosis.md` even when material roles are ready, so filename/duration screening remains visible;
+- product `quick` writes `diagnosis.md` even when material roles can be tried, so filename/duration screening remains visible without calling them visually ready;
+- product `quick` labels filename/duration-ready clips as `CANDIDATE`, not user-visible `READY`;
+- product `quick` appends source preflight warnings/failures to `diagnosis.md` when risky source frames are found;
+- `out/real-material-remix-v19/diagnosis.md` shows all five roles as `CANDIDATE`, not visually ready;
+- `out/real-material-remix-v19/remix.mp4` is 37.907s, 592x1280, with audio present;
 - source preflight runs before voiceover/render;
 - review status must be `warning`, not `pass`, when most story roles have no non-filename visual evidence.
 - `Story support` must name the weak roles in `next_action` so a non-technical user knows what to replace or manually verify.

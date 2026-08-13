@@ -191,7 +191,101 @@ def test_quick_writes_material_diagnosis_even_when_assets_are_ready(tmp_path, mo
     assert diagnosis.exists()
     text = diagnosis.read_text(encoding="utf-8")
     assert "Filename and duration screening only" in text
-    assert "Ready to run quick draft" in text
+    assert "CANDIDATE" in text
+    assert "READY" not in text
+    assert "not visual proof" in text
+    assert "Can run quick draft; inspect contact-sheet before publishing" in text
+
+
+def test_quick_appends_source_preflight_warning_to_material_diagnosis(tmp_path, monkeypatch):
+    _patch_voiceover(monkeypatch)
+
+    def fake_source_preflight(recipe, matches, diagnostics_dir, **kwargs):
+        diagnostics_dir.mkdir(parents=True, exist_ok=True)
+        (diagnostics_dir / "seg-001-01.png").write_bytes(b"diagnostic frame")
+        return {
+            "status": "warning",
+            "failures": [],
+            "warnings": ["seg-001 source frame 1: possible platform UI before rendering"],
+            "metrics": {},
+            "diagnostics_dir": diagnostics_dir.as_posix(),
+        }
+
+    monkeypatch.setattr("jianji_flow.cli.diagnose_source_matches", fake_source_preflight)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    work_dir = tmp_path / "quick"
+
+    code = main(
+        [
+            "quick",
+            "--reference",
+            str(fixture_root / "scenario-a-product" / "reference.mp4"),
+            "--assets",
+            str(fixture_root / "scenario-a-product" / "assets"),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    diagnosis = (work_dir / "diagnosis.md").read_text(encoding="utf-8")
+    assert code == 0
+    assert "## Source preflight" in diagnosis
+    assert "WARNING - seg-001 source frame 1" in diagnosis
+    assert "source-diagnostics" in diagnosis
+
+
+def test_quick_appends_source_preflight_failure_to_material_diagnosis(tmp_path, monkeypatch):
+    def forbidden_create_voiceover(*args, **kwargs):
+        raise AssertionError("voiceover should not run after source preflight failure")
+
+    def fake_source_preflight(recipe, matches, diagnostics_dir, **kwargs):
+        diagnostics_dir.mkdir(parents=True, exist_ok=True)
+        (diagnostics_dir / "seg-001-01.png").write_bytes(b"diagnostic frame")
+        return {
+            "status": "fail",
+            "failures": ["seg-001 source frame 1: severe platform UI before rendering"],
+            "warnings": [],
+            "metrics": {},
+            "diagnostics_dir": diagnostics_dir.as_posix(),
+        }
+
+    monkeypatch.setattr("jianji_flow.cli.create_voiceover", forbidden_create_voiceover)
+    monkeypatch.setattr("jianji_flow.cli.diagnose_source_matches", fake_source_preflight)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    work_dir = tmp_path / "quick"
+
+    code = main(
+        [
+            "quick",
+            "--reference",
+            str(fixture_root / "scenario-a-product" / "reference.mp4"),
+            "--assets",
+            str(fixture_root / "scenario-a-product" / "assets"),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    diagnosis = (work_dir / "diagnosis.md").read_text(encoding="utf-8")
+    assert code == 1
+    assert "## Source preflight" in diagnosis
+    assert "FAIL - seg-001 source frame 1" in diagnosis
+    assert "source-diagnostics" in diagnosis
+    assert not (work_dir / "remix.mp4").exists()
 
 
 def test_quick_talking_head_requires_script(tmp_path, capsys):

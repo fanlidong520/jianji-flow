@@ -101,7 +101,10 @@ def test_format_asset_diagnosis_ends_with_decision():
     assert "Material diagnosis" in text
     assert "hook / 开头" in text
     assert "Filename and duration screening only" in text
-    assert text.strip().endswith("Ready to run quick draft")
+    assert "CANDIDATE" in text
+    assert "READY" not in text
+    assert "not visual proof" in text
+    assert text.strip().endswith("Can run quick draft; inspect contact-sheet before publishing")
 
 
 def test_format_asset_diagnosis_uses_plain_chinese_next_actions():

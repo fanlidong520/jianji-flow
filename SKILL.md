@@ -29,7 +29,8 @@ For first-time users, prefer:
 2. `jianji-flow demo`
 3. `jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets`
 
-For product `quick`, report `diagnosis.md` even when the run continues; it is a filename and duration screening report, not proof of visual correctness.
+For product `quick`, report `diagnosis.md` even when the run continues; it starts as a filename/duration screening report and appends source preflight warnings or failures when selected source frames look risky. It is not proof of visual correctness.
+In `diagnosis.md`, use `CANDIDATE` for filename/duration-ready clips. Do not call those clips `READY`; that wording overstates visual understanding.
 If the user runs `quick` without `--script`, say the default script is only for
 cleaning-style home-product examples; other products need their own script.
 
@@ -42,7 +43,7 @@ Detailed workflow:
 5. Build the segment plan and create `matches.json` and `recipe.json`.
 6. Run JSON Schema validation and semantic validation.
 7. Stop before rendering if validation has any blocking failure.
-8. Run source preflight on selected source frames; stop before voiceover/render if severe old subtitles or platform UI are detected.
+8. Run source preflight on selected source frames; append warnings/failures to product quick `diagnosis.md` when present, and stop before voiceover/render if severe old subtitles or platform UI are detected.
 9. Write `captions.srt` and `captions.ass`.
 10. Generate `voiceover.wav` with local machine TTS.
 11. Render `remix.mp4` only from validated manifest assets, burned-in captions, and generated voiceover.
@@ -59,6 +60,7 @@ Detailed workflow:
 - Do not leave stale success artifacts after a failed rerun.
 - Do not describe a run as publish-ready. `pass` still needs human review; `warning` means review-required rough cut only.
 - Do not call a filename-only warning visually verified; tell the user it must be checked in `contact-sheet.png`.
+- Do not describe `diagnosis.md` `CANDIDATE` clips as visually ready; they only passed pre-render filename/duration screening.
 - Do not call weak `Story support` usable; tell the user to confirm hook, pain, feature, evidence, and CTA in `contact-sheet.png`.
 - Do not claim image support, music, effects, publishing, source-audio preservation, true reference decomposition, or editor draft export.
 
@@ -109,7 +111,7 @@ python -m pytest -q
 On success or warning, report the paths for:
 
 - `manifest.json`
-- `diagnosis.md` for product quick runs
+- `diagnosis.md` for product quick runs, including source preflight warnings or failures when found
 - `recipe.json`
 - `matches.json`
 - `captions.srt`
