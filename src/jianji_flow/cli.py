@@ -300,7 +300,7 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
                     "captions": captions_path.as_posix(),
                 },
             }
-            write_review_markdown(review, review_path)
+            write_review_markdown(review, review_path, recipe, matches)
             print(f"validation failed; review written to {review_path}", file=sys.stderr)
             return 1
 
@@ -324,7 +324,7 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
                     "source_diagnostics": source_preflight["diagnostics_dir"],
                 },
             }
-            write_review_markdown(review, review_path)
+            write_review_markdown(review, review_path, recipe, matches)
             print(f"source preflight failed; review written to {review_path}", file=sys.stderr)
             return 1
 
@@ -355,7 +355,7 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
                     "captions": captions_path.as_posix(),
                 },
             }
-            write_review_markdown(review, review_path)
+            write_review_markdown(review, review_path, recipe, matches)
             print(f"validation failed after voiceover retiming; review written to {review_path}", file=sys.stderr)
             return 1
         _write_json(matches_path, matches)
@@ -402,10 +402,10 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         if review["status"] == "fail":
             _clear_success_artifacts(work_dir, keep_diagnostics=True)
             _remove_success_outputs_from_review(review, keep_diagnostics=True)
-            write_review_markdown(review, review_path)
+            write_review_markdown(review, review_path, recipe, matches)
             print(f"jianji-flow failed review: {review_path}", file=sys.stderr)
             return 1
-        write_review_markdown(review, review_path)
+        write_review_markdown(review, review_path, recipe, matches)
         write_review_html(review, recipe, matches, review_html_path)
         print(f"jianji-flow completed: {review_path}")
         return 0 if review["status"] in {"pass", "warning"} else 1

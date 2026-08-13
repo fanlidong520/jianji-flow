@@ -49,7 +49,7 @@ Detailed workflow:
 11. Render `remix.mp4` only from validated manifest assets, burned-in captions, and generated voiceover.
 12. Write `contact-sheet.png` with one frame per segment.
 13. Write `fixes.template.json` for weak or low-confidence segments.
-14. Write `review.md` and `review.html` with pass, warning, fail status, and `Story support`.
+14. Write `review.md` and `review.html` with pass, warning, fail status, `Story support`, and a per-segment `Storyboard`.
 
 ## Hard Rules
 
@@ -143,3 +143,4 @@ Never describe a failed run as completed video output.
 - `fail`: blocking issue; do not point to stale success artifacts as output.
 
 If `Story support` is `weak`, report its `next_action` exactly. Explain that the named roles lack non-filename visual evidence, then ask the user to replace or manually verify those clips in `contact-sheet.png`. If the user wants to repair one segment, point them to `fixes.template.json`: check `recommended_asset_path`, `recommendation_status`, `recommendation_warnings`, and `role_match`; fill one `asset_path` only when the candidate is genuinely appropriate, rerun with `--fixes`, then compare the same segment in the new `contact-sheet.png`.
+Use the `Storyboard` section before discussing JSON: it is the fastest way to see each segment's caption, selected asset, source range, evidence, and risk.

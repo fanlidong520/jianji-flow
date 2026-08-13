@@ -875,6 +875,51 @@ def test_build_review_markdown_contains_story_support_section():
     assert "- next_action: Replace or manually verify hook, pain clips." in markdown
 
 
+def test_build_review_markdown_contains_storyboard_rows():
+    review = {
+        "status": "warning",
+        "warnings": ["seg-001 low confidence"],
+        "failures": [],
+        "outputs": {},
+    }
+    recipe = {
+        "segments": [
+            {
+                "id": "seg-001",
+                "role": "hook",
+                "match_id": "match-001",
+                "caption": "Open with the dust problem",
+                "start_ms": 0,
+                "end_ms": 1200,
+            }
+        ]
+    }
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "source_path": "assets/01-hook.mp4",
+                "source_start_ms": 200,
+                "source_end_ms": 1400,
+                "confidence": 0.55,
+                "evidence": ["filename-role:hook", "sequence-diversity:avoids-adjacent-source"],
+            }
+        ]
+    }
+
+    markdown = build_review_markdown(review, recipe, matches)
+
+    assert "## Storyboard" in markdown
+    assert "seg-001" in markdown
+    assert "hook" in markdown
+    assert "Open with the dust problem" in markdown
+    assert "assets/01-hook.mp4" in markdown
+    assert "200-1400ms" in markdown
+    assert "filename-role:hook" in markdown
+    assert "low confidence" in markdown
+
+
 def test_write_review_markdown_creates_file(tmp_path: Path):
     output = tmp_path / "nested" / "review.md"
 
@@ -949,6 +994,51 @@ def test_build_review_html_contains_story_support_status():
     assert "weak" in html
     assert "filename_only_roles" in html
     assert "Replace or manually verify hook clips." in html
+
+
+def test_build_review_html_contains_storyboard_rows():
+    review = {
+        "status": "warning",
+        "outputs": {},
+        "warnings": ["Adjacent segments seg-001 and seg-002 use the same source video"],
+        "failures": [],
+    }
+    recipe = {
+        "segments": [
+            {
+                "id": "seg-001",
+                "role": "feature",
+                "match_id": "match-001",
+                "caption": "Show the product detail",
+                "start_ms": 1000,
+                "end_ms": 2600,
+            }
+        ]
+    }
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "source_path": "assets/03-feature.mp4",
+                "source_start_ms": 3000,
+                "source_end_ms": 4600,
+                "confidence": 0.92,
+                "evidence": ["filename-role:feature", "source-window:3000-4600"],
+            }
+        ]
+    }
+
+    html = build_review_html(review, recipe, matches)
+
+    assert "Storyboard" in html
+    assert "seg-001" in html
+    assert "feature" in html
+    assert "Show the product detail" in html
+    assert "assets/03-feature.mp4" in html
+    assert "3000-4600ms" in html
+    assert "source-window:3000-4600" in html
+    assert "same source video" in html
 
 
 def test_build_review_html_contains_plain_language_summary():

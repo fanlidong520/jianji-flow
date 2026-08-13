@@ -163,6 +163,24 @@ Still not good enough:
 - fallback candidates remain useful only for human inspection;
 - the next product step should generate and inspect multiple visual windows per source asset so a single clip can provide several meaningful replacement candidates.
 
+## Current v29 Judgment
+
+The review output now explains the cut segment by segment instead of forcing the user to cross-check JSON files.
+
+Passes:
+
+- `review.md` and `review.html` include a `Storyboard` section;
+- each storyboard row shows segment id, role, caption, selected asset, source range, evidence, and risk;
+- real-material `out/real-material-remix-v29/review.md` shows five storyboard rows for hook, pain, feature, evidence, and cta;
+- storyboard risks correctly remain `filename-only match` on real material, so the page explains why the rough cut still needs manual review;
+- retimed `source-window` evidence now matches the retimed `source_start_ms` and `source_end_ms`, preventing conflicting clip-window claims in the review page.
+
+Still not good enough:
+
+- the storyboard explains the existing choice, but it does not yet show visual candidate thumbnails or let the user choose an alternative without JSON;
+- the page still reports evidence strings such as `filename-role` and `window-score`; these need friendlier labels before a non-technical user trial;
+- the next product step should add per-segment candidate frames and a plain-language "why this shot" explanation.
+
 ## Product Principle
 
 Do not optimize for impressive automation claims.

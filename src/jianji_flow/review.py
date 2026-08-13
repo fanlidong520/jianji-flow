@@ -367,7 +367,102 @@ def _story_support_html(story_support: dict | None) -> str:
     return "".join(items)
 
 
-def build_review_markdown(review: dict) -> str:
+def _storyboard_rows(recipe: dict | None, matches: dict | None, review: dict) -> list[dict[str, str]]:
+    if not recipe or not matches:
+        return []
+    match_by_id = _match_by_id(matches)
+    warnings = [str(item) for item in review.get("warnings", [])]
+    rows: list[dict[str, str]] = []
+    for segment in recipe.get("segments", []):
+        segment_id = str(segment.get("id", ""))
+        match = match_by_id.get(segment.get("match_id"), {})
+        evidence = [str(item) for item in match.get("evidence", [])]
+        risks = _storyboard_risks(segment_id, match, evidence, warnings)
+        source_start = match.get("source_start_ms", "")
+        source_end = match.get("source_end_ms", "")
+        source_range = (
+            f"{source_start}-{source_end}ms"
+            if isinstance(source_start, int) and isinstance(source_end, int)
+            else ""
+        )
+        rows.append(
+            {
+                "segment_id": segment_id,
+                "role": str(segment.get("role", "")),
+                "time": f"{segment.get('start_ms', '')}-{segment.get('end_ms', '')}ms",
+                "caption": str(segment.get("caption", "")),
+                "asset": str(match.get("source_path", "")),
+                "source_range": source_range,
+                "confidence": str(match.get("confidence", "")),
+                "evidence": ", ".join(evidence) if evidence else "none",
+                "risk": "; ".join(risks) if risks else "none",
+            }
+        )
+    return rows
+
+
+def _storyboard_risks(segment_id: str, match: dict, evidence: list[str], warnings: list[str]) -> list[str]:
+    risks: list[str] = []
+    status = match.get("status")
+    if status == "low_confidence":
+        risks.append("low confidence")
+    elif status == "missing":
+        risks.append("missing asset")
+    if evidence and any(item.startswith("filename-role:") for item in evidence) and not any(
+        _is_visual_evidence(item) for item in evidence
+    ):
+        risks.append("filename-only match")
+    risks.extend(warning for warning in warnings if segment_id and segment_id in warning)
+    return risks
+
+
+def _storyboard_markdown_section(recipe: dict | None, matches: dict | None, review: dict) -> list[str]:
+    lines = ["## Storyboard"]
+    rows = _storyboard_rows(recipe, matches, review)
+    if not rows:
+        lines.append("- none")
+        return lines
+    lines.append("| Segment | Role | Caption | Asset | Source range | Evidence | Risk |")
+    lines.append("| --- | --- | --- | --- | --- | --- | --- |")
+    for row in rows:
+        lines.append(
+            "| "
+            + " | ".join(
+                _markdown_cell(row[key])
+                for key in ("segment_id", "role", "caption", "asset", "source_range", "evidence", "risk")
+            )
+            + " |"
+        )
+    return lines
+
+
+def _markdown_cell(value: str) -> str:
+    return str(value).replace("|", "\\|").replace("\n", " ")
+
+
+def _storyboard_html(recipe: dict | None, matches: dict | None, review: dict) -> str:
+    rows = _storyboard_rows(recipe, matches, review)
+    if not rows:
+        return "<p>none</p>"
+    body = []
+    for row in rows:
+        risk_class = " risk-none" if row["risk"] == "none" else " risk-warning"
+        body.append(
+            f"<article class=\"storyboard-row{risk_class}\">"
+            f"<div class=\"storyboard-head\"><span>{escape(row['segment_id'])}</span><strong>{escape(row['role'])}</strong></div>"
+            f"<p class=\"storyboard-caption\">{escape(row['caption'])}</p>"
+            f"<dl>"
+            f"<dt>Asset</dt><dd>{escape(row['asset'])}</dd>"
+            f"<dt>Source range</dt><dd>{escape(row['source_range'] or 'unknown')}</dd>"
+            f"<dt>Evidence</dt><dd>{escape(row['evidence'])}</dd>"
+            f"<dt>Risk</dt><dd>{escape(row['risk'])}</dd>"
+            f"</dl>"
+            "</article>"
+        )
+    return "".join(body)
+
+
+def build_review_markdown(review: dict, recipe: dict | None = None, matches: dict | None = None) -> str:
     summary = review.get("summary", build_review_summary(review))
     lines = [
         "# jianji-flow Review",
@@ -396,6 +491,8 @@ def build_review_markdown(review: dict) -> str:
     lines.extend(_list_section("Low confidence segments", list(review.get("low_confidence_segments", []))))
     lines.append("")
     lines.extend(_story_support_section(review.get("story_support")))
+    lines.append("")
+    lines.extend(_storyboard_markdown_section(recipe, matches, review))
     lines.extend(
         [
             "",
@@ -410,9 +507,14 @@ def build_review_markdown(review: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def write_review_markdown(review: dict, output_path: Path) -> None:
+def write_review_markdown(
+    review: dict,
+    output_path: Path,
+    recipe: dict | None = None,
+    matches: dict | None = None,
+) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(build_review_markdown(review), encoding="utf-8")
+    output_path.write_text(build_review_markdown(review, recipe, matches), encoding="utf-8")
 
 
 def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
@@ -450,6 +552,16 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
     th, td {{ border: 1px solid #d6dae0; padding: 8px; text-align: left; vertical-align: top; }}
     th {{ background: #eef1f4; }}
     code {{ background: #eef1f4; padding: 2px 4px; }}
+    .storyboard {{ display: grid; gap: 12px; }}
+    .storyboard-row {{ background: #fff; border: 1px solid #d6dae0; padding: 12px; }}
+    .storyboard-head {{ display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; }}
+    .storyboard-head span {{ color: #5b6470; font-family: Consolas, monospace; }}
+    .storyboard-caption {{ margin: 0 0 10px; font-weight: 700; }}
+    .storyboard dl {{ display: grid; grid-template-columns: 120px 1fr; gap: 6px 10px; margin: 0; }}
+    .storyboard dt {{ color: #5b6470; font-weight: 700; }}
+    .storyboard dd {{ margin: 0; overflow-wrap: anywhere; }}
+    .risk-warning {{ border-left: 4px solid #b45309; }}
+    .risk-none {{ border-left: 4px solid #2f855a; }}
   </style>
 </head>
 <body>
@@ -478,6 +590,8 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
   <ul>{failures}</ul>
   <h2>Story support</h2>
   <ul>{story_support}</ul>
+  <h2>Storyboard</h2>
+  <section class="storyboard">{_storyboard_html(recipe, matches, review)}</section>
   <h2>Segments</h2>
   <table>
     <thead>

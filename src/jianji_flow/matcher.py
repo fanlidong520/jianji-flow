@@ -455,9 +455,18 @@ def _retime_match_source_window(match: dict, duration_ms: int) -> dict:
     asset_duration_ms = int(match.get("asset_duration_ms", match["source_end_ms"]))
     source_start_ms = int(match["source_start_ms"])
     source_start_ms = min(source_start_ms, max(0, asset_duration_ms - duration_ms))
+    source_end_ms = source_start_ms + duration_ms
+    evidence = [
+        item
+        for item in match.get("evidence", [])
+        if not str(item).startswith("source-window:")
+    ]
+    if source_start_ms > 0:
+        evidence.append(f"source-window:{source_start_ms}-{source_end_ms}")
     return {
         **match,
         "source_start_ms": source_start_ms,
-        "source_end_ms": source_start_ms + duration_ms,
+        "source_end_ms": source_end_ms,
         "asset_duration_ms": asset_duration_ms,
+        "evidence": evidence,
     }

@@ -138,6 +138,17 @@ Latest local checkpoint after adjacent-source and wrong-role recommendation fixe
 - CLI integration now validates the generated `fixes.template.json` against `fixes.schema.json`;
 - `out/real-material-remix-v27/review.md` remains `warning`, correctly stating that all five roles still lack non-filename visual evidence.
 
+Latest local checkpoint after storyboard review output:
+
+- `python -m pytest -q` -> 306 passed;
+- `python scripts/run_smoke.py` -> smoke passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- `review.md` and `review.html` now include a per-segment `Storyboard`;
+- `out/real-material-remix-v29/review.md` has five storyboard rows with role, caption, selected asset, source range, evidence, and risk;
+- `out/real-material-remix-v29/review.html` has five `.storyboard-row` entries;
+- storyboard risk remains `filename-only match` for all five real-material roles, which is correct because no visual semantic evidence exists yet;
+- retimed `source-window` evidence now matches the retimed source ranges in `matches.json` and the storyboard.
+
 ## Launch Rule
 
 Do not announce the project publicly until:

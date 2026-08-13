@@ -328,3 +328,15 @@ def test_retime_recipe_and_matches_clamps_source_window_to_asset_duration():
     assert match["source_end_ms"] == 7000
     assert match["source_start_ms"] == 2000
     assert match["source_end_ms"] - match["source_start_ms"] == 5000
+
+
+def test_retime_recipe_and_matches_updates_source_window_evidence():
+    segment = {"id": "seg-001", "role": "feature", "start_ms": 4000, "end_ms": 6000, "caption": "Feature"}
+    matches = match_segments([segment], [FakeAsset("asset-feature", Path("assets/feature.mp4"), 7000)])
+    recipe = build_recipe("product", {"width": 1080, "height": 1920, "fps": 30}, [segment], matches)
+
+    _, retimed_matches = retime_recipe_and_matches(recipe, matches, 5000)
+
+    evidence = retimed_matches["matches"][0]["evidence"]
+    assert "source-window:2000-7000" in evidence
+    assert all(not item.startswith("source-window:4000-6000") for item in evidence)

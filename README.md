@@ -172,6 +172,8 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 - `review.html`: local visual review page.
 - `fixes.template.json`: editable repair file for replacing weak or low-confidence segments on the next run.
 
+`review.md` and `review.html` also include a `Storyboard` section. It lists each segment's role, caption, selected asset, source range, matching evidence, and risk, so a user can see what was cut without opening `matches.json`.
+
 ## 状态怎么理解
 
 | 状态 | 能不能继续用 | 必须怎么做 |
@@ -229,7 +231,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 303 passed
+- `python -m pytest -q` -> 306 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 

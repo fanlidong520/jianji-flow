@@ -33,6 +33,11 @@
   for manual inspection but are not presented as clean recommendations.
 - Added repair recommendation conflict warnings when multiple weak segments
   would reuse the same replacement asset.
+- Added a storyboard section to `review.md` and `review.html` so each segment's
+  role, caption, source range, evidence, and risk can be checked without opening
+  JSON files.
+- Kept retimed `source-window` evidence synchronized with retimed source ranges
+  so review pages do not show conflicting clip windows.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while
   still removing stale success artifacts such as `remix.mp4`.
 - Reframed documentation around auditable rough-cut generation, not full editor
