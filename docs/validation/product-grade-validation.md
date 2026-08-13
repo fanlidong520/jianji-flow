@@ -83,14 +83,15 @@ Manual judgment for v13:
 - Should not be used as the public open-source hero example.
 - Should not be labeled `pass` until visual/story evidence is stronger than filename-only role labels.
 
-Latest local checkpoint after story-support hardening:
+Latest local checkpoint after actionable story-support hardening:
 
-- `python -m pytest -q` -> 264 passed;
+- `python -m pytest -q` -> 265 passed;
 - `python scripts/run_smoke.py` -> smoke passed;
 - `python scripts/run_p0.py` -> p0 passed;
-- `out/real-material-remix-v15/review.md` -> warning, not pass;
-- `out/real-material-remix-v15/remix.mp4` -> 23.233s, 592x1280, 30fps, audio present;
+- `out/real-material-remix-v16/review.md` -> warning, not pass;
+- `out/real-material-remix-v16/remix.mp4` -> 23.233s, 592x1280, 30fps, audio present;
 - `review.md` and `review.html` include `Story support` with roles, filename-only roles, visual-evidence roles, and weak-evidence roles;
+- `Story support.next_action` should name the weak roles to replace or manually verify;
 - warning is correct because all five story roles rely on filename evidence and have no non-filename visual evidence.
 
 ## Launch Rule

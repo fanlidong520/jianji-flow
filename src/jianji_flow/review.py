@@ -174,6 +174,7 @@ def _story_support(recipe: dict, matches: dict) -> dict:
             "filename_only_roles": [],
             "visual_evidence_roles": [],
             "weak_evidence_roles": [],
+            "next_action": "Add usable clips for the planned story roles, then rerun.",
             "warning": "No selected clips support the story.",
         }
 
@@ -184,6 +185,7 @@ def _story_support(recipe: dict, matches: dict) -> dict:
             "filename_only_roles": filename_only_roles,
             "visual_evidence_roles": visual_evidence_roles,
             "weak_evidence_roles": weak_evidence_roles,
+            "next_action": _story_next_action(weak_evidence_roles),
             "warning": (
                 f"Story support is weak: {len(weak_evidence_roles)} of {len(roles)} {story_label} roles do not have "
                 f"visual evidence, so the {story_label} must be checked manually."
@@ -195,6 +197,7 @@ def _story_support(recipe: dict, matches: dict) -> dict:
         "filename_only_roles": filename_only_roles,
         "visual_evidence_roles": visual_evidence_roles,
         "weak_evidence_roles": weak_evidence_roles,
+        "next_action": "Review the rough cut, captions, and product accuracy before publishing.",
     }
 
 
@@ -206,6 +209,14 @@ def _story_label(mode: object) -> str:
     if mode == "talking-head":
         return "talking-head story"
     return "product story"
+
+
+def _story_next_action(weak_roles: list[str]) -> str:
+    if not weak_roles:
+        return "Review the rough cut before publishing."
+    roles = ", ".join(weak_roles)
+    noun = "clip" if len(weak_roles) == 1 else "clips"
+    return f"Replace or manually verify {roles} {noun}; add clearer role-labeled material if the contact sheet does not support the script."
 
 
 def _duration_tolerance_ms(duration_ms: int) -> int:
@@ -312,6 +323,8 @@ def _story_support_section(story_support: dict | None) -> list[str]:
     for key in ("roles", "filename_only_roles", "visual_evidence_roles", "weak_evidence_roles"):
         values = [str(item) for item in story_support.get(key, [])]
         lines.append(f"- {key}: {', '.join(values) if values else 'none'}")
+    if story_support.get("next_action"):
+        lines.append(f"- next_action: {story_support['next_action']}")
     return lines
 
 
@@ -322,6 +335,8 @@ def _story_support_html(story_support: dict | None) -> str:
     for key in ("roles", "filename_only_roles", "visual_evidence_roles", "weak_evidence_roles"):
         values = ", ".join(str(item) for item in story_support.get(key, [])) or "none"
         items.append(f"<li>{escape(key)}: <code>{escape(values)}</code></li>")
+    if story_support.get("next_action"):
+        items.append(f"<li>next_action: {escape(str(story_support['next_action']))}</li>")
     return "".join(items)
 
 

@@ -128,4 +128,4 @@ Never describe a failed run as completed video output.
 - `warning`: generated artifacts only for manual review; do not imply the video is usable yet.
 - `fail`: blocking issue; do not point to stale success artifacts as output.
 
-If `Story support` is `weak`, explain that most roles lack non-filename visual evidence. The next action is to inspect `contact-sheet.png`, replace weak clips, or provide a more specific script.
+If `Story support` is `weak`, report its `next_action` exactly. Explain that the named roles lack non-filename visual evidence, then ask the user to replace or manually verify those clips in `contact-sheet.png`.

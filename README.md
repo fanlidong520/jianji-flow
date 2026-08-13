@@ -181,7 +181,7 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 `review.md` and `review.html` include a `Story support` section.
 
 - `pass`: selected clips have stronger evidence than file names for the story roles.
-- `weak`: most story roles are selected only by file names, fallback choice, or no visual evidence. Open `contact-sheet.png` and confirm the product story manually.
+- `weak`: one or more story roles are selected only by file names, fallback choice, or no visual evidence. Follow the `next_action`, then open `contact-sheet.png` and confirm the product story manually.
 - `fail`: no selected clips support the story. Do not use the output.
 
 Current matching is intentionally conservative. On real local素材, `weak` is common because the tool can assemble role-labeled clips but cannot yet truly see and understand the product story.
@@ -197,7 +197,7 @@ Current matching is intentionally conservative. On real local素材, `weak` is c
 - `remix.mp4` 有声音，字幕可读，画面没有明显黑屏、卡帧或严重拉伸。
 - `matches.json` 里的素材路径确实来自你的 `assets/` 文件夹。
 - 如果报告出现 `filename-only`，说明系统只是按文件名角色组装，必须看 `contact-sheet.png` 确认画面是否真的对上文案。
-- 如果 `Story support` 是 `weak`，说明这条视频可能只是按角色拼接，还没有足够证据证明产品故事成立。先确认开头、痛点、卖点、证据、行动提醒是否都被画面支撑。
+- 如果 `Story support` 是 `weak`，说明这条视频可能只是按角色拼接，还没有足够证据证明产品故事成立。先看 `next_action` 里点名的角色，替换或人工确认对应素材，再确认开头、痛点、卖点、证据、行动提醒是否都被画面支撑。
 - 如果报告出现 `source_diagnostics` 或 `source-diagnostics`，说明源素材预检发现问题，优先替换对应素材。
 
 ## Validation
@@ -210,7 +210,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 264 passed
+- `python -m pytest -q` -> 265 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 

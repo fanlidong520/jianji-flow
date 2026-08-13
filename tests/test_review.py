@@ -401,6 +401,7 @@ def test_review_warns_when_most_story_roles_have_no_visual_evidence():
     assert review["status"] == "warning"
     assert review["story_support"]["status"] == "weak"
     assert review["story_support"]["weak_evidence_roles"] == ["feature", "evidence", "cta"]
+    assert "Replace or manually verify feature, evidence, cta clips" in review["story_support"]["next_action"]
 
 
 def test_review_fails_when_rendered_video_is_missing():
@@ -744,6 +745,8 @@ def test_build_review_markdown_contains_story_support_section():
                 "roles": ["hook", "pain", "feature", "evidence", "cta"],
                 "filename_only_roles": ["hook", "pain"],
                 "visual_evidence_roles": ["feature"],
+                "weak_evidence_roles": ["hook", "pain"],
+                "next_action": "Replace or manually verify hook, pain clips.",
             },
         }
     )
@@ -751,6 +754,7 @@ def test_build_review_markdown_contains_story_support_section():
     assert "## Story support" in markdown
     assert "- status: weak" in markdown
     assert "- filename_only_roles: hook, pain" in markdown
+    assert "- next_action: Replace or manually verify hook, pain clips." in markdown
 
 
 def test_write_review_markdown_creates_file(tmp_path: Path):
@@ -816,6 +820,8 @@ def test_build_review_html_contains_story_support_status():
             "roles": ["hook", "pain"],
             "filename_only_roles": ["hook"],
             "visual_evidence_roles": [],
+            "weak_evidence_roles": ["hook"],
+            "next_action": "Replace or manually verify hook clips.",
         },
     }
 
@@ -824,6 +830,7 @@ def test_build_review_html_contains_story_support_status():
     assert "Story support" in html
     assert "weak" in html
     assert "filename_only_roles" in html
+    assert "Replace or manually verify hook clips." in html
 
 
 def test_build_review_html_contains_plain_language_summary():

@@ -79,6 +79,23 @@ def test_review_summary_explains_weak_story_support_as_story_review_risk():
     assert "product story" in summary["next_action"]
 
 
+def test_review_summary_uses_story_support_specific_next_action():
+    summary = build_review_summary(
+        {
+            "status": "warning",
+            "warnings": ["Story support is weak: 2 of 5 product story roles do not have visual evidence."],
+            "failures": [],
+            "story_support": {
+                "status": "weak",
+                "next_action": "Replace or manually verify evidence, cta clips.",
+            },
+        }
+    )
+
+    assert summary["decision"] == "Needs review"
+    assert summary["next_action"] == "Replace or manually verify evidence, cta clips."
+
+
 def test_review_summary_explains_talking_head_story_support_with_mode_roles():
     summary = build_review_summary(
         {
