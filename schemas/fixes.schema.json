@@ -35,10 +35,11 @@
             "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["asset_path", "score", "reasons", "warnings"],
+              "required": ["asset_path", "score", "reasons", "warnings", "role_match"],
               "properties": {
                 "asset_path": {"type": "string"},
                 "score": {"type": "number"},
+                "role_match": {"type": "boolean"},
                 "reasons": {
                   "type": "array",
                   "items": {"type": "string"}

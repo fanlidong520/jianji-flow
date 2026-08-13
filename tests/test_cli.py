@@ -10,6 +10,7 @@ from pathlib import Path
 from PIL import Image, ImageChops, ImageStat
 
 from jianji_flow.cli import main
+from jianji_flow.contracts import validate_fixes
 from jianji_flow.media_probe import run_ffprobe
 from jianji_flow.voiceover import probe_voiceover
 
@@ -539,6 +540,7 @@ def test_run_product_fixture_creates_v0_2_experience_outputs(tmp_path, monkeypat
     review_html = (work_dir / "review.html").read_text(encoding="utf-8")
     review_md = (work_dir / "review.md").read_text(encoding="utf-8")
     fixes_template = json.loads((work_dir / "fixes.template.json").read_text(encoding="utf-8"))
+    validate_fixes(fixes_template)
     assert "<video" in review_html
     assert "voiceover.wav" in review_html
     assert "fixes.template.json" in review_md

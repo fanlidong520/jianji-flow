@@ -142,6 +142,27 @@ Still not good enough:
 - fallback candidate reasons are still structural, not visual-semantic;
 - a non-technical review action should make the recommended path copyable without editing JSON manually.
 
+## Current v27 Judgment
+
+The workflow now avoids two product-harmful forms of false confidence: adjacent source repetition during initial matching, and wrong-role repair recommendations.
+
+Passes:
+
+- initial matching prefers a different adjacent source when another same-role asset is available;
+- real-material `out/real-material-remix-v26/matches.json` uses five different source videos for five product segments and records `sequence-diversity:avoids-adjacent-source` after the first segment;
+- repair candidates now include `role_match`;
+- wrong-role fallback candidates receive `role mismatch; filename-only fallback` warnings;
+- when no duration-ready same-role replacement exists, `recommended_asset_path` is blank and `recommendation_status` is `no_candidate`;
+- real-material `out/real-material-remix-v27/fixes.template.json` no longer recommends feature/evidence/cta clips as clean replacements for hook, pain, feature, evidence, or cta weak roles when the only alternatives are wrong-role assets;
+- if multiple weak segments would use the same replacement, the later recommendation is downgraded with `already recommended for another segment`.
+
+Still not good enough:
+
+- this is still role/file-name logic, not semantic visual matching;
+- the current real-material pack has only one same-role clip per story role, so repair often reports `no_candidate`;
+- fallback candidates remain useful only for human inspection;
+- the next product step should generate and inspect multiple visual windows per source asset so a single clip can provide several meaningful replacement candidates.
+
 ## Product Principle
 
 Do not optimize for impressive automation claims.

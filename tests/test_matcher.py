@@ -50,6 +50,23 @@ def test_match_segments_prefers_role_in_filename():
     assert any("filename-role" in item for item in match["evidence"])
 
 
+def test_match_segments_prefers_non_adjacent_source_for_repeated_role():
+    segments = [
+        {"id": "seg-001", "role": "feature", "start_ms": 0, "end_ms": 1000, "caption": "Feature A"},
+        {"id": "seg-002", "role": "feature", "start_ms": 1000, "end_ms": 2000, "caption": "Feature B"},
+    ]
+    assets = [
+        FakeAsset("asset-feature-a", Path("assets/feature-a.mp4"), 5000),
+        FakeAsset("asset-feature-b", Path("assets/feature-b.mp4"), 5000),
+    ]
+
+    result = match_segments(segments, assets)
+
+    validate_matches(result)
+    assert [match["asset_id"] for match in result["matches"]] == ["asset-feature-a", "asset-feature-b"]
+    assert "sequence-diversity:avoids-adjacent-source" in result["matches"][1]["evidence"]
+
+
 def test_match_segments_uses_nonzero_source_window_for_long_assets():
     segment = {"id": "seg-003", "role": "feature", "start_ms": 4000, "end_ms": 6000, "caption": "Feature"}
     assets = [FakeAsset("asset-feature", Path("assets/feature.mp4"), 10_000)]

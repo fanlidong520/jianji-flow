@@ -127,6 +127,17 @@ Latest local checkpoint after candidate-ranking repair template:
 - v25 fixed `review.md` remains `warning` and preserves the adjacent-source warning for `seg-003` and `seg-004`;
 - this improves recommendation honesty, but still does not solve semantic visual matching.
 
+Latest local checkpoint after adjacent-source and wrong-role recommendation fixes:
+
+- initial matching now prefers non-adjacent source reuse when another same-role asset is available;
+- `out/real-material-remix-v26/matches.json` uses five different source videos for the five product roles and has no adjacent repeated source;
+- repair candidates now expose `role_match`;
+- wrong-role fallback candidates are kept as manual-inspection candidates but are not promoted to `recommended_asset_path`;
+- `out/real-material-remix-v27/fixes.template.json` reports `recommendation_status: no_candidate` for weak roles when no duration-ready same-role replacement exists;
+- repeated use of the same recommended replacement across weak segments is downgraded with an explicit warning;
+- CLI integration now validates the generated `fixes.template.json` against `fixes.schema.json`;
+- `out/real-material-remix-v27/review.md` remains `warning`, correctly stating that all five roles still lack non-filename visual evidence.
+
 ## Launch Rule
 
 Do not announce the project publicly until:

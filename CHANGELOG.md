@@ -27,6 +27,12 @@
   can be replaced one by one, with override evidence recorded in `matches.json`.
 - Added scored repair-template recommendations with explicit warnings when the
   best available replacement would repeat an adjacent source.
+- Changed initial matching to prefer a different adjacent source when another
+  same-role asset is available, reducing voiceover-shell rough cuts.
+- Changed repair recommendations so wrong-role fallback candidates are listed
+  for manual inspection but are not presented as clean recommendations.
+- Added repair recommendation conflict warnings when multiple weak segments
+  would reuse the same replacement asset.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while
   still removing stale success artifacts such as `remix.mp4`.
 - Reframed documentation around auditable rough-cut generation, not full editor

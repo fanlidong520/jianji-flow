@@ -127,10 +127,10 @@ def _eligible_assets(segment: dict, assets: Iterable[Any]) -> list[Any]:
     return [asset for asset in assets if _asset_duration_ms(asset) >= needed]
 
 
-def _pick_asset(segment: dict, assets: list[Any], recent_asset_ids: list[str]) -> Any | None:
+def _pick_asset(segment: dict, assets: list[Any], recent_asset_ids: list[str]) -> tuple[Any | None, list[str]]:
     eligible = _eligible_assets(segment, assets)
     if not eligible:
-        return None
+        return None, []
 
     role_matches = [
         asset
@@ -139,11 +139,18 @@ def _pick_asset(segment: dict, assets: list[Any], recent_asset_ids: list[str]) -
     ]
     candidates = role_matches or eligible
 
+    previous_asset_id = recent_asset_ids[-1] if recent_asset_ids else ""
+    for asset in candidates:
+        asset_id = str(_asset_field(asset, "asset_id"))
+        if asset_id != previous_asset_id:
+            evidence = ["sequence-diversity:avoids-adjacent-source"] if previous_asset_id else []
+            return asset, evidence
+
     for asset in candidates:
         asset_id = str(_asset_field(asset, "asset_id"))
         if len(recent_asset_ids) < 2 or recent_asset_ids[-2:] != [asset_id, asset_id]:
-            return asset
-    return candidates[0]
+            return asset, []
+    return candidates[0], []
 
 
 def match_segments(
@@ -157,7 +164,7 @@ def match_segments(
     recent_asset_ids: list[str] = []
     for index, segment in enumerate(segments, start=1):
         match_id = f"match-{index:03d}"
-        asset = _pick_asset(segment, assets, recent_asset_ids)
+        asset, sequence_evidence = _pick_asset(segment, assets, recent_asset_ids)
         if asset is None:
             matches.append(
                 {
@@ -174,6 +181,8 @@ def match_segments(
             continue
 
         candidate = _candidate_for(segment, asset, window_scorer)
+        if sequence_evidence:
+            candidate["evidence"] = [*candidate["evidence"], *sequence_evidence]
         confidence = float(candidate["score"])
         scores = {"filename": confidence}
         if "window_score" in candidate:

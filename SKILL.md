@@ -65,6 +65,7 @@ Detailed workflow:
 - Do not call weak `Story support` usable; tell the user to confirm hook, pain, feature, evidence, and CTA in `contact-sheet.png`.
 - Do not silently ignore filled fixes entries. Unknown segment/role targets, missing replacement paths, and too-short clips must fail clearly.
 - Do not present a risky replacement as clean. If `recommendation_status` is `best_available_with_warnings`, report the warning before suggesting the fix.
+- Do not present wrong-role fallback candidates as recommendations. If `recommendation_status` is `no_candidate`, explain that no same-role replacement was found; fallback candidates are manual-inspection options only.
 - Do not claim image support, music, effects, publishing, source-audio preservation, true reference decomposition, or editor draft export.
 
 ## Commands
@@ -141,4 +142,4 @@ Never describe a failed run as completed video output.
 - `warning`: generated artifacts only for manual review; do not imply the video is usable yet.
 - `fail`: blocking issue; do not point to stale success artifacts as output.
 
-If `Story support` is `weak`, report its `next_action` exactly. Explain that the named roles lack non-filename visual evidence, then ask the user to replace or manually verify those clips in `contact-sheet.png`. If the user wants to repair one segment, point them to `fixes.template.json`: check `recommended_asset_path`, `recommendation_status`, and `recommendation_warnings`, fill one `asset_path`, rerun with `--fixes`, then compare the same segment in the new `contact-sheet.png`.
+If `Story support` is `weak`, report its `next_action` exactly. Explain that the named roles lack non-filename visual evidence, then ask the user to replace or manually verify those clips in `contact-sheet.png`. If the user wants to repair one segment, point them to `fixes.template.json`: check `recommended_asset_path`, `recommendation_status`, `recommendation_warnings`, and `role_match`; fill one `asset_path` only when the candidate is genuinely appropriate, rerun with `--fixes`, then compare the same segment in the new `contact-sheet.png`.

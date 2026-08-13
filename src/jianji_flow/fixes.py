@@ -18,6 +18,7 @@ def build_fixes_template(
     weak_roles = {str(role).casefold() for role in review.get("story_support", {}).get("weak_evidence_roles", [])}
     duration_by_segment_id = _duration_by_segment_id(minimum_duration_recipe or recipe)
     adjacent_sources_by_segment_id = _adjacent_sources_by_segment_id(recipe, match_by_id)
+    used_recommendation_keys: set[str] = set()
     segments: dict[str, dict] = {}
 
     for segment in recipe.get("segments", []):
@@ -36,7 +37,13 @@ def build_fixes_template(
             minimum_duration_ms=duration_by_segment_id.get(segment_id, _segment_duration_ms(segment)),
             adjacent_sources=adjacent_sources_by_segment_id.get(segment_id, set()),
         )
-        recommended = candidate_assets[0] if candidate_assets else None
+        recommended = _recommended_candidate(candidate_assets, used_recommendation_keys)
+        if recommended:
+            recommendation_key = _path_key(recommended["asset_path"])
+            if recommendation_key in used_recommendation_keys:
+                _append_warning(recommended, "already recommended for another segment")
+            else:
+                used_recommendation_keys.add(recommendation_key)
         segments[segment_id] = {
             "role": role,
             "caption": str(segment.get("caption", "")),
@@ -46,7 +53,7 @@ def build_fixes_template(
             "source_start_ms": None,
             "recommended_asset_path": recommended["asset_path"] if recommended else "",
             "recommendation_status": _recommendation_status(recommended),
-            "recommendation_warnings": list(recommended.get("warnings", [])) if recommended else [],
+            "recommendation_warnings": _recommendation_warnings(recommended, candidate_assets),
             "candidate_asset_paths": [candidate["asset_path"] for candidate in candidate_assets],
             "candidate_assets": candidate_assets,
         }
@@ -71,6 +78,32 @@ def _recommendation_status(candidate: dict | None) -> str:
     if candidate.get("warnings"):
         return "best_available_with_warnings"
     return "recommended"
+
+
+def _recommended_candidate(candidates: list[dict], used_recommendation_keys: set[str]) -> dict | None:
+    role_matches = [candidate for candidate in candidates if candidate.get("role_match")]
+    if not role_matches:
+        return None
+    unused = next(
+        (candidate for candidate in role_matches if _path_key(str(candidate["asset_path"])) not in used_recommendation_keys),
+        None,
+    )
+    return unused or role_matches[0]
+
+
+def _recommendation_warnings(candidate: dict | None, candidates: list[dict]) -> list[str]:
+    if candidate is not None:
+        return list(candidate.get("warnings", []))
+    if candidates:
+        return ["no role-matching candidate"]
+    return []
+
+
+def _append_warning(candidate: dict, warning: str) -> None:
+    warnings = list(candidate.get("warnings", []))
+    if warning not in warnings:
+        warnings.append(warning)
+    candidate["warnings"] = warnings
 
 
 def _adjacent_sources_by_segment_id(recipe: dict, match_by_id: dict[str, dict]) -> dict[str, set[str]]:
@@ -146,6 +179,7 @@ def _candidate_asset(role: str, asset: Any, adjacent_sources: set[str]) -> dict:
         score += 20
     else:
         reasons.append("fallback candidate")
+        warnings.append("role mismatch; filename-only fallback")
     if repeats_adjacent:
         warnings.append("would repeat adjacent segment")
         score -= 10
@@ -157,6 +191,7 @@ def _candidate_asset(role: str, asset: Any, adjacent_sources: set[str]) -> dict:
         "score": score,
         "reasons": reasons,
         "warnings": warnings,
+        "role_match": asset_role == role,
     }
 
 
