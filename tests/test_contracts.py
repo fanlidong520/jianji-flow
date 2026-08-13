@@ -85,12 +85,15 @@ def valid_fixes():
             "feature": {
                 "asset_path": "",
                 "recommended_asset_path": "assets/feature-a.mp4",
+                "recommended_source_start_ms": 2000,
                 "recommendation_status": "recommended",
                 "recommendation_warnings": [],
-                "candidate_asset_paths": ["assets/feature-a.mp4", "assets/feature-b.mp4"],
+                "candidate_asset_paths": ["assets/feature-a.mp4#2000", "assets/feature-b.mp4#4000"],
                 "candidate_assets": [
                     {
                         "asset_path": "assets/feature-a.mp4",
+                        "source_start_ms": 2000,
+                        "source_end_ms": 3500,
                         "score": 70,
                         "role_match": True,
                         "reasons": ["matches role feature", "avoids adjacent repetition"],
@@ -98,6 +101,8 @@ def valid_fixes():
                     },
                     {
                         "asset_path": "assets/feature-b.mp4",
+                        "source_start_ms": 4000,
+                        "source_end_ms": 5500,
                         "score": 10,
                         "role_match": True,
                         "reasons": ["matches role feature"],

@@ -48,10 +48,11 @@ def build_fixes_template(
         recommended = _recommended_candidate(candidate_assets, used_recommendation_keys)
         if recommended:
             recommendation_key = _path_key(recommended["asset_path"])
-            if recommendation_key in used_recommendation_keys:
+            recommendation_usage_key = _recommendation_usage_key(recommended)
+            if recommendation_usage_key in used_recommendation_keys:
                 _append_warning(recommended, "already recommended for another segment")
             else:
-                used_recommendation_keys.add(recommendation_key)
+                used_recommendation_keys.add(recommendation_usage_key)
         segments[segment_id] = {
             "role": role,
             "caption": str(segment.get("caption", "")),
@@ -60,9 +61,10 @@ def build_fixes_template(
             "asset_path": "",
             "source_start_ms": None,
             "recommended_asset_path": recommended["asset_path"] if recommended else "",
+            "recommended_source_start_ms": _source_start_ms(recommended),
             "recommendation_status": _recommendation_status(recommended),
             "recommendation_warnings": _recommendation_warnings(recommended, candidate_assets),
-            "candidate_asset_paths": [candidate["asset_path"] for candidate in candidate_assets],
+            "candidate_asset_paths": [_candidate_display_key(candidate) for candidate in candidate_assets],
             "candidate_assets": candidate_assets,
         }
 
@@ -95,6 +97,7 @@ def build_recommended_fixes(fixes: dict, target: str) -> dict:
         "segments": {
             target_key: {
                 "asset_path": recommended_path,
+                **_recommended_source_start_entry(segment),
             }
         },
     }
@@ -120,7 +123,7 @@ def _recommended_candidate(candidates: list[dict], used_recommendation_keys: set
     if not role_matches:
         return None
     unused = next(
-        (candidate for candidate in role_matches if _path_key(str(candidate["asset_path"])) not in used_recommendation_keys),
+        (candidate for candidate in role_matches if _recommendation_usage_key(candidate) not in used_recommendation_keys),
         None,
     )
     return unused or role_matches[0]
@@ -232,6 +235,32 @@ def _candidate_assets(
         for index, asset in enumerate(assets)
         if _asset_duration_ms(asset) >= minimum_duration_ms and _path_key(_asset_path(asset)) != exclude
     ]
+    has_independent_role_match = any(candidate.get("role_match") for _, candidate in candidates)
+    current_asset = next((asset for asset in assets if _path_key(_asset_path(asset)) == exclude), None)
+    if current_asset is not None and not has_independent_role_match:
+        for window_start_ms in _alternate_window_starts(
+            _asset_duration_ms(current_asset),
+            visual_duration_ms,
+            minimum_duration_ms,
+            visual_source_start_ms,
+        ):
+            candidates.append(
+                (
+                    len(candidates),
+                    _candidate_asset(
+                        role,
+                        current_asset,
+                        adjacent_sources,
+                        visual_source_path=visual_source_path,
+                        visual_source_start_ms=visual_source_start_ms,
+                        visual_duration_ms=visual_duration_ms,
+                        minimum_duration_ms=minimum_duration_ms,
+                        visual_similarity_checker=visual_similarity_checker,
+                        candidate_start_ms=window_start_ms,
+                        same_source_window=True,
+                    ),
+                )
+            )
     return [
         candidate
         for _, candidate in sorted(candidates, key=lambda item: (-item[1]["score"], item[0]))
@@ -248,6 +277,8 @@ def _candidate_asset(
     visual_duration_ms: int,
     minimum_duration_ms: int,
     visual_similarity_checker: VisualSimilarityChecker | None,
+    candidate_start_ms: int | None = None,
+    same_source_window: bool = False,
 ) -> dict:
     asset_path = _asset_path(asset)
     asset_role = primary_role_for_asset({"path": asset_path})
@@ -267,8 +298,16 @@ def _candidate_asset(
     else:
         reasons.append("avoids adjacent repetition")
         score += 50
+    if same_source_window:
+        reasons.append("same source alternate window")
+        warnings.append("same source window; manual review required")
+        score -= 10
     if visual_similarity_checker is not None and visual_source_path and asset_role == role:
-        visual_candidate_start_ms = min(visual_source_start_ms, max(0, _asset_duration_ms(asset) - visual_duration_ms))
+        visual_candidate_start_ms = (
+            int(candidate_start_ms)
+            if candidate_start_ms is not None
+            else min(visual_source_start_ms, max(0, _asset_duration_ms(asset) - visual_duration_ms))
+        )
         try:
             visually_similar = visual_similarity_checker(
                 visual_source_path,
@@ -289,11 +328,61 @@ def _candidate_asset(
                 score -= 60
     return {
         "asset_path": asset_path,
+        "source_start_ms": candidate_start_ms,
+        "source_end_ms": None if candidate_start_ms is None else candidate_start_ms + minimum_duration_ms,
         "score": score,
         "reasons": reasons,
         "warnings": warnings,
         "role_match": asset_role == role,
     }
+
+
+def _alternate_window_starts(
+    asset_duration_ms: int,
+    visual_duration_ms: int,
+    usable_duration_ms: int,
+    current_start_ms: int,
+) -> list[int]:
+    if asset_duration_ms <= visual_duration_ms or visual_duration_ms <= 0 or usable_duration_ms <= 0:
+        return []
+    step = max(visual_duration_ms, 1)
+    latest_start = max(0, asset_duration_ms - usable_duration_ms)
+    starts = list(range(0, latest_start + 1, step))
+    if starts[-1] != latest_start:
+        starts.append(latest_start)
+    current_end_ms = current_start_ms + visual_duration_ms
+    return [
+        start
+        for start in starts
+        if start + usable_duration_ms <= asset_duration_ms
+        and (start >= current_end_ms or start + visual_duration_ms <= current_start_ms)
+    ][:3]
+
+
+def _source_start_ms(candidate: dict | None) -> int | None:
+    if candidate is None:
+        return None
+    value = candidate.get("source_start_ms")
+    return value if isinstance(value, int) else None
+
+
+def _recommended_source_start_entry(segment: dict) -> dict:
+    value = segment.get("recommended_source_start_ms")
+    if isinstance(value, int):
+        return {"source_start_ms": value}
+    return {}
+
+
+def _recommendation_usage_key(candidate: dict) -> str:
+    return f"{_path_key(str(candidate['asset_path']))}#{candidate.get('source_start_ms')}"
+
+
+def _candidate_display_key(candidate: dict) -> str:
+    asset_path = str(candidate["asset_path"])
+    source_start_ms = candidate.get("source_start_ms")
+    if isinstance(source_start_ms, int):
+        return f"{asset_path}#{source_start_ms}"
+    return asset_path
 
 
 def _asset_path(asset: Any) -> str:

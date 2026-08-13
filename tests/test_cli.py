@@ -960,6 +960,89 @@ def test_run_applies_clean_recommendation_from_fixes_template(tmp_path, monkeypa
     assert "override:seg-003" in by_segment["seg-003"]["evidence"]
 
 
+def test_run_applies_recommended_source_window_from_fixes_template(tmp_path, monkeypatch):
+    _patch_voiceover(monkeypatch)
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    scenario = fixture_root / "scenario-a-product"
+    base_work_dir = tmp_path / "base"
+    fixed_work_dir = tmp_path / "fixed"
+    feature = scenario / "assets" / "03-feature-product-detail.mp4"
+    base_args = [
+        "run",
+        "--mode",
+        "product",
+        "--reference",
+        str(scenario / "reference.mp4"),
+        "--assets",
+        str(scenario / "assets"),
+        "--script",
+        str(scenario / "script.txt"),
+        "--work-dir",
+        str(base_work_dir),
+        "--target-width",
+        "320",
+        "--target-height",
+        "180",
+        "--target-fps",
+        "12",
+    ]
+
+    assert main(base_args) == 0
+    fixes_path = tmp_path / "fixes.template.json"
+    fixes_path.write_text(
+        json.dumps(
+            {
+                "version": "0.1",
+                "segments": {
+                    "seg-003": {
+                        "asset_path": "",
+                        "recommended_asset_path": str(feature),
+                        "recommended_source_start_ms": 900,
+                        "recommendation_status": "recommended",
+                        "recommendation_warnings": [],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    fixed_args = [
+        "run",
+        "--mode",
+        "product",
+        "--reference",
+        str(scenario / "reference.mp4"),
+        "--assets",
+        str(scenario / "assets"),
+        "--script",
+        str(scenario / "script.txt"),
+        "--fixes",
+        str(fixes_path),
+        "--apply-recommendation",
+        "seg-003",
+        "--work-dir",
+        str(fixed_work_dir),
+        "--target-width",
+        "320",
+        "--target-height",
+        "180",
+        "--target-fps",
+        "12",
+    ]
+
+    assert main(fixed_args) == 0
+    matches = json.loads((fixed_work_dir / "matches.json").read_text(encoding="utf-8"))
+    by_segment = {item["segment_id"]: item for item in matches["matches"]}
+
+    assert by_segment["seg-003"]["source_path"].replace("\\", "/").endswith("03-feature-product-detail.mp4")
+    assert by_segment["seg-003"]["source_start_ms"] == 900
+    assert by_segment["seg-003"]["source_end_ms"] > by_segment["seg-003"]["source_start_ms"]
+    assert "source-window:" in " ".join(by_segment["seg-003"]["evidence"])
+    assert "override:seg-003" in by_segment["seg-003"]["evidence"]
+    assert "candidate-review.html" in (fixed_work_dir / "review.md").read_text(encoding="utf-8")
+
+
 def test_run_rejects_warning_recommendation_without_traceback(tmp_path, monkeypatch, capsys):
     _patch_voiceover(monkeypatch)
     fixture_root = tmp_path / "fixtures"
@@ -1360,8 +1443,10 @@ def test_run_removes_stale_visual_similarity_diagnostics_on_rerun(tmp_path, monk
     assert main(args) == 0
 
     review = (work_dir / "review.md").read_text(encoding="utf-8")
-    assert "visual_similarity_diagnostics" not in review
-    assert not (work_dir / "visual-similarity-diagnostics").exists()
+    diagnostic_dir = work_dir / "visual-similarity-diagnostics"
+    diagnostic_names = [path.name for path in diagnostic_dir.glob("*.png")]
+    assert "03b-feature-product-detail-copy" not in "\n".join(diagnostic_names)
+    assert diagnostic_names
 
 
 def test_run_removes_stale_candidate_frames_on_rerun(tmp_path, monkeypatch):

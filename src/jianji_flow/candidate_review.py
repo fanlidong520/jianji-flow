@@ -100,12 +100,24 @@ def _candidate_entries(
     max_candidates: int,
 ) -> list[dict[str, Any]]:
     recommended_path = _path_key(str(fix.get("recommended_asset_path", "")))
+    recommended_start_ms = _optional_int(fix.get("recommended_source_start_ms"))
     candidates = [candidate for candidate in fix.get("candidate_assets", []) if isinstance(candidate, dict)]
-    selected = _top_candidates(candidates, recommended_path, max_candidates=max_candidates)
+    selected = _top_candidates(
+        candidates,
+        recommended_path,
+        recommended_start_ms,
+        max_candidates=max_candidates,
+    )
     entries = []
     for index, candidate in enumerate(selected, start=1):
         asset_path = str(candidate.get("asset_path", ""))
-        sample_ms = _candidate_sample_ms(Path(asset_path), current_start_ms, source_duration_ms)
+        candidate_start_ms = _optional_int(candidate.get("source_start_ms"))
+        candidate_end_ms = _optional_int(candidate.get("source_end_ms"))
+        sample_ms = (
+            candidate_start_ms + round(source_duration_ms / 2)
+            if candidate_start_ms is not None
+            else _candidate_sample_ms(Path(asset_path), current_start_ms, source_duration_ms)
+        )
         frame = _frame_entry(
             Path(asset_path),
             frames_dir / f"{safe_segment_id}-candidate-{index:03d}.png",
@@ -114,9 +126,15 @@ def _candidate_entries(
         )
         entries.append(
             {
-                "label": "Recommended candidate" if _path_key(asset_path) == recommended_path else f"Candidate {index}",
+                "label": (
+                    "Recommended candidate"
+                    if _candidate_key(asset_path, candidate_start_ms) == _candidate_key_from_parts(recommended_path, recommended_start_ms)
+                    else f"Candidate {index}"
+                ),
                 "asset_path": asset_path,
                 "score": candidate.get("score", ""),
+                "source_range": _candidate_source_range_text(candidate_start_ms, candidate_end_ms),
+                "preview_frame_ms": sample_ms,
                 "reasons": [str(item) for item in candidate.get("reasons", [])],
                 "warnings": [str(item) for item in candidate.get("warnings", [])],
                 "role_match": bool(candidate.get("role_match")),
@@ -126,11 +144,18 @@ def _candidate_entries(
     return entries
 
 
-def _top_candidates(candidates: list[dict], recommended_path: str, *, max_candidates: int) -> list[dict]:
+def _top_candidates(
+    candidates: list[dict],
+    recommended_path: str,
+    recommended_start_ms: int | None,
+    *,
+    max_candidates: int,
+) -> list[dict]:
     selected = candidates[: max(0, max_candidates)]
-    if recommended_path and not any(_path_key(str(candidate.get("asset_path", ""))) == recommended_path for candidate in selected):
+    recommended_key = _candidate_key_from_parts(recommended_path, recommended_start_ms)
+    if recommended_path and not any(_candidate_key_for_candidate(candidate) == recommended_key for candidate in selected):
         recommended = next(
-            (candidate for candidate in candidates if _path_key(str(candidate.get("asset_path", ""))) == recommended_path),
+            (candidate for candidate in candidates if _candidate_key_for_candidate(candidate) == recommended_key),
             None,
         )
         if recommended is not None:
@@ -279,6 +304,8 @@ def _candidate_html(candidate: dict[str, Any]) -> str:
         f"{_image_or_error(candidate)}"
         "<dl>"
         f"<dt>Asset</dt><dd><code>{escape(str(candidate.get('asset_path', '')))}</code></dd>"
+        f"<dt>Candidate window</dt><dd>{escape(str(candidate.get('source_range', 'unknown')))}</dd>"
+        f"<dt>Preview frame</dt><dd>{escape(str(candidate.get('preview_frame_ms', 'unknown')))}ms</dd>"
         f"<dt>Score</dt><dd>{escape(str(candidate.get('score', '')))}</dd>"
         f"<dt>Role match</dt><dd>{escape(str(candidate.get('role_match', '')))}</dd>"
         f"<dt>Reasons</dt><dd>{escape(reasons)}</dd>"
@@ -320,9 +347,34 @@ def _int_value(value: Any, default: int) -> int:
         return default
 
 
+def _optional_int(value: Any) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _candidate_source_range_text(start_ms: int | None, end_ms: int | None) -> str:
+    if start_ms is None or end_ms is None:
+        return "unknown"
+    return f"{start_ms}-{end_ms}ms"
+
+
 def _safe_name(value: str) -> str:
     return "".join(char if char.isalnum() or char in {"-", "_"} else "-" for char in value).strip("-") or "segment"
 
 
 def _path_key(path_text: str) -> str:
     return path_text.replace("\\", "/").casefold()
+
+
+def _candidate_key_for_candidate(candidate: dict[str, Any]) -> str:
+    return _candidate_key(str(candidate.get("asset_path", "")), _optional_int(candidate.get("source_start_ms")))
+
+
+def _candidate_key(asset_path: str, source_start_ms: int | None) -> str:
+    return _candidate_key_from_parts(_path_key(asset_path), source_start_ms)
+
+
+def _candidate_key_from_parts(path_key: str, source_start_ms: int | None) -> str:
+    return f"{path_key}#{source_start_ms}"

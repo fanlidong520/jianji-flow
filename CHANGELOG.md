@@ -50,6 +50,9 @@
   current frames beside visible repair candidates, reasons, and warnings.
 - Removed stale candidate-review artifacts on failed review runs so failed
   outputs do not look repair-ready.
+- Added same-source alternate-window repair candidates with
+  `recommended_source_start_ms`, while keeping them warning-only unless a user
+  manually confirms the window.
 - Changed warning CLI output from `completed` to `review required` so review-only
   rough cuts are not mistaken for passed outputs.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while

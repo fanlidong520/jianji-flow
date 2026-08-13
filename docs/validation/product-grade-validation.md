@@ -192,6 +192,18 @@ Latest local checkpoint after candidate visual review:
 - real-material v32 correctly remains `warning`: all five roles are filename-only story support and the candidate page exposes wrong-role fallbacks instead of inventing clean replacements;
 - this makes repair candidates easier to judge, but it is not yet semantic visual shot selection.
 
+Latest local checkpoint after same-source window candidates:
+
+- `fixes.template.json` can include `recommended_source_start_ms` and candidate-level `source_start_ms` / `source_end_ms`;
+- `--apply-recommendation SEGMENT_ID` carries a clean recommended source window into the generated fixes file;
+- `candidate-review.html` extracts candidate frames from candidate windows when those fields are present;
+- same-source windows are downgraded with `same source window; manual review required`;
+- candidate-review labels recommended windows by asset path plus `source_start_ms`, preventing same-path non-recommended windows from being mislabeled;
+- `candidate_asset_paths` now uses `path#source_start_ms` for window candidates; reviewers should rely on `candidate_assets` for exact windows;
+- targeted regression verifies that a recommended source window changes `matches.json` `source_start_ms`;
+- real-material `out/real-material-same-source-windows-v33/fixes.template.json` exposes same-source window candidates for evidence and cta while keeping the run at `warning`;
+- this is a stronger repair-inspection loop, but still not a public launch pass.
+
 ## Launch Rule
 
 Do not announce the project publicly until:

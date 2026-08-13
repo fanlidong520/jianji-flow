@@ -20,6 +20,7 @@
           "current_asset_path": {"type": "string"},
           "asset_path": {"type": "string"},
           "recommended_asset_path": {"type": "string"},
+          "recommended_source_start_ms": {"type": ["integer", "null"], "minimum": 0},
           "recommendation_status": {"enum": ["recommended", "best_available_with_warnings", "no_candidate"]},
           "recommendation_warnings": {
             "type": "array",
@@ -38,6 +39,8 @@
               "required": ["asset_path", "score", "reasons", "warnings", "role_match"],
               "properties": {
                 "asset_path": {"type": "string"},
+                "source_start_ms": {"type": ["integer", "null"], "minimum": 0},
+                "source_end_ms": {"type": ["integer", "null"], "minimum": 0},
                 "score": {"type": "number"},
                 "role_match": {"type": "boolean"},
                 "reasons": {

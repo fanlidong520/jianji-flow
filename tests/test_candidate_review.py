@@ -150,3 +150,173 @@ def test_write_candidate_review_continues_when_candidate_frame_extraction_fails(
     assert "cannot decode frame" in html
     assert "visual similarity check failed" in html
     assert (tmp_path / "candidate-frames" / "seg-001-current.png").exists()
+
+
+def test_write_candidate_review_uses_candidate_source_start_ms_for_candidate_frame(tmp_path: Path, monkeypatch):
+    calls = []
+
+    def fake_extract_frame(video_path: Path, frame_path: Path, time_ms: int) -> None:
+        calls.append((video_path.name, frame_path.name, time_ms))
+        _save_frame(frame_path, "purple")
+
+    monkeypatch.setattr("jianji_flow.candidate_review._extract_frame", fake_extract_frame)
+    recipe = {
+        "segments": [
+            {
+                "id": "seg-001",
+                "role": "feature",
+                "match_id": "match-001",
+                "caption": "Show a better window",
+                "start_ms": 0,
+                "end_ms": 1000,
+            }
+        ]
+    }
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "source_path": str(tmp_path / "feature-long.mp4"),
+                "source_start_ms": 0,
+                "source_end_ms": 1000,
+            }
+        ]
+    }
+    fixes = {
+        "segments": {
+            "seg-001": {
+                "role": "feature",
+                "caption": "Show a better window",
+                "reason": "weak story evidence",
+                "current_asset_path": str(tmp_path / "feature-long.mp4"),
+                "recommended_asset_path": str(tmp_path / "feature-long.mp4"),
+                "recommended_source_start_ms": 2400,
+                "recommendation_status": "recommended",
+                "recommendation_warnings": [],
+                "candidate_assets": [
+                    {
+                        "asset_path": str(tmp_path / "feature-long.mp4"),
+                        "source_start_ms": 2400,
+                        "source_end_ms": 3400,
+                        "score": 80,
+                        "reasons": ["same source alternate window"],
+                        "warnings": [],
+                        "role_match": True,
+                    }
+                ],
+            }
+        }
+    }
+
+    write_candidate_review(
+        recipe,
+        matches,
+        fixes,
+        tmp_path / "candidate-review.html",
+        frames_dir=tmp_path / "candidate-frames",
+    )
+
+    html = (tmp_path / "candidate-review.html").read_text(encoding="utf-8")
+    assert ("feature-long.mp4", "seg-001-current.png", 500) in calls
+    assert ("feature-long.mp4", "seg-001-candidate-001.png", 2900) in calls
+    assert "Candidate window" in html
+    assert "2400-3400ms" in html
+    assert "Preview frame" in html
+    assert "2900ms" in html
+
+
+def test_write_candidate_review_marks_only_matching_recommended_window(tmp_path: Path, monkeypatch):
+    def fake_extract_frame(video_path: Path, frame_path: Path, time_ms: int) -> None:
+        _save_frame(frame_path, "orange")
+
+    monkeypatch.setattr("jianji_flow.candidate_review._extract_frame", fake_extract_frame)
+    shared_path = str(tmp_path / "feature-long.mp4")
+    recipe = {
+        "segments": [
+            {
+                "id": "seg-001",
+                "role": "feature",
+                "match_id": "match-001",
+                "caption": "Show window choice",
+                "start_ms": 0,
+                "end_ms": 1000,
+            }
+        ]
+    }
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "source_path": shared_path,
+                "source_start_ms": 0,
+                "source_end_ms": 1000,
+            }
+        ]
+    }
+    fixes = {
+        "segments": {
+            "seg-001": {
+                "role": "feature",
+                "caption": "Show window choice",
+                "reason": "weak story evidence",
+                "current_asset_path": shared_path,
+                "recommended_asset_path": shared_path,
+                "recommended_source_start_ms": 3000,
+                "recommendation_status": "best_available_with_warnings",
+                "recommendation_warnings": ["same source window; manual review required"],
+                "candidate_assets": [
+                    {
+                        "asset_path": shared_path,
+                        "source_start_ms": 1000,
+                        "source_end_ms": 2000,
+                        "score": 70,
+                        "reasons": ["same source alternate window"],
+                        "warnings": ["same source window; manual review required"],
+                        "role_match": True,
+                    },
+                    {
+                        "asset_path": shared_path,
+                        "source_start_ms": 2000,
+                        "source_end_ms": 3000,
+                        "score": 69,
+                        "reasons": ["same source alternate window"],
+                        "warnings": ["same source window; manual review required"],
+                        "role_match": True,
+                    },
+                    {
+                        "asset_path": shared_path,
+                        "source_start_ms": 4000,
+                        "source_end_ms": 5000,
+                        "score": 68,
+                        "reasons": ["same source alternate window"],
+                        "warnings": ["same source window; manual review required"],
+                        "role_match": True,
+                    },
+                    {
+                        "asset_path": shared_path,
+                        "source_start_ms": 3000,
+                        "source_end_ms": 4000,
+                        "score": 60,
+                        "reasons": ["same source alternate window"],
+                        "warnings": ["same source window; manual review required"],
+                        "role_match": True,
+                    },
+                ],
+            }
+        }
+    }
+
+    write_candidate_review(
+        recipe,
+        matches,
+        fixes,
+        tmp_path / "candidate-review.html",
+        frames_dir=tmp_path / "candidate-frames",
+    )
+
+    html = (tmp_path / "candidate-review.html").read_text(encoding="utf-8")
+    assert html.count("Recommended candidate") == 1
+    assert "3000-4000ms" in html
+    assert "4000-5000ms" not in html

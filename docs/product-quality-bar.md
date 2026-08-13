@@ -251,6 +251,29 @@ Still not good enough:
 - the output may still be a role-labeled rough cut rather than a visibly improved product edit;
 - the next product milestone remains true visual shot selection and before/after change reporting.
 
+## Current v33 Judgment
+
+The repair loop can now expose alternate time windows inside the same source file.
+This is closer to real editing because one long clip can yield more than one possible shot.
+It is still not a clean automatic improvement.
+
+Passes:
+
+- repair candidates can include `source_start_ms` and `source_end_ms`;
+- clean recommendation application carries `recommended_source_start_ms` into the generated fixes file;
+- `candidate-review.html` samples candidate frames from the candidate window, not only from the current segment's start;
+- candidate-review recommendation labels match both asset path and `source_start_ms`, so same-path windows are not all shown as recommended;
+- `candidate_asset_paths` uses `path#source_start_ms` for windowed candidates, while `candidate_assets` remains the authoritative review data;
+- same-source alternate windows are marked with `same source window; manual review required`;
+- real-material `out/real-material-same-source-windows-v33` exposes same-source candidates for evidence and CTA instead of only wrong-role fallbacks.
+
+Still not good enough:
+
+- same-source windows can still feel repetitive, so they must not be auto-applied as clean recommendations;
+- window candidates still make the JSON more complex than a simple file replacement;
+- hook, pain, and feature still lacked clean same-role alternatives in the current real-material pack;
+- before/after change reporting is still needed so users can see exactly what a repair changed.
+
 ## Product Principle
 
 Do not optimize for impressive automation claims.
