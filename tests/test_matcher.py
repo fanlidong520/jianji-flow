@@ -49,6 +49,19 @@ def test_match_segments_prefers_role_in_filename():
     assert any("filename-role" in item for item in match["evidence"])
 
 
+def test_match_segments_uses_nonzero_source_window_for_long_assets():
+    segment = {"id": "seg-003", "role": "feature", "start_ms": 4000, "end_ms": 6000, "caption": "Feature"}
+    assets = [FakeAsset("asset-feature", Path("assets/feature.mp4"), 10_000)]
+
+    result = match_segments([segment], assets)
+
+    validate_matches(result)
+    match = result["matches"][0]
+    assert match["source_start_ms"] > 0
+    assert match["source_end_ms"] - match["source_start_ms"] == 2000
+    assert any("source-window:" in item for item in match["evidence"])
+
+
 def test_match_segments_uses_same_role_aliases_as_material_diagnosis():
     assets = [
         FakeAsset("asset-other", Path("assets/other.mp4"), 5000),
@@ -154,8 +167,22 @@ def test_retime_recipe_and_matches_scales_timeline_without_changing_assets():
     validate_matches(retimed_matches)
     assert retimed_recipe["duration_ms"] == 2000
     assert [(item["start_ms"], item["end_ms"]) for item in retimed_recipe["segments"]] == [(0, 800), (800, 2000)]
-    assert [(item["source_start_ms"], item["source_end_ms"]) for item in retimed_matches["matches"]] == [
-        (0, 800),
-        (0, 1200),
-    ]
+    assert [(item["source_end_ms"] - item["source_start_ms"]) for item in retimed_matches["matches"]] == [800, 1200]
+    assert retimed_matches["matches"][0]["source_start_ms"] == matches["matches"][0]["source_start_ms"]
+    assert retimed_matches["matches"][1]["source_start_ms"] == matches["matches"][1]["source_start_ms"]
     assert [item["asset_id"] for item in retimed_matches["matches"]] == ["asset-hook", "asset-feature"]
+
+
+def test_retime_recipe_and_matches_clamps_source_window_to_asset_duration():
+    segment = {"id": "seg-001", "role": "feature", "start_ms": 4000, "end_ms": 6000, "caption": "Feature"}
+    matches = match_segments([segment], [FakeAsset("asset-feature", Path("assets/feature.mp4"), 7000)])
+    recipe = build_recipe("product", {"width": 1080, "height": 1920, "fps": 30}, [segment], matches)
+
+    retimed_recipe, retimed_matches = retime_recipe_and_matches(recipe, matches, 5000)
+
+    validate_recipe(retimed_recipe)
+    validate_matches(retimed_matches)
+    match = retimed_matches["matches"][0]
+    assert match["source_end_ms"] == 7000
+    assert match["source_start_ms"] == 2000
+    assert match["source_end_ms"] - match["source_start_ms"] == 5000

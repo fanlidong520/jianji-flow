@@ -63,6 +63,7 @@ def valid_matches():
                 "source_path": "assets/product-demo.mp4",
                 "source_start_ms": 0,
                 "source_end_ms": 3000,
+                "asset_duration_ms": 5000,
                 "confidence": 0.82,
                 "scores": {"visual": 0.9},
                 "candidates": [],
@@ -266,6 +267,7 @@ def test_candidate_float_time_fails():
             "source_path": "assets/candidate.mp4",
             "source_start_ms": 0.5,
             "source_end_ms": 1000,
+            "asset_duration_ms": 2000,
             "score": 0.5,
             "evidence": [],
         }

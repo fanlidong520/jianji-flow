@@ -21,6 +21,21 @@ def _duration(segment: dict) -> int:
     return int(segment["end_ms"]) - int(segment["start_ms"])
 
 
+def _asset_duration_ms(asset: Any) -> int:
+    return int(_asset_field(asset, "duration_ms"))
+
+
+def _source_window(segment: dict, asset: Any) -> tuple[int, int]:
+    segment_duration = _duration(segment)
+    asset_duration = _asset_duration_ms(asset)
+    available_offset = max(0, asset_duration - segment_duration)
+    timeline_start = max(0, int(segment.get("start_ms", 0)))
+    timeline_end = max(timeline_start, int(segment.get("end_ms", timeline_start + segment_duration)))
+    timeline_duration = max(1, timeline_end)
+    start_ms = round(available_offset * min(1.0, timeline_start / timeline_duration))
+    return start_ms, start_ms + segment_duration
+
+
 def _scaled_bounds(segments: list[dict], target_duration_ms: int) -> list[tuple[int, int]]:
     if target_duration_ms <= 0:
         raise ValueError("target_duration_ms must be positive")
@@ -62,12 +77,15 @@ def _role_score(role: str, asset: Any) -> tuple[float, list[str]]:
 
 def _candidate_for(segment: dict, asset: Any) -> dict:
     confidence, evidence = _role_score(str(segment["role"]), asset)
-    segment_duration = _duration(segment)
+    source_start_ms, source_end_ms = _source_window(segment, asset)
+    if source_start_ms > 0:
+        evidence = [*evidence, f"source-window:{source_start_ms}-{source_end_ms}"]
     return {
         "asset_id": str(_asset_field(asset, "asset_id")),
         "source_path": _source_path(asset),
-        "source_start_ms": 0,
-        "source_end_ms": segment_duration,
+        "source_start_ms": source_start_ms,
+        "source_end_ms": source_end_ms,
+        "asset_duration_ms": _asset_duration_ms(asset),
         "score": confidence,
         "evidence": evidence,
     }
@@ -75,7 +93,7 @@ def _candidate_for(segment: dict, asset: Any) -> dict:
 
 def _eligible_assets(segment: dict, assets: Iterable[Any]) -> list[Any]:
     needed = _duration(segment)
-    return [asset for asset in assets if int(_asset_field(asset, "duration_ms")) >= needed]
+    return [asset for asset in assets if _asset_duration_ms(asset) >= needed]
 
 
 def _pick_asset(segment: dict, assets: list[Any], recent_asset_ids: list[str]) -> Any | None:
@@ -131,6 +149,7 @@ def match_segments(segments: list[dict], assets: list[Any], threshold: float = 0
                 "source_path": str(candidate["source_path"]),
                 "source_start_ms": int(candidate["source_start_ms"]),
                 "source_end_ms": int(candidate["source_end_ms"]),
+                "asset_duration_ms": int(candidate["asset_duration_ms"]),
                 "confidence": confidence,
                 "scores": {"filename": confidence},
                 "candidates": [candidate],
@@ -208,11 +227,7 @@ def retime_recipe_and_matches(recipe: dict, matches: dict, target_duration_ms: i
         **matches,
         "matches": [
             (
-                {
-                    **match,
-                    "source_start_ms": 0,
-                    "source_end_ms": duration_by_segment_id[str(match["segment_id"])],
-                }
+                _retime_match_source_window(match, duration_by_segment_id[str(match["segment_id"])])
                 if match.get("status") in {"selected", "low_confidence"}
                 else dict(match)
             )
@@ -223,3 +238,15 @@ def retime_recipe_and_matches(recipe: dict, matches: dict, target_duration_ms: i
     validate_recipe(retimed_recipe)
     validate_matches(retimed_matches)
     return retimed_recipe, retimed_matches
+
+
+def _retime_match_source_window(match: dict, duration_ms: int) -> dict:
+    asset_duration_ms = int(match.get("asset_duration_ms", match["source_end_ms"]))
+    source_start_ms = int(match["source_start_ms"])
+    source_start_ms = min(source_start_ms, max(0, asset_duration_ms - duration_ms))
+    return {
+        **match,
+        "source_start_ms": source_start_ms,
+        "source_end_ms": source_start_ms + duration_ms,
+        "asset_duration_ms": asset_duration_ms,
+    }

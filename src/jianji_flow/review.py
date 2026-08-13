@@ -131,7 +131,9 @@ def _match_evidence_warnings(recipe: dict, matches: dict) -> list[str]:
             continue
         selected.append(match)
         evidence = [str(item) for item in match.get("evidence", [])]
-        if evidence and all(item.startswith("filename-role:") for item in evidence):
+        if evidence and any(item.startswith("filename-role:") for item in evidence) and not any(
+            _is_visual_evidence(item) for item in evidence
+        ):
             filename_only.append(str(segment.get("id", "unknown")))
 
     if len(selected) < 3:
@@ -159,9 +161,9 @@ def _story_support(recipe: dict, matches: dict) -> dict:
         role = str(segment.get("role") or segment.get("caption") or segment.get("id", "unknown")).strip().casefold()
         roles.append(role)
         evidence = [str(item) for item in match.get("evidence", [])]
-        if evidence and all(item.startswith("filename-role:") for item in evidence):
-            filename_only_roles.append(role)
         has_visual_evidence = any(_is_visual_evidence(item) for item in evidence)
+        if evidence and any(item.startswith("filename-role:") for item in evidence) and not has_visual_evidence:
+            filename_only_roles.append(role)
         if has_visual_evidence:
             visual_evidence_roles.append(role)
         else:

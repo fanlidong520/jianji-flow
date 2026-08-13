@@ -166,6 +166,44 @@ def test_review_warns_when_selected_segments_are_filename_only_matches():
     assert review["story_support"]["roles"] == ["hook", "pain", "feature"]
 
 
+def test_review_treats_source_window_as_non_visual_evidence():
+    roles = ("hook", "pain", "feature", "evidence", "cta")
+    recipe = {
+        "mode": "product",
+        "segments": [
+            {"id": f"seg-{index:03d}", "role": role, "match_id": f"match-{index:03d}", "caption": role}
+            for index, role in enumerate(roles, start=1)
+        ],
+    }
+    matches = {
+        "matches": [
+            {
+                "id": f"match-{index:03d}",
+                "segment_id": f"seg-{index:03d}",
+                "status": "selected",
+                "asset_id": f"asset-{index:03d}",
+                "source_path": f"assets/{index:02d}.mp4",
+                "confidence": 0.92,
+                "evidence": [f"filename-role:{role}", "source-window:1000-2000"],
+            }
+            for index, role in enumerate(roles, start=1)
+        ]
+    }
+
+    review = build_review(
+        recipe,
+        matches,
+        remix_path=Path("work/remix.mp4"),
+        captions_path=Path("work/captions.srt"),
+        check_artifacts=False,
+    )
+
+    assert any("filename only" in warning for warning in review["warnings"])
+    assert review["story_support"]["filename_only_roles"] == list(roles)
+    assert review["story_support"]["visual_evidence_roles"] == []
+    assert review["story_support"]["weak_evidence_roles"] == list(roles)
+
+
 def test_review_story_support_passes_with_non_filename_story_evidence():
     recipe = {
         "mode": "product",
