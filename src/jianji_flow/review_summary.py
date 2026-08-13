@@ -13,8 +13,15 @@ def build_review_summary(review: dict) -> dict:
         }
     if status == "warning":
         reason = _primary_warning(warnings)
-        if "same source video" in reason or "voiceover shell" in reason:
+        if "preflight skipped" in reason:
+            next_action = "Fix source preflight or inspect source diagnostics before using; automated source-frame checks did not complete."
+        elif "same source video" in reason or "voiceover shell" in reason:
             next_action = "Open remix.mp4 and compare it with the original before using; add more distinct assets if it still feels unchanged."
+        elif "Story support is weak" in reason:
+            if "talking-head story" in reason:
+                next_action = "Open the contact sheet and confirm the talking-head story has clear topic, claim, explanation, evidence, and conclusion before using the video."
+            else:
+                next_action = "Open the contact sheet and confirm the product story has a clear hook, pain, feature, evidence, and CTA before using the video."
         elif "filename only" in reason:
             next_action = "Open the contact sheet and confirm each role-labeled clip visually matches its caption before using the video."
         elif "platform UI" in reason or "original subtitles" in reason:
@@ -38,8 +45,9 @@ def _primary_warning(warnings: list[str]) -> str:
     if not warnings:
         return "Some segments need manual review."
     priorities = (
-        ("platform UI", "original subtitles", "source frame"),
+        ("platform UI", "original subtitles", "source frame", "preflight skipped"),
         ("same source video", "voiceover shell"),
+        ("Story support is weak",),
         ("filename only",),
         ("low confidence",),
     )

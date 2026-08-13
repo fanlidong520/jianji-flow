@@ -25,6 +25,7 @@ An output must not be treated as usable when any of these are true:
 - selected clips do not match the script intent enough for a human to understand the story;
 - the review page hides uncertainty or reports `pass` when visual warnings remain.
 - every selected segment is supported only by filename evidence; this can be a reviewable `warning`, but not `pass`.
+- most story roles lack non-filename visual evidence; this must be `warning` or `fail`, not `pass`.
 
 ## Usability Scorecard
 
@@ -65,22 +66,23 @@ Still not good enough:
 - review warns, but material diagnosis should stop earlier and say the source clips are not clean enough;
 - no independent real-material packs have passed the same bar yet.
 
-## Current v13 Judgment
+## Current v15 Judgment
 
-`out/real-material-remix-v13` is a better honesty checkpoint than v7.
-It generates a visible five-segment rough cut and no longer reports a clean `pass` when all matches are filename-only.
+`out/real-material-remix-v15` should be judged as an honesty checkpoint, not a launch demo.
+The review layer now exposes `Story support` so a run can distinguish "enough clips to render" from "enough evidence to trust the product story."
 
 Passes:
 
-- full test suite passed with 249 tests;
-- smoke passed;
-- source preflight ran before voiceover/render and did not retain diagnostic frames for clean source samples;
-- review status is `warning`, not `pass`, because visual verification is still weak.
+- full test suite passed with 264 tests;
+- smoke and P0 passed;
+- source preflight runs before voiceover/render;
+- review status must be `warning`, not `pass`, when most story roles have no non-filename visual evidence.
 
 Still not good enough:
 
 - every segment is matched by filename evidence only;
 - the contact sheet shows a rough assembly, but not a strong product-story edit;
+- the system still does not truly understand product visuals;
 - this should be treated as a local validation artifact, not a public launch demo.
 
 ## Product Principle

@@ -41,6 +41,7 @@ These gates should be implemented before public launch:
 - caption placement check against lower safe-area residue;
 - "visual shell" detector comparing source frames and output frames;
 - review status escalation when platform UI warnings are severe or repeated;
+- story-support review that warns or fails when clips can render but do not provide enough evidence for the script;
 - README quickstart test on a clean checkout.
 
 ## Manual Review Checklist
@@ -49,6 +50,7 @@ For every real-material run:
 
 - Can a viewer understand the product in 3 seconds?
 - Does every clip support the current voiceover line?
+- Does `Story support` explain whether the rough cut is role-labeled only or backed by stronger evidence?
 - Does the video look newly edited rather than revoiced?
 - Are old captions, platform UI, comments, or creator handles visible?
 - Are captions readable on a phone screen?
@@ -80,6 +82,16 @@ Manual judgment for v13:
 - Can be used to inspect whether the pipeline assembled a rough cut.
 - Should not be used as the public open-source hero example.
 - Should not be labeled `pass` until visual/story evidence is stronger than filename-only role labels.
+
+Latest local checkpoint after story-support hardening:
+
+- `python -m pytest -q` -> 264 passed;
+- `python scripts/run_smoke.py` -> smoke passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- `out/real-material-remix-v15/review.md` -> warning, not pass;
+- `out/real-material-remix-v15/remix.mp4` -> 23.233s, 592x1280, 30fps, audio present;
+- `review.md` and `review.html` include `Story support` with roles, filename-only roles, visual-evidence roles, and weak-evidence roles;
+- warning is correct because all five story roles rely on filename evidence and have no non-filename visual evidence.
 
 ## Launch Rule
 

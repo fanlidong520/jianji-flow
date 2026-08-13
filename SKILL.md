@@ -9,6 +9,7 @@ Use this skill when the user wants an automatic local preview-video workflow.
 Current versions create inspectable intermediate files, machine voiceover, burned-in captions, a playable MP4 preview, and a local review page.
 It does not create Jianying, CapCut, or other editor draft projects.
 Treat it as a local auditable rough-cut workflow, not as a full editor or a true viral-reference decomposition engine.
+Treat `warning` as review-required output, not as publish-ready success.
 
 ## Required Inputs
 
@@ -46,7 +47,7 @@ Detailed workflow:
 9. Generate `voiceover.wav` with local machine TTS.
 10. Render `remix.mp4` only from validated manifest assets, burned-in captions, and generated voiceover.
 11. Write `contact-sheet.png` with one frame per segment.
-12. Write `review.md` and `review.html` with pass, warning, or fail status.
+12. Write `review.md` and `review.html` with pass, warning, fail status, and `Story support`.
 
 ## Hard Rules
 
@@ -56,8 +57,9 @@ Detailed workflow:
 - Do not render a segment whose match is missing or rejected.
 - Do not hide low-confidence matches; report them in `review.md`.
 - Do not leave stale success artifacts after a failed rerun.
-- Do not describe a run as successful unless `review.md` is pass or actionable warning and the requested output artifacts exist.
+- Do not describe a run as publish-ready. `pass` still needs human review; `warning` means review-required rough cut only.
 - Do not call a filename-only warning visually verified; tell the user it must be checked in `contact-sheet.png`.
+- Do not call weak `Story support` usable; tell the user to confirm hook, pain, feature, evidence, and CTA in `contact-sheet.png`.
 - Do not claim image support, music, effects, publishing, source-audio preservation, true reference decomposition, or editor draft export.
 
 ## Commands
@@ -119,3 +121,11 @@ On success or warning, report the paths for:
 
 On fail, report `review.md` and any diagnostic files that were written, including `source-diagnostics` or preserved `contact-sheet.png`.
 Never describe a failed run as completed video output.
+
+## Review Status Language
+
+- `pass`: generated a reviewable rough cut; still ask the user to inspect before publishing.
+- `warning`: generated artifacts only for manual review; do not imply the video is usable yet.
+- `fail`: blocking issue; do not point to stale success artifacts as output.
+
+If `Story support` is `weak`, explain that most roles lack non-filename visual evidence. The next action is to inspect `contact-sheet.png`, replace weak clips, or provide a more specific script.

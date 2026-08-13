@@ -8,6 +8,8 @@
   source frames show severe old-subtitle or platform-UI residue.
 - Added filename-only review warnings so role-labeled assembly is not reported
   as visually verified.
+- Added `Story support` review diagnostics so role-labeled assembly without
+  non-filename visual evidence becomes a warning instead of a false pass.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while
   still removing stale success artifacts such as `remix.mp4`.
 - Reframed documentation around auditable rough-cut generation, not full editor

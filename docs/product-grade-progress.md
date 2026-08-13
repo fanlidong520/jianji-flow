@@ -42,11 +42,12 @@ Product judgment:
 - This is an intentional honesty gate: filename-only role assembly must not be marketed as visual understanding.
 - Source-preflight warnings are carried into the final review, and summary text prioritizes source visual risk over weaker filename-only warnings.
 - The next quality gap is story/usefulness: the system must tell users when clips do not yet support a compelling product story.
+- Current story-support hardening adds that first honesty gate: no selected story clips now fails, and mostly filename/fallback/no-visual evidence now warns.
 
 Current next step:
 
-- add a material-story diagnosis that distinguishes "enough clips to render" from "enough visual evidence to support a usable product short";
-- improve first-use review copy so non-technical users understand warning states without reading JSON.
+- verify story-support hardening against full tests, smoke/P0, and the real-material pack;
+- continue toward pre-render material quality gates and blind first-time-user validation.
 
 Parallel product audit result:
 

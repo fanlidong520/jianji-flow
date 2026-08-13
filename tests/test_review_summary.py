@@ -65,6 +65,34 @@ def test_review_summary_explains_filename_only_warning_as_visual_verification_ri
     assert "contact sheet" in summary["next_action"]
 
 
+def test_review_summary_explains_weak_story_support_as_story_review_risk():
+    summary = build_review_summary(
+        {
+            "status": "warning",
+            "warnings": ["Story support is weak: 5 of 5 story roles rely only on filename evidence."],
+            "failures": [],
+        }
+    )
+
+    assert summary["decision"] == "Needs review"
+    assert "Story support is weak" in summary["reason"]
+    assert "product story" in summary["next_action"]
+
+
+def test_review_summary_explains_talking_head_story_support_with_mode_roles():
+    summary = build_review_summary(
+        {
+            "status": "warning",
+            "warnings": ["Story support is weak: 3 of 3 talking-head story roles do not have visual evidence."],
+            "failures": [],
+        }
+    )
+
+    assert summary["decision"] == "Needs review"
+    assert "talking-head story" in summary["reason"]
+    assert "topic, claim, explanation, evidence, and conclusion" in summary["next_action"]
+
+
 def test_review_summary_prioritizes_source_visual_risk_over_filename_only_warning():
     summary = build_review_summary(
         {
@@ -81,6 +109,40 @@ def test_review_summary_prioritizes_source_visual_risk_over_filename_only_warnin
     assert "source frame" in summary["reason"]
     assert "platform UI" in summary["reason"]
     assert "old subtitles" in summary["next_action"]
+
+
+def test_review_summary_prioritizes_same_source_risk_over_story_support_warning():
+    summary = build_review_summary(
+        {
+            "status": "warning",
+            "warnings": [
+                "Story support is weak: 5 of 5 story roles do not have visual evidence.",
+                "5 of 5 segments come from the same source video; the result may look like a voiceover shell.",
+            ],
+            "failures": [],
+        }
+    )
+
+    assert summary["decision"] == "Needs review"
+    assert "same source video" in summary["reason"]
+    assert "original" in summary["next_action"]
+
+
+def test_review_summary_prioritizes_preflight_skipped_over_story_support_warning():
+    summary = build_review_summary(
+        {
+            "status": "warning",
+            "warnings": [
+                "Story support is weak: 5 of 5 story roles do not have visual evidence.",
+                "Source preflight skipped because ffprobe is unavailable.",
+            ],
+            "failures": [],
+        }
+    )
+
+    assert summary["decision"] == "Needs review"
+    assert "preflight skipped" in summary["reason"]
+    assert "source diagnostics" in summary["next_action"]
 
 
 def test_review_summary_maps_fail_to_do_not_use():

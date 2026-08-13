@@ -63,6 +63,11 @@ def build_review(
 
     warnings.extend(_source_diversity_warnings(recipe, matches))
     warnings.extend(_match_evidence_warnings(recipe, matches))
+    story_support = _story_support(recipe, matches)
+    if story_support["status"] == "fail":
+        failures.append(story_support["warning"])
+    elif story_support["status"] == "weak":
+        warnings.append(story_support["warning"])
 
     if check_artifacts:
         artifact_result = _artifact_review(recipe, remix_path, captions_path, ass_path, voiceover_path, contact_sheet_path)
@@ -80,6 +85,7 @@ def build_review(
             "remix": _path_text(remix_path),
             "captions": _path_text(captions_path),
         },
+        "story_support": story_support,
     }
     review["summary"] = build_review_summary(review)
     return _with_optional_outputs(
@@ -137,6 +143,69 @@ def _match_evidence_warnings(recipe: dict, matches: dict) -> list[str]:
         "jianji-flow assembled role-labeled clips but did not verify the visuals. "
         "Watch the contact sheet before treating this as a usable cut."
     ]
+
+
+def _story_support(recipe: dict, matches: dict) -> dict:
+    by_id = _match_by_id(matches)
+    story_label = _story_label(recipe.get("mode"))
+    roles: list[str] = []
+    filename_only_roles: list[str] = []
+    visual_evidence_roles: list[str] = []
+    weak_evidence_roles: list[str] = []
+    for segment in recipe.get("segments", []):
+        match = by_id.get(segment.get("match_id"))
+        if not match or match.get("status") not in {"selected", "low_confidence"}:
+            continue
+        role = str(segment.get("role") or segment.get("caption") or segment.get("id", "unknown")).strip().casefold()
+        roles.append(role)
+        evidence = [str(item) for item in match.get("evidence", [])]
+        if evidence and all(item.startswith("filename-role:") for item in evidence):
+            filename_only_roles.append(role)
+        has_visual_evidence = any(_is_visual_evidence(item) for item in evidence)
+        if has_visual_evidence:
+            visual_evidence_roles.append(role)
+        else:
+            weak_evidence_roles.append(role)
+
+    if not roles:
+        return {
+            "status": "fail",
+            "roles": [],
+            "filename_only_roles": [],
+            "visual_evidence_roles": [],
+            "weak_evidence_roles": [],
+            "warning": "No selected clips support the story.",
+        }
+
+    if weak_evidence_roles:
+        return {
+            "status": "weak",
+            "roles": roles,
+            "filename_only_roles": filename_only_roles,
+            "visual_evidence_roles": visual_evidence_roles,
+            "weak_evidence_roles": weak_evidence_roles,
+            "warning": (
+                f"Story support is weak: {len(weak_evidence_roles)} of {len(roles)} {story_label} roles do not have "
+                f"visual evidence, so the {story_label} must be checked manually."
+            ),
+        }
+    return {
+        "status": "pass",
+        "roles": roles,
+        "filename_only_roles": filename_only_roles,
+        "visual_evidence_roles": visual_evidence_roles,
+        "weak_evidence_roles": weak_evidence_roles,
+    }
+
+
+def _is_visual_evidence(item: str) -> bool:
+    return item.startswith(("visual-frame:", "visual-review:", "source-preflight:clean"))
+
+
+def _story_label(mode: object) -> str:
+    if mode == "talking-head":
+        return "talking-head story"
+    return "product story"
 
 
 def _duration_tolerance_ms(duration_ms: int) -> int:
@@ -234,6 +303,28 @@ def _list_section(title: str, values: list[str]) -> list[str]:
     return lines
 
 
+def _story_support_section(story_support: dict | None) -> list[str]:
+    lines = ["## Story support"]
+    if not story_support:
+        lines.append("- none")
+        return lines
+    lines.append(f"- status: {story_support.get('status', 'unknown')}")
+    for key in ("roles", "filename_only_roles", "visual_evidence_roles", "weak_evidence_roles"):
+        values = [str(item) for item in story_support.get(key, [])]
+        lines.append(f"- {key}: {', '.join(values) if values else 'none'}")
+    return lines
+
+
+def _story_support_html(story_support: dict | None) -> str:
+    if not story_support:
+        return "<li>none</li>"
+    items = [f"<li>status: <code>{escape(str(story_support.get('status', 'unknown')))}</code></li>"]
+    for key in ("roles", "filename_only_roles", "visual_evidence_roles", "weak_evidence_roles"):
+        values = ", ".join(str(item) for item in story_support.get(key, [])) or "none"
+        items.append(f"<li>{escape(key)}: <code>{escape(values)}</code></li>")
+    return "".join(items)
+
+
 def build_review_markdown(review: dict) -> str:
     summary = review.get("summary", build_review_summary(review))
     lines = [
@@ -261,6 +352,8 @@ def build_review_markdown(review: dict) -> str:
     lines.extend(_list_section("Missing segments", list(review.get("missing_segments", []))))
     lines.append("")
     lines.extend(_list_section("Low confidence segments", list(review.get("low_confidence_segments", []))))
+    lines.append("")
+    lines.extend(_story_support_section(review.get("story_support")))
     lines.extend(
         [
             "",
@@ -301,6 +394,7 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
 
     warnings = "".join(f"<li>{escape(str(item))}</li>" for item in review.get("warnings", [])) or "<li>none</li>"
     failures = "".join(f"<li>{escape(str(item))}</li>" for item in review.get("failures", [])) or "<li>none</li>"
+    story_support = _story_support_html(review.get("story_support"))
     return f"""<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -339,6 +433,8 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
   <ul>{warnings}</ul>
   <h2>Failures</h2>
   <ul>{failures}</ul>
+  <h2>Story support</h2>
+  <ul>{story_support}</ul>
   <h2>Segments</h2>
   <table>
     <thead>

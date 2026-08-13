@@ -58,7 +58,18 @@ def test_review_marks_low_confidence_as_warning():
 
 def test_review_passes_when_all_segments_are_selected():
     recipe = {"segments": [{"id": "seg-001", "match_id": "match-001", "caption": "Hook"}]}
-    matches = {"matches": [{"id": "match-001", "segment_id": "seg-001", "status": "selected", "asset_id": "asset-001", "confidence": 0.9}]}
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "selected",
+                "asset_id": "asset-001",
+                "confidence": 0.9,
+                "evidence": ["visual-frame:matches-caption"],
+            }
+        ]
+    }
 
     review = build_review(
         recipe,
@@ -151,11 +162,261 @@ def test_review_warns_when_selected_segments_are_filename_only_matches():
 
     assert review["status"] == "warning"
     assert any("filename only" in warning for warning in review["warnings"])
+    assert review["story_support"]["status"] == "weak"
+    assert review["story_support"]["roles"] == ["hook", "pain", "feature"]
+
+
+def test_review_story_support_passes_with_non_filename_story_evidence():
+    recipe = {
+        "mode": "product",
+        "segments": [
+            {"id": "seg-001", "role": "hook", "match_id": "match-001", "caption": "Hook"},
+            {"id": "seg-002", "role": "pain", "match_id": "match-002", "caption": "Pain"},
+            {"id": "seg-003", "role": "feature", "match_id": "match-003", "caption": "Feature"},
+            {"id": "seg-004", "role": "evidence", "match_id": "match-004", "caption": "Evidence"},
+            {"id": "seg-005", "role": "cta", "match_id": "match-005", "caption": "CTA"},
+        ],
+    }
+    matches = {
+        "matches": [
+            {
+                "id": f"match-{index:03d}",
+                "segment_id": f"seg-{index:03d}",
+                "status": "selected",
+                "asset_id": f"asset-{index:03d}",
+                "source_path": f"assets/{index:02d}.mp4",
+                "confidence": 0.88,
+                "evidence": ["filename-role:hook", "visual-frame:matches-caption"],
+            }
+            for index in range(1, 6)
+        ]
+    }
+
+    review = build_review(
+        recipe,
+        matches,
+        remix_path=Path("work/remix.mp4"),
+        captions_path=Path("work/captions.srt"),
+        check_artifacts=False,
+    )
+
+    assert review["status"] == "pass"
+    assert review["story_support"]["status"] == "pass"
+    assert review["story_support"]["roles"] == ["hook", "pain", "feature", "evidence", "cta"]
+
+
+def test_review_story_support_ignores_non_visual_metadata_evidence():
+    recipe = {
+        "mode": "product",
+        "segments": [
+            {"id": "seg-001", "role": "hook", "match_id": "match-001", "caption": "Hook"},
+            {"id": "seg-002", "role": "pain", "match_id": "match-002", "caption": "Pain"},
+            {"id": "seg-003", "role": "feature", "match_id": "match-003", "caption": "Feature"},
+        ],
+    }
+    matches = {
+        "matches": [
+            {
+                "id": f"match-{index:03d}",
+                "segment_id": f"seg-{index:03d}",
+                "status": "selected",
+                "asset_id": f"asset-{index:03d}",
+                "source_path": f"assets/{index:02d}.mp4",
+                "confidence": 0.8,
+                "evidence": ["duration-fit:yes"],
+            }
+            for index in range(1, 4)
+        ]
+    }
+
+    review = build_review(
+        recipe,
+        matches,
+        remix_path=Path("work/remix.mp4"),
+        captions_path=Path("work/captions.srt"),
+        check_artifacts=False,
+    )
+
+    assert review["status"] == "warning"
+    assert review["story_support"]["status"] == "weak"
+    assert review["story_support"]["visual_evidence_roles"] == []
+
+
+def test_review_fails_when_no_selected_clips_support_story():
+    review = build_review(
+        {"mode": "product", "segments": []},
+        {"matches": []},
+        remix_path=Path("work/remix.mp4"),
+        captions_path=Path("work/captions.srt"),
+        check_artifacts=False,
+    )
+
+    assert review["status"] == "fail"
+    assert review["story_support"]["status"] == "fail"
+    assert any("No selected clips support the story" in failure for failure in review["failures"])
+
+
+def test_review_warns_when_story_roles_have_no_visual_evidence():
+    recipe = {
+        "mode": "product",
+        "segments": [
+            {"id": "seg-001", "role": "hook", "match_id": "match-001", "caption": "Hook"},
+            {"id": "seg-002", "role": "pain", "match_id": "match-002", "caption": "Pain"},
+            {"id": "seg-003", "role": "feature", "match_id": "match-003", "caption": "Feature"},
+        ],
+    }
+    matches = {
+        "matches": [
+            {
+                "id": f"match-{index:03d}",
+                "segment_id": f"seg-{index:03d}",
+                "status": "selected",
+                "asset_id": f"asset-{index:03d}",
+                "source_path": f"assets/{index:02d}.mp4",
+                "confidence": 0.8,
+                "evidence": [],
+            }
+            for index in range(1, 4)
+        ]
+    }
+
+    review = build_review(
+        recipe,
+        matches,
+        remix_path=Path("work/remix.mp4"),
+        captions_path=Path("work/captions.srt"),
+        check_artifacts=False,
+    )
+
+    assert review["status"] == "warning"
+    assert review["story_support"]["status"] == "weak"
+    assert any("Story support is weak" in warning for warning in review["warnings"])
+
+
+def test_review_story_support_warning_uses_talking_head_language():
+    recipe = {
+        "mode": "talking-head",
+        "segments": [
+            {"id": "seg-001", "role": "topic", "match_id": "match-001", "caption": "Topic"},
+            {"id": "seg-002", "role": "claim", "match_id": "match-002", "caption": "Claim"},
+            {"id": "seg-003", "role": "explanation", "match_id": "match-003", "caption": "Explanation"},
+        ],
+    }
+    matches = {
+        "matches": [
+            {
+                "id": f"match-{index:03d}",
+                "segment_id": f"seg-{index:03d}",
+                "status": "selected",
+                "asset_id": f"asset-{index:03d}",
+                "source_path": f"assets/{index:02d}.mp4",
+                "confidence": 0.8,
+                "evidence": [],
+            }
+            for index in range(1, 4)
+        ]
+    }
+
+    review = build_review(
+        recipe,
+        matches,
+        remix_path=Path("work/remix.mp4"),
+        captions_path=Path("work/captions.srt"),
+        check_artifacts=False,
+    )
+
+    assert review["status"] == "warning"
+    assert "talking-head story" in review["story_support"]["warning"]
+
+
+def test_review_warns_when_short_story_has_no_visual_evidence():
+    recipe = {
+        "mode": "product",
+        "segments": [
+            {"id": "seg-001", "role": "hook", "match_id": "match-001", "caption": "Hook"},
+            {"id": "seg-002", "role": "pain", "match_id": "match-002", "caption": "Pain"},
+        ],
+    }
+    matches = {
+        "matches": [
+            {
+                "id": f"match-{index:03d}",
+                "segment_id": f"seg-{index:03d}",
+                "status": "selected",
+                "asset_id": f"asset-{index:03d}",
+                "source_path": f"assets/{index:02d}.mp4",
+                "confidence": 0.8,
+                "evidence": [],
+            }
+            for index in range(1, 3)
+        ]
+    }
+
+    review = build_review(
+        recipe,
+        matches,
+        remix_path=Path("work/remix.mp4"),
+        captions_path=Path("work/captions.srt"),
+        check_artifacts=False,
+    )
+
+    assert review["status"] == "warning"
+    assert review["story_support"]["status"] == "weak"
+
+
+def test_review_warns_when_most_story_roles_have_no_visual_evidence():
+    recipe = {
+        "mode": "product",
+        "segments": [
+            {"id": "seg-001", "role": "hook", "match_id": "match-001", "caption": "Hook"},
+            {"id": "seg-002", "role": "pain", "match_id": "match-002", "caption": "Pain"},
+            {"id": "seg-003", "role": "feature", "match_id": "match-003", "caption": "Feature"},
+            {"id": "seg-004", "role": "evidence", "match_id": "match-004", "caption": "Evidence"},
+            {"id": "seg-005", "role": "cta", "match_id": "match-005", "caption": "CTA"},
+        ],
+    }
+    matches = {
+        "matches": [
+            {
+                "id": f"match-{index:03d}",
+                "segment_id": f"seg-{index:03d}",
+                "status": "selected",
+                "asset_id": f"asset-{index:03d}",
+                "source_path": f"assets/{index:02d}.mp4",
+                "confidence": 0.8,
+                "evidence": ["visual-frame:matches-caption"] if index in (1, 2) else [],
+            }
+            for index in range(1, 6)
+        ]
+    }
+
+    review = build_review(
+        recipe,
+        matches,
+        remix_path=Path("work/remix.mp4"),
+        captions_path=Path("work/captions.srt"),
+        check_artifacts=False,
+    )
+
+    assert review["status"] == "warning"
+    assert review["story_support"]["status"] == "weak"
+    assert review["story_support"]["weak_evidence_roles"] == ["feature", "evidence", "cta"]
 
 
 def test_review_fails_when_rendered_video_is_missing():
     recipe = {"duration_ms": 1000, "segments": [{"id": "seg-001", "match_id": "match-001", "caption": "Hook"}]}
-    matches = {"matches": [{"id": "match-001", "segment_id": "seg-001", "status": "selected", "asset_id": "asset-001", "confidence": 0.9}]}
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "selected",
+                "asset_id": "asset-001",
+                "confidence": 0.9,
+                "evidence": ["visual-frame:matches-caption"],
+            }
+        ]
+    }
 
     review = build_review(recipe, matches, remix_path=Path("work/missing.mp4"), captions_path=Path("work/captions.srt"))
 
@@ -171,7 +432,18 @@ def test_review_fails_when_burned_caption_file_is_missing(tmp_path: Path):
     captions.write_text("1\n00:00:00,000 --> 00:00:01,000\nCaption\n", encoding="utf-8")
     contact_sheet.write_bytes(b"image")
     recipe = {"duration_ms": 1000, "caption_burn_in": True, "segments": [{"id": "seg-001", "match_id": "match-001", "caption": "Hook"}]}
-    matches = {"matches": [{"id": "match-001", "segment_id": "seg-001", "status": "selected", "asset_id": "asset-001", "confidence": 0.9}]}
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "selected",
+                "asset_id": "asset-001",
+                "confidence": 0.9,
+                "evidence": ["visual-frame:matches-caption"],
+            }
+        ]
+    }
 
     review = build_review(
         recipe,
@@ -222,7 +494,18 @@ def test_review_fails_when_contact_sheet_has_no_visual_detail(tmp_path: Path):
         "duration_ms": 1000,
         "segments": [{"id": "seg-001", "match_id": "match-001", "caption": "Hook"}],
     }
-    matches = {"matches": [{"id": "match-001", "segment_id": "seg-001", "status": "selected", "asset_id": "asset-001", "confidence": 0.9}]}
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "selected",
+                "asset_id": "asset-001",
+                "confidence": 0.9,
+                "evidence": ["visual-frame:matches-caption"],
+            }
+        ]
+    }
 
     review = build_review(
         recipe,
@@ -253,7 +536,18 @@ def test_review_warns_when_contact_sheet_has_platform_ui_risk(tmp_path: Path):
         "duration_ms": 1000,
         "segments": [{"id": "seg-001", "match_id": "match-001", "caption": "Hook"}],
     }
-    matches = {"matches": [{"id": "match-001", "segment_id": "seg-001", "status": "selected", "asset_id": "asset-001", "confidence": 0.9}]}
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "selected",
+                "asset_id": "asset-001",
+                "confidence": 0.9,
+                "evidence": ["visual-frame:matches-caption"],
+            }
+        ]
+    }
 
     review = build_review(
         recipe,
@@ -303,7 +597,18 @@ def test_review_artifact_review_warns_when_contact_sheet_has_platform_ui_risk(tm
         "duration_ms": 1000,
         "segments": [{"id": "seg-001", "match_id": "match-001", "caption": "Hook"}],
     }
-    matches = {"matches": [{"id": "match-001", "segment_id": "seg-001", "status": "selected", "asset_id": "asset-001", "confidence": 0.9}]}
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "selected",
+                "asset_id": "asset-001",
+                "confidence": 0.9,
+                "evidence": ["visual-frame:matches-caption"],
+            }
+        ]
+    }
 
     review = build_review(
         recipe,
@@ -334,7 +639,18 @@ def test_review_fails_when_contact_sheet_has_severe_platform_ui_risk(tmp_path: P
         "duration_ms": 1000,
         "segments": [{"id": "seg-001", "match_id": "match-001", "caption": "Hook"}],
     }
-    matches = {"matches": [{"id": "match-001", "segment_id": "seg-001", "status": "selected", "asset_id": "asset-001", "confidence": 0.9}]}
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "selected",
+                "asset_id": "asset-001",
+                "confidence": 0.9,
+                "evidence": ["visual-frame:matches-caption"],
+            }
+        ]
+    }
 
     review = build_review(
         recipe,
@@ -416,6 +732,27 @@ def test_build_review_markdown_contains_plain_language_summary():
     assert "Next action" in markdown
 
 
+def test_build_review_markdown_contains_story_support_section():
+    markdown = build_review_markdown(
+        {
+            "status": "warning",
+            "warnings": [],
+            "failures": [],
+            "outputs": {},
+            "story_support": {
+                "status": "weak",
+                "roles": ["hook", "pain", "feature", "evidence", "cta"],
+                "filename_only_roles": ["hook", "pain"],
+                "visual_evidence_roles": ["feature"],
+            },
+        }
+    )
+
+    assert "## Story support" in markdown
+    assert "- status: weak" in markdown
+    assert "- filename_only_roles: hook, pain" in markdown
+
+
 def test_write_review_markdown_creates_file(tmp_path: Path):
     output = tmp_path / "nested" / "review.md"
 
@@ -466,6 +803,27 @@ def test_build_review_html_contains_outputs_and_match_evidence():
     assert "work/voiceover.wav" in html
     assert "家里难刷角落" in html
     assert "filename-role:hook" in html
+
+
+def test_build_review_html_contains_story_support_status():
+    review = {
+        "status": "warning",
+        "outputs": {},
+        "warnings": [],
+        "failures": [],
+        "story_support": {
+            "status": "weak",
+            "roles": ["hook", "pain"],
+            "filename_only_roles": ["hook"],
+            "visual_evidence_roles": [],
+        },
+    }
+
+    html = build_review_html(review, {"segments": []}, {"matches": []})
+
+    assert "Story support" in html
+    assert "weak" in html
+    assert "filename_only_roles" in html
 
 
 def test_build_review_html_contains_plain_language_summary():

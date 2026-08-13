@@ -39,6 +39,7 @@ It is not publish-ready:
 - Keep v7 as an evidence sample for visible rough-cut remixing.
 - Open-source MVP should be positioned as "role-based material assembly" instead of "reference video decomposition" until real shot/beat extraction exists.
 - Filename role matches should not be presented as high visual understanding confidence.
+- Story support must be shown explicitly: a renderable timeline is not enough if most roles lack non-filename visual evidence.
 - Public launch requires blind testing with users who did not participate in development.
 - Next engineering priority: preflight material diagnosis and stricter review escalation.
 - Next product priority: first-time usage and failure guidance.

@@ -4,6 +4,8 @@
 
 当前版本更像一个“本地自动粗剪工作流底座”，不是完整替代剪映的桌面剪辑软件。它会生成机器配音、烧录字幕、可播放预览视频、分段复核图和本地复核页，也会在素材明显不够、源片段疑似有旧字幕/平台 UI、或匹配证据太弱时给出 warning/fail，而不是假装成片已经可发。
 
+当前最准确的定位是：**本地素材角色匹配 + 脚本驱动的可复核粗剪**。参考视频只提供结构、尺寸、帧率等参考，不会被复制到输出，也不会被真正拆解成镜头语言、节奏、钩子或视觉风格。
+
 ## 效果预览
 
 下面是一次家居带货样片生成后的 `contact-sheet.png`，每一格对应一个时间线片段，方便快速检查画面和字幕是否正常。
@@ -29,6 +31,7 @@
 - Writes `contact-sheet.png` with one frame per timeline segment.
 - Writes `review.md` and `review.html` for manual inspection.
 - Marks filename-only matching as `warning` because it does not prove visual understanding.
+- Adds a `Story support` review section that warns when most story roles have no non-filename visual evidence.
 
 ## What It Does Not Do
 
@@ -40,6 +43,7 @@
 - It does not generate music, effects, or beat-synced edits.
 - It does not truly decompose a viral reference video into camera moves, hooks, or pacing yet.
 - It does not guarantee semantic matching beyond the current auditable matching evidence.
+- It does not treat file names as visual proof. Role-labeled files help assembly, but the picture still needs review.
 
 ## 安装
 
@@ -162,6 +166,26 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 - `review.md`: review status and checklist.
 - `review.html`: local visual review page.
 
+## 状态怎么理解
+
+| 状态 | 能不能继续用 | 必须怎么做 |
+| --- | --- | --- |
+| `pass` | 可以进入人工发布前复核 | 仍要看 `remix.mp4`、`contact-sheet.png` 和商品信息 |
+| `warning` | 只能当作待确认粗剪 | 按警告检查或替换素材，不要直接发布 |
+| `fail` | 不应使用输出视频 | 根据 `review.md`、`diagnosis.md` 或诊断图修复后重跑 |
+
+`warning` 不是“基本通过”。它只说明工作流产出了可检查的粗剪，但仍有证据不足、素材风险或人工确认项。
+
+## Story Support
+
+`review.md` and `review.html` include a `Story support` section.
+
+- `pass`: selected clips have stronger evidence than file names for the story roles.
+- `weak`: most story roles are selected only by file names, fallback choice, or no visual evidence. Open `contact-sheet.png` and confirm the product story manually.
+- `fail`: no selected clips support the story. Do not use the output.
+
+Current matching is intentionally conservative. On real local素材, `weak` is common because the tool can assemble role-labeled clips but cannot yet truly see and understand the product story.
+
 ## 怎么判断结果能不能用
 
 每次运行后，先打开 `review.html`，再看 `remix.mp4`。
@@ -173,6 +197,7 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 - `remix.mp4` 有声音，字幕可读，画面没有明显黑屏、卡帧或严重拉伸。
 - `matches.json` 里的素材路径确实来自你的 `assets/` 文件夹。
 - 如果报告出现 `filename-only`，说明系统只是按文件名角色组装，必须看 `contact-sheet.png` 确认画面是否真的对上文案。
+- 如果 `Story support` 是 `weak`，说明这条视频可能只是按角色拼接，还没有足够证据证明产品故事成立。先确认开头、痛点、卖点、证据、行动提醒是否都被画面支撑。
 - 如果报告出现 `source_diagnostics` 或 `source-diagnostics`，说明源素材预检发现问题，优先替换对应素材。
 
 ## Validation
@@ -185,7 +210,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 249 passed
+- `python -m pytest -q` -> 264 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 
