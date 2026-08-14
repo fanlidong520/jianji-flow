@@ -294,6 +294,32 @@ Still not good enough:
 - the sampled picture-change score is a rough frame comparison, not a story-quality score;
 - public launch still needs non-semantic filename real-material packs and blind-user validation.
 
+## Current v35 Judgment
+
+The workflow now has an explicit visual-selection loop for opaque filenames. It is a meaningful trust improvement because the reviewer can inspect candidate frames and the final report preserves the exact selection evidence. It is still not autonomous semantic editing and is not a public launch pass.
+
+Passes:
+
+- `visual-review` generates a bounded candidate board with three sampled frames per candidate without using filename roles;
+- `--visual-selections` validates candidate identity, segment binding, asset fingerprint, source range, and frame fingerprints before rendering;
+- `review.md` and `review.html` copy the selected candidate sheet and frames into `visual-selection-evidence/`, so the final review is self-contained;
+- a real home-product pack with opaque names `IMG_001.mp4` through `IMG_005.mp4` completed the visual-selection workflow and produced a visibly rearranged five-segment cut;
+- the same real run honestly remained `warning` because the feature role had no genuinely clear candidate;
+- mutating a selected candidate frame caused a pre-render failure and produced no `remix.mp4` or `voiceover.wav`;
+- the malformed-material pack was blocked before manifest creation and produced no `remix.mp4`.
+
+Still not good enough:
+
+- candidate generation is deterministic window sampling; it does not understand product semantics by itself;
+- Codex or human visual review is still required to choose candidates and write reasons;
+- the current real source contains old in-video text/platform residue, so it is not a clean publishing pack;
+- no three-pack real-material pass matrix or outside-user trial has been completed;
+- the product still needs a stronger automatic semantic selector or a deliberately simple review UI before it can claim easy one-click editing.
+
+Strict current product judgment:
+
+Do not present `jianji-flow` as a finished automatic editor. The honest current claim is a local, auditable rough-cut workflow with an explicit Codex-assisted visual shot-selection loop. The next gate is to validate independent clean material packs and compare this workflow against a blind file-order baseline before public release.
+
 ## Product Principle
 
 Do not optimize for impressive automation claims.

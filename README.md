@@ -33,7 +33,9 @@
 - Renders `remix.mp4` with burned-in captions and voiceover audio.
 - Writes `contact-sheet.png` with one frame per timeline segment.
 - Writes `candidate-review.html` and `candidate-frames/` so weak segments can be compared against visible repair candidates.
+- Supports a separate `visual-review` pass that generates opaque-filename candidate boards; a Codex or human reviewer can select the actual shot by looking at frames instead of trusting file names.
 - Writes `review.md` and `review.html` for manual inspection, including a change report after fixes are applied.
+- Records selected visual candidates, frame evidence, and asset fingerprints in `review.md`, `review.html`, and `matches.json`.
 - Shows `CANDIDATE` in `diagnosis.md` for filename/duration-ready clips, because that is not visual proof.
 - Marks filename-only matching as `warning` because it does not prove visual understanding.
 - Adds a `Story support` review section that warns when most story roles have no non-filename visual evidence.
@@ -48,6 +50,7 @@
 - It does not preserve source audio by default.
 - It does not generate music, effects, or beat-synced edits.
 - It does not truly decompose a viral reference video into camera moves, hooks, or pacing yet.
+- It does not silently claim that a visual candidate board is semantic understanding; visual selection is an explicit Codex-assisted review step and still needs human product-accuracy review.
 - It does not guarantee semantic matching beyond the current auditable matching evidence.
 - It does not treat file names as visual proof. Role-labeled files help assembly, but the picture still needs review.
 
@@ -177,10 +180,30 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 - `fixes.template.json`: editable repair file for replacing weak or low-confidence segments on the next run.
 - `visual-similarity-diagnostics/`: sampled frames used to audit visually similar or unchecked repair recommendations.
 - `change-diagnostics/`: before/after sampled frames used by the `Change report` after a fix run.
+- `visual-candidates.json`: candidate windows and three sampled frames per candidate.
+- `visual-candidate-sheet.png`: contact sheet for choosing candidates without relying on file names.
+- `visual-selection.template.json`: starter JSON for recording a reviewer, candidate id, and reason for each selected segment.
+- `visual-selection-evidence/`: self-contained candidate sheet and selected frames copied into a rendered run's review folder.
 
 `review.md` and `review.html` also include a `Storyboard` section. It lists each segment's role, caption, selected asset, source range, matching evidence, and risk, so a user can see what was cut without opening `matches.json`.
 When fixes are generated, open `candidate-review.html` from the same work directory. It shows the current segment frame next to up to three candidate frames, including whether a candidate is a clean recommendation, a warning-only option, or a wrong-role manual-inspection fallback.
 After rerunning with `--fixes` or `--apply-recommendation`, open the `Change report` section in `review.md` or `review.html`. It lists the changed segment, before/after asset, before/after source range, override reason, before/after sampled frames, and `Picture change`. `Picture change` only means sampled frames differ; it does not prove the new shot fits the script.
+
+## Visual Shot Selection
+
+When filenames are opaque, or the first rough cut is only a voiceover shell, run the visual review pass before rendering:
+
+```powershell
+python -m jianji_flow visual-review --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --script fixtures\scenario-a-product\script.txt --work-dir out\visual-board
+```
+
+Open `visual-candidate-sheet.png`. Fill `visual-selection.template.json` into a new JSON file by choosing a candidate id and writing a short reason for each genuinely supported segment. Then rerun:
+
+```powershell
+python -m jianji_flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --script fixtures\scenario-a-product\script.txt --visual-selections out\visual-board\visual-selections.json --work-dir out\visual-selected
+```
+
+The selection is checked against the candidate manifest, asset fingerprint, source range, and sampled-frame fingerprints before rendering. Leave a segment unselected when no candidate truly supports its caption; the run should remain `warning` and the review page will name the missing story evidence. A visual change proves only that the selected window changed, not that the product claim is true.
 
 ## 状态怎么理解
 
@@ -239,6 +262,7 @@ Visual similarity checking samples three frames from the actual selected source 
 - 如果报告出现 `visual_similarity_diagnostics`，说明有推荐被视觉相似或无法确认降级，先看诊断图再决定是否手动替换。
 - 如果 `Story support` 是 `weak`，说明这条视频可能只是按角色拼接，还没有足够证据证明产品故事成立。先看 `next_action` 里点名的角色，替换或人工确认对应素材，再确认开头、痛点、卖点、证据、行动提醒是否都被画面支撑。
 - 如果报告出现 `source_diagnostics` 或 `source-diagnostics`，说明源素材预检发现问题，优先替换对应素材。
+- 如果使用了视觉选择，先看 `review.html` 的 `Visual selection` 区域，确认每个候选画面和选择理由；如果某个角色没有选择记录，不要把它当成自动理解成功。
 
 ## Validation
 
@@ -250,7 +274,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 339 passed
+- `python -m pytest -q` -> 353 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 

@@ -62,6 +62,9 @@
   still removing stale success artifacts such as `remix.mp4`.
 - Reframed documentation around auditable rough-cut generation, not full editor
   replacement or true viral-reference decomposition.
+- Added `visual-review` candidate boards and `--visual-selections` for explicit
+  Codex-assisted shot selection with opaque filenames, asset fingerprints, and
+  self-contained frame evidence in the final review page.
 
 ## 0.2.0
 

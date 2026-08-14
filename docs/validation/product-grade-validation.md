@@ -215,6 +215,25 @@ Latest local checkpoint after fix-run change reports:
 - real-material `out/real-material-change-report-v34/review.html` embeds before/after sampled frames for `seg-004`, with `Picture change` 51.9 and `review required` status;
 - this improves first-time usability, but it still does not prove semantic visual shot selection.
 
+Latest local checkpoint after visual candidate selection v35:
+
+- `python -m pytest -q` -> 353 passed in 345.05s;
+- `python scripts/run_smoke.py` -> smoke passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- `visual-review` generated a 45-candidate board for the real home-product material using opaque filenames;
+- `out/visual-selection-v35/run-v35d/review.md` and `review.html` record four explicit visual selections and one honest feature-role abstention;
+- `out/visual-selection-v35/run-v35d/contact-sheet.png` shows five actual source-window choices, with `seg-002` and `seg-004` changed from the baseline and a `warning` status retained;
+- `out/visual-selection-v35/run-v35d/matches.json` now keeps each selected visual candidate's asset and source window aligned with its `candidates` record, including after voiceover retiming;
+- after deliberately mutating `seg-001-candidate-03-01.png`, the rerun failed before rendering with `visual selection frame fingerprint changed`, and `out/stale-visual-selection-v35/run/review.md` contains no `remix.mp4` or `voiceover.wav`;
+- `out/dirty-pack-v35` was blocked on the malformed asset before manifest creation and produced no `remix.mp4`;
+- an opaque-filename run without visual selections stopped with a diagnosis instead of pretending filename-based assembly was sufficient.
+
+Product judgment:
+
+- this is a stronger and more honest visual review workflow, not proof of autonomous semantic editing;
+- the real pack is still `warning` because the feature shot is not clearly supported and the source material contains old in-video residue;
+- public launch remains blocked until three independent real-material packs, a clean non-semantic filename pass, a dirty-pack fail, clean-install verification, and outside-user trials all pass the launch rule.
+
 ## Launch Rule
 
 Do not announce the project publicly until:

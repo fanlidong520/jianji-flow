@@ -463,8 +463,35 @@ def _retime_match_source_window(match: dict, duration_ms: int) -> dict:
     ]
     if source_start_ms > 0:
         evidence.append(f"source-window:{source_start_ms}-{source_end_ms}")
-    return {
+    retimed_match = {
         **match,
+        "source_start_ms": source_start_ms,
+        "source_end_ms": source_end_ms,
+        "asset_duration_ms": asset_duration_ms,
+        "evidence": evidence,
+    }
+    if isinstance(match.get("candidates"), list):
+        retimed_match["candidates"] = [
+            _retime_candidate_source_window(candidate, duration_ms)
+            for candidate in match["candidates"]
+        ]
+    return retimed_match
+
+
+def _retime_candidate_source_window(candidate: dict, duration_ms: int) -> dict:
+    asset_duration_ms = int(candidate.get("asset_duration_ms", candidate["source_end_ms"]))
+    source_start_ms = int(candidate["source_start_ms"])
+    source_start_ms = min(source_start_ms, max(0, asset_duration_ms - duration_ms))
+    source_end_ms = source_start_ms + duration_ms
+    evidence = [
+        item
+        for item in candidate.get("evidence", [])
+        if not str(item).startswith("source-window:")
+    ]
+    if source_start_ms > 0:
+        evidence.append(f"source-window:{source_start_ms}-{source_end_ms}")
+    return {
+        **candidate,
         "source_start_ms": source_start_ms,
         "source_end_ms": source_end_ms,
         "asset_duration_ms": asset_duration_ms,

@@ -313,6 +313,11 @@ def test_retime_recipe_and_matches_scales_timeline_without_changing_assets():
     assert retimed_matches["matches"][0]["source_start_ms"] == matches["matches"][0]["source_start_ms"]
     assert retimed_matches["matches"][1]["source_start_ms"] == matches["matches"][1]["source_start_ms"]
     assert [item["asset_id"] for item in retimed_matches["matches"]] == ["asset-hook", "asset-feature"]
+    assert [
+        candidate["source_end_ms"] - candidate["source_start_ms"]
+        for match in retimed_matches["matches"]
+        for candidate in match["candidates"]
+    ] == [800, 1200]
 
 
 def test_retime_recipe_and_matches_clamps_source_window_to_asset_duration():
