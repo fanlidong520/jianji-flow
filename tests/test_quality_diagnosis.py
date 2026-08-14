@@ -30,6 +30,23 @@ def test_diagnose_frame_warns_when_lower_band_has_dense_overlay_text():
     assert any("platform UI" in warning for warning in result["warnings"])
 
 
+def test_diagnose_frame_warns_when_top_and_bottom_platform_chrome_are_present():
+    image = Image.new("RGB", (592, 1280), "#c8d8d0")
+    draw = ImageDraw.Draw(image)
+    for column in range(10):
+        x = 30 + column * 52
+        draw.rectangle((x, 30, x + 18, 42), fill="white")
+    draw.rectangle((0, 1050, 592, 1279), fill="#111111")
+    for column in range(6):
+        x = 70 + column * 90
+        draw.ellipse((x, 1130, x + 28, 1158), outline="white", width=4)
+
+    result = diagnose_frame(image)
+
+    assert result["status"] == "warning"
+    assert any("upper" in warning or "platform UI" in warning for warning in result["warnings"])
+
+
 def test_diagnose_frame_allows_clean_visual_frame():
     image = Image.new("RGB", (592, 1280), "#c8d8d0")
     draw = ImageDraw.Draw(image)

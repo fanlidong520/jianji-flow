@@ -217,13 +217,14 @@ Latest local checkpoint after fix-run change reports:
 
 Latest local checkpoint after visual candidate selection v35:
 
-- `python -m pytest -q` -> 353 passed in 345.05s;
+- `python -m pytest -q` -> 354 passed in 309.39s;
 - `python scripts/run_smoke.py` -> smoke passed;
 - `python scripts/run_p0.py` -> p0 passed;
 - `visual-review` generated a 45-candidate board for the real home-product material using opaque filenames;
-- `out/visual-selection-v35/run-v35d/review.md` and `review.html` record four explicit visual selections and one honest feature-role abstention;
-- `out/visual-selection-v35/run-v35d/contact-sheet.png` shows five actual source-window choices, with `seg-002` and `seg-004` changed from the baseline and a `warning` status retained;
-- `out/visual-selection-v35/run-v35d/matches.json` now keeps each selected visual candidate's asset and source window aligned with its `candidates` record, including after voiceover retiming;
+- `out/visual-selection-v35/run-v35e/review.md` and `review.html` record four explicit visual selections and one honest feature-role abstention;
+- `out/visual-selection-v35/run-v35e/contact-sheet.png` shows five actual source-window choices, with `seg-002` and `seg-004` changed from the baseline and a `warning` status retained;
+- `out/visual-selection-v35/run-v35e/matches.json` now keeps each selected visual candidate's asset and source window aligned with its `candidates` record, including after voiceover retiming;
+- `out/visual-selection-v35/run-v35e/source-diagnostics/` contains 15 sampled frames because the new upper/lower platform-chrome checks correctly detected residue in the real pack;
 - after deliberately mutating `seg-001-candidate-03-01.png`, the rerun failed before rendering with `visual selection frame fingerprint changed`, and `out/stale-visual-selection-v35/run/review.md` contains no `remix.mp4` or `voiceover.wav`;
 - `out/dirty-pack-v35` was blocked on the malformed asset before manifest creation and produced no `remix.mp4`;
 - an opaque-filename run without visual selections stopped with a diagnosis instead of pretending filename-based assembly was sufficient.

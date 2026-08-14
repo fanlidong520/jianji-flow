@@ -307,6 +307,7 @@ Passes:
 - the same real run honestly remained `warning` because the feature role had no genuinely clear candidate;
 - mutating a selected candidate frame caused a pre-render failure and produced no `remix.mp4` or `voiceover.wav`;
 - the malformed-material pack was blocked before manifest creation and produced no `remix.mp4`.
+- source preflight now catches the real pack's top recording chrome and bottom platform bar, preserving diagnostic frames and a publish-blocking warning.
 
 Still not good enough:
 

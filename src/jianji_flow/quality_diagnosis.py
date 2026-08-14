@@ -26,6 +26,15 @@ def _bright_pixel_ratio(image: Image.Image) -> float:
     return bright / len(pixels)
 
 
+def _dark_pixel_ratio(image: Image.Image) -> float:
+    rgb = image.convert("RGB")
+    pixels = list(rgb.get_flattened_data())
+    if not pixels:
+        return 0.0
+    dark = sum(1 for r, g, b in pixels if max(r, g, b) <= 45)
+    return dark / len(pixels)
+
+
 def _bright_horizontal_coverage(image: Image.Image) -> float:
     rgb = image.convert("RGB")
     rows_with_bright_pixels = 0
@@ -120,10 +129,18 @@ def _bright_component_stats(image: Image.Image) -> dict[str, float | int]:
 def diagnose_frame(image: Image.Image) -> dict:
     band = _lower_band(image)
     upper = _upper_band(image)
+    top_chrome = image.crop((0, 0, image.width, round(image.height * 0.16)))
+    bottom_chrome = image.crop((0, round(image.height * 0.82), image.width, image.height))
     bright_ratio = _bright_pixel_ratio(band)
     upper_bright_ratio = _bright_pixel_ratio(upper)
     horizontal_coverage = _bright_horizontal_coverage(band)
     component_stats = _bright_component_stats(band)
+    top_component_stats = _bright_component_stats(top_chrome)
+    bottom_component_stats = _bright_component_stats(bottom_chrome)
+    top_bright_ratio = _bright_pixel_ratio(top_chrome)
+    top_horizontal_coverage = _bright_horizontal_coverage(top_chrome)
+    bottom_bright_ratio = _bright_pixel_ratio(bottom_chrome)
+    bottom_dark_ratio = _dark_pixel_ratio(bottom_chrome)
     fragment_count = int(component_stats["bright_fragment_count"])
     fragment_area_ratio = float(component_stats["bright_fragment_area_ratio"])
     warnings: list[str] = []
@@ -134,6 +151,16 @@ def diagnose_frame(image: Image.Image) -> dict:
         and bright_ratio >= upper_bright_ratio + 0.01
         and fragment_count >= 12
         and fragment_area_ratio >= 0.02
+    )
+    has_top_chrome = (
+        top_bright_ratio >= 0.005
+        and top_horizontal_coverage >= 0.08
+        and int(top_component_stats["bright_fragment_count"]) >= 8
+    )
+    has_bottom_chrome = (
+        bottom_dark_ratio >= 0.65
+        and bottom_bright_ratio >= 0.0003
+        and int(bottom_component_stats["bright_fragment_count"]) >= 4
     )
     if has_residue:
         is_severe = fragment_count >= 180 or fragment_area_ratio >= 0.18
@@ -146,6 +173,16 @@ def diagnose_frame(image: Image.Image) -> dict:
             warnings.append(
                 "Possible platform UI or original subtitles in the lower safe area; captions may overlap and should be reviewed."
             )
+    if has_top_chrome:
+        severity = "warning" if severity == "pass" else severity
+        warnings.append(
+            "Possible platform UI or original overlay text in the upper safe area; crop or replace this source clip."
+        )
+    if has_bottom_chrome:
+        severity = "warning" if severity == "pass" else severity
+        warnings.append(
+            "Possible platform UI in the bottom safe area; crop or replace this source clip."
+        )
     return {
         "status": severity,
         "severity": severity,
@@ -160,6 +197,12 @@ def diagnose_frame(image: Image.Image) -> dict:
             "lower_largest_bright_component_ratio": round(
                 float(component_stats["largest_bright_component_ratio"]), 4
             ),
+            "upper_chrome_bright_ratio": round(top_bright_ratio, 4),
+            "upper_chrome_bright_horizontal_coverage": round(top_horizontal_coverage, 4),
+            "upper_chrome_bright_fragment_count": int(top_component_stats["bright_fragment_count"]),
+            "bottom_chrome_dark_ratio": round(bottom_dark_ratio, 4),
+            "bottom_chrome_bright_ratio": round(bottom_bright_ratio, 4),
+            "bottom_chrome_bright_fragment_count": int(bottom_component_stats["bright_fragment_count"]),
         },
     }
 

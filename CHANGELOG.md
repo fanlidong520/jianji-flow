@@ -65,6 +65,8 @@
 - Added `visual-review` candidate boards and `--visual-selections` for explicit
   Codex-assisted shot selection with opaque filenames, asset fingerprints, and
   self-contained frame evidence in the final review page.
+- Expanded source preflight to detect upper recording chrome and dark lower
+  platform bars, not only dense bright subtitle text.
 
 ## 0.2.0
 
