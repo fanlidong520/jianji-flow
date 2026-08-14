@@ -331,7 +331,7 @@ Latest local result:
 
 ## Contract Note
 
-The package is v0.2.0, but the JSON recipe contract still uses `"version": "0.1"` for compatibility with the v0.1 schema. The v0.2 experience adds optional fields such as:
+The package is currently the `0.3.0.dev0` development preview, but the JSON recipe contract still uses `"version": "0.1"` for compatibility with the v0.1 schema. The current experience adds optional fields such as:
 
 - `audio_strategy: "voiceover-only"`
 - `voiceover_path`

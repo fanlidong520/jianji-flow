@@ -304,7 +304,7 @@ Latest clean-install checkpoint:
 
 - created a fresh Python 3.11 virtual environment outside the repository;
 - installed the built project with `pip install "E:\\AI-Companion\\jianji-flow[dev]"`;
-- `python -m jianji_flow --version` returned `jianji-flow 0.2.0`;
+- `python -m jianji_flow --version` returned `jianji-flow 0.3.0.dev0`;
 - `python -m jianji_flow doctor` returned `Ready to run quick draft`;
 - `python -m jianji_flow demo --target-width 320 --target-height 180
   --target-fps 12` exited successfully and wrote `remix.mp4`, `review.md`,

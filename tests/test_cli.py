@@ -58,7 +58,7 @@ def test_cli_version(capsys):
     code = main(["--version"])
     output = capsys.readouterr()
     assert code == 0
-    assert "jianji-flow 0.2.0" in output.out
+    assert "jianji-flow 0.3.0.dev0" in output.out
 
 
 def test_cli_help_no_args(capsys):
