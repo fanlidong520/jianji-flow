@@ -322,6 +322,17 @@ Latest conservative source-diversity checkpoint:
 - this gate intentionally does not claim to detect every re-encoded file or
   clip cut from the same mother video; that remains an open validation item.
 
+Latest full validation after visual-diversity audit:
+
+- `python -m pytest -q` -> 394 passed in 349.81s;
+- smoke, P0, and Skill validation passed;
+- fresh non-editable installation reports `0.3.0.dev0`, and the installed
+  package detects a re-encoded fixture pair as `SIMILAR MEDIA` with score
+  `0.18`;
+- real home-product visual-selection run v45 still fails before voiceover and
+  rendering on repeated source UI/subtitle warnings, with no remix or
+  voiceover output.
+
 Latest local A/B checkpoint after feature candidate review v42:
 
 - the feature role remains visually supported and `Story support` is `pass`;
