@@ -274,6 +274,7 @@ def diagnose_source_matches(
     warnings: list[str] = []
     metrics: dict[str, list[dict]] = {}
     clean_segment_ids: list[str] = []
+    warning_frame_counts: dict[str, int] = {}
     by_id = _match_by_id(matches)
     diagnostics_dir.mkdir(parents=True, exist_ok=True)
 
@@ -315,12 +316,25 @@ def diagnose_source_matches(
                 )
             elif result.get("warnings"):
                 segment_issue_count += 1
+                warning_frame_counts[segment_id] = warning_frame_counts.get(segment_id, 0) + 1
                 warnings.append(
                     f"{segment_id} source frame {index}: possible platform UI or original subtitles before rendering; "
                     "review this source clip."
                 )
         if metrics[segment_id] and segment_issue_count == 0:
             clean_segment_ids.append(segment_id)
+
+    repeated_segments = [segment_id for segment_id, count in warning_frame_counts.items() if count >= 2]
+    if not failures and (len(warning_frame_counts) >= 2 or repeated_segments):
+        affected_segments = list(warning_frame_counts)
+        if len(affected_segments) >= 2:
+            location = f"across {', '.join(affected_segments)}"
+        else:
+            location = f"within {affected_segments[0]}"
+        failures.append(
+            f"Repeated platform UI/original-subtitle warnings {location}; preflight blocked rendering. "
+            "Replace or crop these source clips before retrying."
+        )
 
     if not failures and not warnings and diagnostics_dir.exists():
         shutil.rmtree(diagnostics_dir)

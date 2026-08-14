@@ -180,7 +180,7 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 ## 输出文件
 
 - `manifest.json`: local asset inventory.
-- `diagnosis.md`: product material readiness report from filename/duration screening, with source preflight warnings or failures when found. `CANDIDATE` means the clip can be tried in a rough cut; it is not visual proof.
+- `diagnosis.md`: product material readiness report from filename/duration screening, with source preflight warnings or failures when found. `CANDIDATE` means the clip can be tried in a rough cut; it is not visual proof. When `--visual-selections` is supplied, it explicitly records that visible choices replace filename role matching instead of calling opaque files missing.
 - `recipe.json`: authoritative timeline.
 - `matches.json`: selected assets, confidence, and evidence.
 - `captions.srt`: editable subtitle file.
@@ -241,7 +241,7 @@ The selection is checked against the candidate manifest, asset fingerprint, sour
 | `warning` | 只能当作待确认粗剪 | 按警告检查或替换素材，不要直接发布 |
 | `fail` | 不应使用输出视频 | 根据 `review.md`、`diagnosis.md` 或诊断图修复后重跑 |
 
-`warning` 不是“基本通过”。它只说明工作流产出了可检查的粗剪，但仍有证据不足、素材风险或人工确认项。
+`warning` 不是“基本通过”。它只说明工作流产出了可检查的粗剪，但仍有证据不足、素材风险或人工确认项。如果多个片段的源画面都出现平台 UI/旧字幕风险，预检会在配音和渲染前升级为 `fail`，避免先生成一条看似完成但不能发布的视频。
 
 ## Story Support
 

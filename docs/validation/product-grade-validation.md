@@ -299,6 +299,18 @@ Latest package consistency and repeat-validation checkpoint:
 - this does not relax the product launch rule: real-material quality and
   outside-user trials are still outstanding.
 
+Latest source-preflight escalation checkpoint:
+
+- the previous real home-product visual-selection run would have produced a
+  37.9-second remix with a `warning`;
+- after repeated-warning escalation, the same material now stops before
+  voiceover and rendering with `Status: fail` because `seg-001`, `seg-003`,
+  and `seg-005` contain source UI/subtitle warnings;
+- `out/visual-selection-v44/run-repeat-gate/` retains `review.md`,
+  `diagnosis.md`, `source-diagnostics/`, and no `remix.mp4` or `voiceover.wav`;
+- when visual selections are present, `diagnosis.md` now says `VISUAL REVIEW
+  SUPPLIED` instead of mislabeling opaque filenames as `MISSING`.
+
 Latest local A/B checkpoint after feature candidate review v42:
 
 - the feature role remains visually supported and `Story support` is `pass`;

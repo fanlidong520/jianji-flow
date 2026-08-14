@@ -177,6 +177,40 @@ def test_quick_uses_default_product_script_when_script_is_missing(tmp_path, monk
     assert "家里乱" in (work_dir / "captions.srt").read_text(encoding="utf-8")
 
 
+def test_quick_diagnosis_respects_supplied_visual_selection(tmp_path, monkeypatch):
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    work_dir = tmp_path / "quick"
+
+    monkeypatch.setattr("jianji_flow.cli._run_pipeline", lambda *args, **kwargs: 7)
+
+    code = main(
+        [
+            "quick",
+            "--reference",
+            str(fixture_root / "scenario-a-product" / "reference.mp4"),
+            "--assets",
+            str(fixture_root / "scenario-a-product" / "assets"),
+            "--visual-selections",
+            str(tmp_path / "visual-selections.json"),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    diagnosis = (work_dir / "diagnosis.md").read_text(encoding="utf-8")
+    assert code == 7
+    assert "VISUAL REVIEW SUPPLIED" in diagnosis
+    assert "MISSING" not in diagnosis
+    assert "filename screening is not used as the final role decision" in diagnosis
+
+
 def test_quick_writes_material_diagnosis_even_when_assets_are_ready(tmp_path, monkeypatch):
     _patch_voiceover(monkeypatch)
     fixture_root = tmp_path / "fixtures"

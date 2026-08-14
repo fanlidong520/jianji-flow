@@ -36,6 +36,10 @@
 - Added conservative multi-shot handling that keeps low-confidence matches as
   one source window and warns when adjacent segments repeat the same shot
   sequence.
+- Repeated platform UI or original-subtitle warnings across source segments
+  now fail during preflight before voiceover and rendering.
+- Visual-selection runs now explain that visible choices replace filename role
+  matching, instead of reporting opaque filenames as missing material.
 - Packaged the JSON schemas inside the wheel and added a clean-install check so
   installed `demo` runs do not depend on the repository checkout.
 - Added a storyboard section to `review.md` and `review.html` so each segment's

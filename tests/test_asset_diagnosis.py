@@ -117,3 +117,14 @@ def test_format_asset_diagnosis_uses_plain_chinese_next_actions():
     assert "缺少痛点素材" in text
     assert "02-pain" in text
     assert "Missing pain clip" not in text
+
+
+def test_format_asset_diagnosis_does_not_call_opaque_files_missing_after_visual_selection():
+    segments = build_segment_plan("product", 10_000, None)
+    report = diagnose_product_assets([_asset(f"IMG_{index:03d}.mp4") for index in range(1, 6)], segments)
+
+    text = format_asset_diagnosis(report, visual_selection_supplied=True)
+
+    assert "VISUAL REVIEW SUPPLIED" in text
+    assert "MISSING" not in text
+    assert "filename screening is not used as the final role decision" in text

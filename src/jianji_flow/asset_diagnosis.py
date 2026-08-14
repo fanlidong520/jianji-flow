@@ -141,7 +141,29 @@ def diagnose_product_assets(assets: list[dict], segments: list[dict]) -> dict:
     return {"status": status, "roles": roles, "actions": actions}
 
 
-def format_asset_diagnosis(report: dict) -> str:
+def format_asset_diagnosis(report: dict, *, visual_selection_supplied: bool = False) -> str:
+    if visual_selection_supplied:
+        lines = [
+            "# Material diagnosis",
+            "Visual selections were supplied; filename screening is not used as the final role decision.",
+            "Review the selected frames and the final source-preflight result before publishing.",
+            "",
+        ]
+        for role in report.get("roles", {}):
+            role_label = f"{role} / {ROLE_LABELS.get(role, role)}"
+            lines.append(f"- {role_label}: VISUAL REVIEW SUPPLIED - candidate frames will be checked before rendering.")
+        lines.extend(
+            [
+                "",
+                "下一步:",
+                "- 打开 visual-candidate-sheet.png 或 review.html，确认每个角色的画面真的支持对应文案。",
+                "- 如果源画面包含旧字幕或平台 UI，先替换或裁切素材，再重新运行。",
+                "",
+                "Visual selection supplied; continue with source and story review",
+            ]
+        )
+        return "\n".join(lines) + "\n"
+
     lines = ["# Material diagnosis", "Filename and duration screening only; watch the video before publishing.", ""]
     for role, item in report.get("roles", {}).items():
         status = item.get("status", "unknown")

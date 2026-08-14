@@ -789,6 +789,7 @@ def _run_quick_command(args: argparse.Namespace) -> int:
         records = scan_assets(asset_root)
         segments = build_segment_plan(args.mode, reference_info.duration_ms, script_override)
         if args.mode == "product":
+            visual_selection_supplied = bool(getattr(args, "visual_selections", None))
             report = diagnose_product_assets(
                 [
                     {"asset_id": item.asset_id, "path": item.path.as_posix(), "duration_ms": item.duration_ms}
@@ -796,11 +797,14 @@ def _run_quick_command(args: argparse.Namespace) -> int:
                 ],
                 segments,
             )
-            diagnosis_path = _write_diagnosis(work_dir, format_asset_diagnosis(report))
+            diagnosis_path = _write_diagnosis(
+                work_dir,
+                format_asset_diagnosis(report, visual_selection_supplied=visual_selection_supplied),
+            )
             if report["status"] == "fail":
                 board_outputs = _write_visual_board(segments, records, work_dir)
                 _append_existing_diagnosis(work_dir, _visual_board_diagnosis_text(board_outputs))
-                if getattr(args, "visual_selections", None):
+                if visual_selection_supplied:
                     return _run_pipeline(args, script_text_override=script_override)
                 _clear_run_state_artifacts(work_dir)
                 print(f"quick stopped; diagnosis written to {diagnosis_path}", file=sys.stderr)
