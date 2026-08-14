@@ -1,6 +1,6 @@
 ---
 name: jianji-flow
-description: Create auditable preview videos from a reference video, a local asset directory, and optional script text; outputs diagnosis.md, manifest.json, recipe.json, matches.json, captions.srt, captions.ass, voiceover.wav, remix.mp4, contact-sheet.png, visual candidate evidence, candidate-review.html, fixes.template.json, review.md, and review.html after validation.
+description: Create auditable preview videos from a reference video, a local asset directory, and optional script text; outputs diagnosis.md, manifest.json, recipe.json, matches.json, captions.srt, captions.ass, voiceover.wav, remix.mp4, contact-sheet.png, reference-comparison.png, visual candidate evidence, candidate-review.html, fixes.template.json, review.md, and review.html after validation.
 ---
 
 # jianji-flow
@@ -40,7 +40,7 @@ Detailed workflow:
 2. Generate synthetic fixtures only when the user wants a demo run.
 3. Scan the local asset directory and create `manifest.json`.
 4. For product quick runs, write `diagnosis.md`; stop if required material roles are missing.
-5. If filenames are opaque or the first rough cut is weak, run `visual-review` and inspect `visual-candidate-sheet.png`; fill a selection JSON with candidate ids and reasons, then pass it with `--visual-selections`.
+5. If filenames are opaque or the first rough cut is weak, run `visual-review` and inspect `visual-candidate-sheet.png` with Codex vision; Codex writes a selection JSON with candidate ids and reasons for genuinely supported segments, then passes it with `--visual-selections`. Do not ask the user to edit JSON.
 6. Build the segment plan and create `matches.json` and `recipe.json`.
 7. Run JSON Schema validation and semantic validation.
 8. Stop before rendering if validation has any blocking failure.
@@ -48,7 +48,7 @@ Detailed workflow:
 10. Write `captions.srt` and `captions.ass`.
 11. Generate `voiceover.wav` with local machine TTS.
 12. Render `remix.mp4` only from validated manifest assets, burned-in captions, and generated voiceover.
-13. Write `contact-sheet.png` with one frame per segment.
+13. Write `contact-sheet.png` with one frame per segment and `reference-comparison.png` with the same number of relative storyboard samples from the reference and remix.
 14. Write `fixes.template.json` for weak or low-confidence segments, including same-role visual-similarity checks for repair recommendations.
 15. Write `candidate-review.html` and `candidate-frames/` so current weak-segment frames can be compared with visible repair candidates.
 16. When `--visual-selections`, `--fixes`, or `--apply-recommendation` is used, write the corresponding visual evidence or `Change report` and diagnostics.
@@ -151,6 +151,7 @@ On success or warning, report the paths for:
 - `voiceover.wav`
 - `remix.mp4`
 - `contact-sheet.png`
+- `reference-comparison.png`
 - `candidate-review.html`
 - `candidate-frames/`
 - `visual-candidates.json`, `visual-candidate-sheet.png`, and `visual-selection.template.json` when `visual-review` is used
@@ -170,7 +171,7 @@ Never describe a failed or warning run as completed video output.
 - `warning`: generated artifacts only for manual review; do not imply the video is usable yet.
 - `fail`: blocking issue; do not point to stale success artifacts as output.
 
-If `Story support` is `weak`, report its `next_action` exactly. Explain that the named roles lack non-filename visual evidence, then ask the user to replace or manually verify those clips in `contact-sheet.png`. If the user wants to repair one segment, point them to `fixes.template.json`: check `recommended_asset_path`, optional `recommended_source_start_ms`, `recommendation_status`, `recommendation_warnings`, and `role_match`; use `candidate_assets` rather than the compact `candidate_asset_paths` summary when a file appears more than once; use `--apply-recommendation SEGMENT_ID` only when the status is `recommended`; otherwise fill one `asset_path` and optional `source_start_ms` manually only when the candidate is genuinely appropriate, rerun with `--fixes`, then check `Change report` before comparing the same segment in the new `contact-sheet.png`.
+If `Story support` is `weak`, report its `next_action` exactly. Explain that the named roles lack non-filename visual evidence, then inspect `contact-sheet.png` and `reference-comparison.png` yourself. Do not ask the user to edit JSON. If a repair is needed, Codex should choose a genuinely appropriate candidate, write the repair file, rerun, and then check `Change report` before comparing the same segment in the new `contact-sheet.png`.
 If `review.md` lists `visual_similarity_diagnostics`, explain that the folder contains sampled frames used to downgrade duplicate-looking or unchecked recommendations. Do not describe those checks as semantic understanding.
 If `review.md` lists a `Change report`, use it before discussing JSON: it names the changed segment, before/after asset, before/after source range, before/after sampled frames, `Picture change`, sampling note, and override reason. Explain that `Picture change` means sampled frames differ; it is not proof that the new shot fits the script.
 Use the `Storyboard` section before discussing JSON: it is the fastest way to see each segment's caption, selected asset, source range, evidence, and risk.

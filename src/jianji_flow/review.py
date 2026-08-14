@@ -31,6 +31,7 @@ def build_review(
     ass_path: Path | None = None,
     voiceover_path: Path | None = None,
     contact_sheet_path: Path | None = None,
+    reference_comparison_path: Path | None = None,
     review_html_path: Path | None = None,
     check_artifacts: bool = True,
     visual_selection: dict | None = None,
@@ -72,7 +73,15 @@ def build_review(
         warnings.append(story_support["warning"])
 
     if check_artifacts:
-        artifact_result = _artifact_review(recipe, remix_path, captions_path, ass_path, voiceover_path, contact_sheet_path)
+        artifact_result = _artifact_review(
+            recipe,
+            remix_path,
+            captions_path,
+            ass_path,
+            voiceover_path,
+            contact_sheet_path,
+            reference_comparison_path,
+        )
         failures.extend(artifact_result["failures"])
         warnings.extend(artifact_result["warnings"])
 
@@ -97,6 +106,7 @@ def build_review(
         captions_ass=ass_path,
         voiceover=voiceover_path,
         contact_sheet=contact_sheet_path,
+        reference_comparison=reference_comparison_path,
         review_html=review_html_path,
     )
 
@@ -260,6 +270,7 @@ def _artifact_review(
     ass_path: Path | None,
     voiceover_path: Path | None,
     contact_sheet_path: Path | None,
+    reference_comparison_path: Path | None,
 ) -> dict:
     failures = []
     warnings = []
@@ -315,6 +326,16 @@ def _artifact_review(
                     warnings.extend(diagnosis.get("warnings", []))
         except (OSError, UnidentifiedImageError) as exc:
             failures.append(f"contact sheet is not a readable image: {exc}")
+
+    if reference_comparison_path is not None:
+        if not reference_comparison_path.exists() or reference_comparison_path.stat().st_size <= 0:
+            failures.append(f"reference comparison sheet missing or empty: {reference_comparison_path}")
+        else:
+            try:
+                with Image.open(reference_comparison_path) as image:
+                    image.verify()
+            except (OSError, UnidentifiedImageError) as exc:
+                failures.append(f"reference comparison sheet invalid: {exc}")
 
     return {"failures": failures, "warnings": warnings}
 
@@ -678,6 +699,15 @@ def build_review_markdown(review: dict, recipe: dict | None = None, matches: dic
     else:
         lines.append("- none")
     lines.append("")
+    if outputs.get("reference_comparison"):
+        lines.extend(
+            [
+                "## Visual comparison",
+                "The same number of relative storyboard samples are shown for the reference and the remix.",
+                f"- Reference vs remix: {outputs['reference_comparison']}",
+                "",
+            ]
+        )
     lines.extend(_list_section("Failures", list(review.get("failures", []))))
     lines.append("")
     lines.extend(_list_section("Warnings", list(review.get("warnings", []))))
@@ -742,6 +772,13 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
     failures = "".join(f"<li>{escape(str(item))}</li>" for item in review.get("failures", [])) or "<li>none</li>"
     story_support = _story_support_html(review.get("story_support"))
     outputs_list = _outputs_html(outputs)
+    comparison_section = ""
+    if outputs.get("reference_comparison"):
+        comparison_section = (
+            "<h2>Reference vs Remix</h2>"
+            "<p>The same number of relative storyboard samples are shown for the reference and the remix.</p>"
+            f'<img alt="reference versus remix comparison" src="{escape(str(outputs["reference_comparison"]))}">'
+        )
     return f"""<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -784,6 +821,7 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
   <video controls src="{escape(str(outputs.get('remix', '')))}"></video>
   <h2>Contact Sheet</h2>
   <img alt="contact sheet" src="{escape(str(outputs.get('contact_sheet', '')))}">
+  {comparison_section}
   <h2>Outputs</h2>
   <ul>{outputs_list}</ul>
   <h2>Warnings</h2>

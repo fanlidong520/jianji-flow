@@ -247,6 +247,18 @@ def _extract_frame(video_path: Path, frame_path: Path, time_ms: int) -> None:
         raise RuntimeError(detail)
 
 
+def _render_safe_area(image: Image.Image) -> Image.Image:
+    """Mirror the renderer crop before judging source residue."""
+    width, height = image.size
+    crop_width = max(1, round(width * 0.76))
+    crop_height = max(1, round(height * 0.58))
+    left = max(0, round((width - crop_width) / 2))
+    top = max(0, round(height * 0.08))
+    right = min(width, left + crop_width)
+    bottom = min(height, top + crop_height)
+    return image.crop((left, top, right, bottom))
+
+
 def _match_by_id(matches: dict) -> dict[str, dict]:
     return {str(match.get("id")): match for match in matches.get("matches", [])}
 
@@ -285,6 +297,10 @@ def diagnose_source_matches(
             frame_path = diagnostics_dir / f"{segment_id}-{index:02d}.png"
             try:
                 _extract_frame(source_path, frame_path, time_ms)
+                with Image.open(frame_path) as image:
+                    safe_area = _render_safe_area(image.convert("RGB"))
+                safe_area.save(frame_path)
+                safe_area.close()
                 result = diagnose_image(frame_path)
             except (OSError, RuntimeError, ValueError) as exc:
                 warnings.append(f"{segment_id}: source preflight skipped at frame {index}: {exc}")

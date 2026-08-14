@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from jianji_flow.media_probe import run_ffprobe
 
@@ -90,6 +90,68 @@ def _write_segment_contact_sheet(video_path: Path, output_path: Path, recipe: di
             shutil.rmtree(temp_dir)
     if not output_path.exists() or output_path.stat().st_size <= 0:
         raise RuntimeError(f"contact sheet was not created: {output_path}")
+    return output_path
+
+
+def write_reference_comparison_sheet(
+    reference_path: Path,
+    remix_path: Path,
+    output_path: Path,
+    *,
+    recipe: dict,
+) -> Path:
+    """Write the same number of storyboard samples for the reference and remix."""
+    times = build_segment_frame_times_ms(recipe)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_dir = output_path.with_name(f".{output_path.stem}.frames")
+    if temp_dir.exists():
+        shutil.rmtree(temp_dir)
+    temp_dir.mkdir(parents=True)
+    try:
+        row_images: list[Image.Image] = []
+        for row_name, video_path in (("reference", reference_path), ("remix", remix_path)):
+            row_path = temp_dir / f"{row_name}.png"
+            write_contact_sheet(video_path, row_path, frames=len(times))
+            row_images.append(Image.open(row_path).convert("RGB"))
+
+        tile_width = 220
+        tile_padding = 8
+        tile_height = max(1, row_images[0].height - 2 * tile_padding)
+        padding = 8
+        label_width = 86
+        label_height = 28
+        row_height = label_height + tile_height + padding
+        sheet = Image.new(
+            "RGB",
+            (
+                padding + label_width + len(times) * (tile_width + tile_padding),
+                padding + 2 * row_height,
+            ),
+            "#202124",
+        )
+        draw = ImageDraw.Draw(sheet)
+        for row_index, (row_name, row_image) in enumerate(zip(("Reference", "Remix"), row_images)):
+            top = padding + row_index * row_height
+            draw.text((padding, top + 6), row_name, fill="white")
+            for index in range(len(times)):
+                left = padding + label_width + index * (tile_width + tile_padding)
+                source_left = tile_padding + index * (tile_width + tile_padding)
+                tile = row_image.crop(
+                    (source_left, tile_padding, source_left + tile_width, tile_padding + tile_height)
+                )
+                sheet.paste(tile, (left, top + label_height))
+                tile.close()
+                segment_id = str(recipe.get("segments", [])[index].get("id", f"seg-{index + 1:03d}"))
+                draw.text((left + 4, top + 6), segment_id, fill="#d7e3fc")
+        sheet.save(output_path)
+        sheet.close()
+    finally:
+        for row_image in row_images:
+            row_image.close()
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+    if not output_path.exists() or output_path.stat().st_size <= 0:
+        raise RuntimeError(f"reference comparison sheet was not created: {output_path}")
     return output_path
 
 

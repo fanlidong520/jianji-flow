@@ -28,13 +28,15 @@
 - Accepts `--fixes fixes.template.json` to pin a segment or role to a replacement asset, with the override recorded in `matches.json`.
 - Writes the authoritative timeline to `recipe.json`.
 - Runs source preflight checks on selected source frames before voiceover and rendering.
+- Runs source preflight on the same cropped safe area that the renderer will expose, reducing warnings for platform chrome that is removed before export.
 - Generates `captions.srt` and `captions.ass`.
 - Generates `voiceover.wav` with a local Windows Chinese TTS voice when available.
 - Renders `remix.mp4` with burned-in captions and voiceover audio.
 - Uses crop and caption outline for visual cleanup without adding full-frame dark bands over the video.
 - Writes `contact-sheet.png` with one frame per timeline segment.
+- Writes `reference-comparison.png` with the same number of relative storyboard samples from the reference and the remix, so the visible edit can be checked without guessing.
 - Writes `candidate-review.html` and `candidate-frames/` so weak segments can be compared against visible repair candidates.
-- Supports a separate `visual-review` pass that generates opaque-filename candidate boards; a Codex or human reviewer can select the actual shot by looking at frames instead of trusting file names.
+- Supports a separate `visual-review` pass that generates opaque-filename candidate boards; Codex should inspect the frames and write the selection file for the user instead of asking the user to edit JSON.
 - Writes `review.md` and `review.html` for manual inspection, including a change report after fixes are applied.
 - Records selected visual candidates, frame evidence, and asset fingerprints in `review.md`, `review.html`, and `matches.json`.
 - Shows `CANDIDATE` in `diagnosis.md` for filename/duration-ready clips, because that is not visual proof.
@@ -174,6 +176,7 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 - `voiceover.wav`: generated machine voiceover.
 - `remix.mp4`: rendered preview video.
 - `contact-sheet.png`: one representative frame per segment.
+- `reference-comparison.png`: relative samples from the reference and remix for visible before/after checking.
 - `candidate-review.html`: side-by-side visual review of weak segments, current frames, candidate frames, recommendation status, reasons, and warnings.
 - `candidate-frames/`: images used by `candidate-review.html`.
 - `review.md`: review status and checklist.
@@ -198,13 +201,13 @@ When filenames are opaque, or the first rough cut is only a voiceover shell, run
 python -m jianji_flow visual-review --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --script fixtures\scenario-a-product\script.txt --work-dir out\visual-board
 ```
 
-Open `visual-candidate-sheet.png`. Fill `visual-selection.template.json` into a new JSON file by choosing a candidate id and writing a short reason for each genuinely supported segment. Then rerun:
+Open `visual-candidate-sheet.png`. In a Codex run, Codex inspects the board, writes a new selection JSON with a candidate id and a short reason only for genuinely supported segments, then reruns:
 
 ```powershell
 python -m jianji_flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --script fixtures\scenario-a-product\script.txt --visual-selections out\visual-board\visual-selections.json --work-dir out\visual-selected
 ```
 
-The selection is checked against the candidate manifest, asset fingerprint, source range, and sampled-frame fingerprints before rendering. Leave a segment unselected when no candidate truly supports its caption; the run should remain `warning` and the review page will name the missing story evidence. A visual change proves only that the selected window changed, not that the product claim is true.
+The selection is checked against the candidate manifest, asset fingerprint, source range, and sampled-frame fingerprints before rendering. Leave a segment unselected when no candidate truly supports its caption; the run should remain `warning` and the review page will name the missing story evidence. A visual change proves only that the selected window changed, not that the product claim is true. The final `reference-comparison.png` is the fastest check that the remix is visibly different from the reference.
 
 ## 状态怎么理解
 
@@ -228,7 +231,7 @@ Current matching is intentionally conservative. On real local素材, `weak` is c
 
 ## Segment Fixes
 
-When `Story support` is `weak`, open `fixes.template.json`. Fill only the `asset_path` for the segment you want to replace, leave the other blank entries as they are, then rerun with `--fixes`.
+When `Story support` is `weak`, Codex opens `fixes.template.json`, fills only the `asset_path` for a genuinely appropriate replacement, leaves the other entries blank, and reruns with `--fixes`. The user should not need to edit JSON.
 
 Example:
 
@@ -275,7 +278,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 354 passed
+- `python -m pytest -q` -> 355 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 

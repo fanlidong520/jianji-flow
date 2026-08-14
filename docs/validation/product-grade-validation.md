@@ -217,7 +217,7 @@ Latest local checkpoint after fix-run change reports:
 
 Latest local checkpoint after visual candidate selection v35:
 
-- `python -m pytest -q` -> 354 passed in 309.39s;
+- `python -m pytest -q` -> 355 passed in 628.96s;
 - `python scripts/run_smoke.py` -> smoke passed;
 - `python scripts/run_p0.py` -> p0 passed;
 - `visual-review` generated a 45-candidate board for the real home-product material using opaque filenames;
@@ -237,12 +237,22 @@ Product judgment:
 
 Latest local checkpoint after render cleanliness v36:
 
-- `python -m pytest -q` -> 354 passed in 316.92s;
+- `python -m pytest -q` -> 355 passed in 628.96s;
 - `python scripts/run_smoke.py` -> smoke passed;
 - `python scripts/run_p0.py` -> p0 passed;
 - `out/visual-selection-v35/run-v35f/contact-sheet.png` and an extracted frame from `remix.mp4` show the artificial gray/black top and bottom bands are gone;
 - captions remain visible through the ASS outline/shadow treatment;
 - source preflight still keeps the same run at `warning` and preserves platform-residue diagnostics, so the render cleanup did not weaken the honesty gate.
+
+Latest local checkpoint after reference comparison and crop-aware preflight v37:
+
+- `python -m pytest -q` -> 355 passed in 628.96s;
+- `python scripts/run_smoke.py` -> smoke passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- Skill validation -> `Skill is valid!`;
+- `out/visual-selection-v37/run-v37c/reference-comparison.png` shows five relative storyboard samples from the reference above the remix below, with visibly different source shots;
+- the same real run remains `warning` because the feature role is weak and selected source frames still need review;
+- source preflight now stores cropped safe-area diagnostics, reducing irrelevant warnings from platform chrome that the renderer removes.
 
 ## Launch Rule
 

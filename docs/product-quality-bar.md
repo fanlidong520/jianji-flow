@@ -338,6 +338,25 @@ Still not good enough:
 - the workflow still needs Codex-assisted visual selection for opaque filenames;
 - three independent clean packs and outside-user trials remain outstanding.
 
+## Current v37 Judgment
+
+The review output now makes the visible edit easy to verify against the reference instead of asking the user to infer it from filenames or a voiceover. This is a verification improvement, not a claim of semantic editing.
+
+Passes:
+
+- every rendered run writes `reference-comparison.png` with the same number of relative storyboard samples from the reference and remix;
+- `review.html` embeds the comparison next to the playable remix and contact sheet;
+- artifact review verifies the comparison image when the pipeline creates it;
+- Codex visual-selection instructions now require the agent to inspect frames and write the selection JSON, so the user does not carry the intermediate JSON workflow.
+- source preflight now evaluates the same cropped safe area that the renderer exposes, so platform chrome outside the visible frame is not reported as a false publishing risk.
+
+Still not good enough:
+
+- the comparison proves visible difference, not that the selected shot supports the spoken claim;
+- the real home-product pack still contains platform residue and lacks a strong feature shot;
+- the editor still assembles one source window per story segment, so pacing and multi-shot montage remain limited;
+- three clean real-material packs and outside-user trials are still required before public launch.
+
 ## Product Principle
 
 Do not optimize for impressive automation claims.

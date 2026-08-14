@@ -934,6 +934,7 @@ def test_build_review_html_contains_outputs_and_match_evidence():
         "outputs": {
             "remix": "work/remix.mp4",
             "contact_sheet": "work/contact-sheet.png",
+            "reference_comparison": "work/reference-comparison.png",
             "voiceover": "work/voiceover.wav",
             "candidate_review": "work/candidate-review.html",
         },
@@ -968,6 +969,8 @@ def test_build_review_html_contains_outputs_and_match_evidence():
     assert "<video" in html
     assert "work/remix.mp4" in html
     assert "work/contact-sheet.png" in html
+    assert "work/reference-comparison.png" in html
+    assert "Reference vs Remix" in html
     assert "work/voiceover.wav" in html
     assert "candidate-review.html" in html
     assert "家里难刷角落" in html

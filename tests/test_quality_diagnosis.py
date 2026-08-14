@@ -164,10 +164,10 @@ def test_diagnose_source_matches_reports_preflight_failures(tmp_path: Path, monk
         draw = ImageDraw.Draw(image)
         if time_ms == 3000:
             for row in range(18):
-                y = 890 + row * 18
+                y = 560 + row * 10
                 for col in range(24):
-                    x = 12 + col * 24
-                    draw.rectangle((x, y, x + 16, y + 8), fill="white")
+                    x = 12 + col * 18
+                    draw.rectangle((x, y, x + 12, y + 6), fill="white")
         image.save(frame_path)
 
     monkeypatch.setattr("jianji_flow.quality_diagnosis._extract_frame", fake_extract_frame)

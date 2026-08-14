@@ -58,6 +58,12 @@
   `change-diagnostics/` frames.
 - Changed warning CLI output from `completed` to `review required` so review-only
   rough cuts are not mistaken for passed outputs.
+- Added `reference-comparison.png` and embedded it in `review.html` so every run
+  shows the same number of relative storyboard samples from the reference and remix side by side.
+- Updated the visual-selection workflow so Codex performs the frame review and
+  writes the selection JSON; users do not need to edit intermediate JSON files.
+- Aligned source preflight with the renderer's crop-safe area so platform chrome
+  that will never reach the remix is not reported as a visible-frame risk.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while
   still removing stale success artifacts such as `remix.mp4`.
 - Reframed documentation around auditable rough-cut generation, not full editor

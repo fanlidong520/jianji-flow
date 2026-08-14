@@ -531,6 +531,7 @@ def test_run_product_fixture_creates_v0_2_experience_outputs(tmp_path, monkeypat
         "voiceover.wav",
         "remix.mp4",
         "contact-sheet.png",
+        "reference-comparison.png",
         "candidate-review.html",
         "fixes.template.json",
         "review.md",
@@ -546,6 +547,8 @@ def test_run_product_fixture_creates_v0_2_experience_outputs(tmp_path, monkeypat
     validate_fixes(fixes_template)
     assert "<video" in review_html
     assert "voiceover.wav" in review_html
+    assert "reference-comparison.png" in review_html
+    assert "Reference vs Remix" in review_html
     assert "candidate-review.html" in review_md
     assert "candidate-review.html" in review_html
     assert "Current segment" in candidate_html

@@ -12,7 +12,7 @@ from jianji_flow import __version__
 from jianji_flow.asset_diagnosis import diagnose_product_assets, format_asset_diagnosis
 from jianji_flow.candidate_review import write_candidate_review
 from jianji_flow.change_report import build_change_report
-from jianji_flow.contact_sheet import write_contact_sheet
+from jianji_flow.contact_sheet import write_contact_sheet, write_reference_comparison_sheet
 from jianji_flow.contracts import validate_fixes, validate_manifest, validate_matches, validate_recipe
 from jianji_flow.environment import check_environment, format_environment_report
 from jianji_flow.fixtures import generate_fixtures
@@ -215,7 +215,7 @@ def _visual_board_diagnosis_text(outputs: dict[str, str]) -> str:
             "Candidate frames were generated without using filename role labels.",
             f"- Candidate sheet: {outputs.get('visual_candidate_sheet', '')}",
             f"- Selection template: {outputs.get('visual_selection_template', '')}",
-            "- Next: let Codex inspect the candidate sheet, fill candidate_id and reason in the template, then rerun with --visual-selections.",
+            "- Next: Codex must inspect the candidate sheet, write candidate_id and reason for genuinely supported segments, then rerun with --visual-selections; do not ask the user to edit JSON.",
             "- Local frame quality metrics are not semantic proof; publishing still requires human review.",
             "",
         ]
@@ -228,6 +228,7 @@ def _success_artifact_names() -> tuple[str, ...]:
         "voiceover.wav",
         "captions.ass",
         "contact-sheet.png",
+        "reference-comparison.png",
         "candidate-review.html",
         "fixes.template.json",
         "review.html",
@@ -254,6 +255,7 @@ def _run_state_artifact_names() -> tuple[str, ...]:
         "voiceover.wav",
         "remix.mp4",
         "contact-sheet.png",
+        "reference-comparison.png",
         "candidate-review.html",
         "fixes.template.json",
     )
@@ -364,6 +366,7 @@ def _remove_success_outputs_from_review(review: dict, *, keep_diagnostics: bool 
         "candidate_review",
         "candidate_frames",
         "review_html",
+        "reference_comparison",
     ]
     if not keep_diagnostics:
         removable_outputs.append("contact_sheet")
@@ -481,6 +484,7 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         ass_path = work_dir / "captions.ass"
         voiceover_path = work_dir / "voiceover.wav"
         contact_sheet_path = work_dir / "contact-sheet.png"
+        reference_comparison_path = work_dir / "reference-comparison.png"
         source_diagnostics_dir = work_dir / "source-diagnostics"
         review_path = work_dir / "review.md"
         review_html_path = work_dir / "review.html"
@@ -589,6 +593,12 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             voiceover_path=voiceover_path,
         )
         write_contact_sheet(remix_path, contact_sheet_path, recipe=recipe)
+        write_reference_comparison_sheet(
+            reference_path,
+            remix_path,
+            reference_comparison_path,
+            recipe=recipe,
+        )
         review = build_review(
             recipe,
             matches,
@@ -597,6 +607,7 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             ass_path=ass_path,
             voiceover_path=voiceover_path,
             contact_sheet_path=contact_sheet_path,
+            reference_comparison_path=reference_comparison_path,
             review_html_path=review_html_path,
             visual_selection=visual_selection_review,
         )
