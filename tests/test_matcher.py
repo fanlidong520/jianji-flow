@@ -345,3 +345,53 @@ def test_retime_recipe_and_matches_updates_source_window_evidence():
     evidence = retimed_matches["matches"][0]["evidence"]
     assert "source-window:2000-7000" in evidence
     assert all(not item.startswith("source-window:4000-6000") for item in evidence)
+
+
+def test_retime_recipe_and_matches_scales_multi_shot_ranges():
+    segment = {"id": "seg-001", "role": "feature", "start_ms": 0, "end_ms": 4000, "caption": "Feature"}
+    matches = {
+        "version": "0.1",
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "selected",
+                "asset_id": "asset-feature",
+                "source_path": "assets/feature.mp4",
+                "source_start_ms": 1000,
+                "source_end_ms": 5000,
+                "asset_duration_ms": 7000,
+                "confidence": 1.0,
+                "scores": {},
+                "candidates": [],
+                "evidence": [],
+                "shots": [
+                    {
+                        "shot_id": "seg-001-shot-01",
+                        "asset_id": "asset-feature",
+                        "source_path": "assets/feature.mp4",
+                        "source_start_ms": 1000,
+                        "source_end_ms": 2500,
+                        "asset_duration_ms": 7000,
+                    },
+                    {
+                        "shot_id": "seg-001-shot-02",
+                        "asset_id": "asset-feature",
+                        "source_path": "assets/feature.mp4",
+                        "source_start_ms": 2500,
+                        "source_end_ms": 5000,
+                        "asset_duration_ms": 7000,
+                    },
+                ],
+            }
+        ],
+    }
+    recipe = build_recipe("product", {"width": 1080, "height": 1920, "fps": 30}, [segment], matches)
+
+    retimed_recipe, retimed_matches = retime_recipe_and_matches(recipe, matches, 2000)
+
+    assert retimed_recipe["duration_ms"] == 2000
+    assert [(shot["source_start_ms"], shot["source_end_ms"]) for shot in retimed_matches["matches"][0]["shots"]] == [
+        (1000, 1750),
+        (1750, 3000),
+    ]

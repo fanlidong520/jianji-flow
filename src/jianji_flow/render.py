@@ -31,11 +31,28 @@ def _selected_sources(recipe: dict, matches: dict) -> list[tuple[dict, dict]]:
         if not isinstance(source_path, str):
             raise ValueError(f"match {match.get('id')!r}: source_path must be a string")
         reject_url_or_protocol(source_path)
-        source_duration = int(match["source_end_ms"]) - int(match["source_start_ms"])
-        segment_duration = int(segment["end_ms"]) - int(segment["start_ms"])
-        if source_duration != segment_duration:
-            raise ValueError(f"match {match.get('id')!r}: source range duration must match recipe segment duration")
-        selected.append((segment, match))
+        shots = match.get("shots")
+        if shots:
+            cursor_ms = int(segment["start_ms"])
+            total_duration = 0
+            for shot in shots:
+                shot_duration = int(shot["source_end_ms"]) - int(shot["source_start_ms"])
+                if shot_duration <= 0:
+                    raise ValueError(f"match {match.get('id')!r}: shot source range must be positive")
+                shot_segment = {**segment, "start_ms": cursor_ms, "end_ms": cursor_ms + shot_duration}
+                shot_match = {**match, **shot}
+                selected.append((shot_segment, shot_match))
+                cursor_ms += shot_duration
+                total_duration += shot_duration
+            segment_duration = int(segment["end_ms"]) - int(segment["start_ms"])
+            if total_duration != segment_duration:
+                raise ValueError(f"match {match.get('id')!r}: shot durations must match recipe segment duration")
+        else:
+            source_duration = int(match["source_end_ms"]) - int(match["source_start_ms"])
+            segment_duration = int(segment["end_ms"]) - int(segment["start_ms"])
+            if source_duration != segment_duration:
+                raise ValueError(f"match {match.get('id')!r}: source range duration must match recipe segment duration")
+            selected.append((segment, match))
     return selected
 
 

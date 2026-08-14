@@ -920,6 +920,53 @@ def test_build_review_markdown_contains_storyboard_rows():
     assert "low confidence" in markdown
 
 
+def test_build_review_contains_final_shot_plan():
+    review = {
+        "status": "warning",
+        "warnings": [],
+        "failures": [],
+        "outputs": {},
+        "shot_plan": {
+            "status": "pass",
+            "total_shots": 3,
+            "segments": [
+                {
+                    "segment_id": "seg-001",
+                    "shot_count": 2,
+                    "status": "detected",
+                    "boundaries_ms": [1200, 1950, 2800],
+                }
+            ],
+        },
+    }
+
+    markdown = build_review_markdown(review, {"segments": []}, {"matches": []})
+    html = build_review_html(review, {"segments": []}, {"matches": []})
+
+    assert "## Shot plan" in markdown
+    assert "1200ms, 1950ms, 2800ms" in markdown
+    assert "Shot plan" in html
+    assert "Total shots:" in html
+    assert "1200ms, 1950ms, 2800ms" in html
+
+
+def test_build_review_contains_shot_contact_sheet_output():
+    review = {
+        "status": "warning",
+        "warnings": [],
+        "failures": [],
+        "outputs": {"shot_contact_sheet": "shot-contact-sheet.png"},
+    }
+
+    markdown = build_review_markdown(review, {"segments": []}, {"matches": []})
+    html = build_review_html(review, {"segments": []}, {"matches": []})
+
+    assert "## Shot timeline" in markdown
+    assert "shot-contact-sheet.png" in markdown
+    assert "Shot Timeline" in html
+    assert 'src="shot-contact-sheet.png"' in html
+
+
 def test_write_review_markdown_creates_file(tmp_path: Path):
     output = tmp_path / "nested" / "review.md"
 
@@ -1193,6 +1240,36 @@ def test_build_review_html_contains_visual_selection_evidence(tmp_path: Path):
     assert "not semantic proof" in html
 
 
+def test_build_review_visual_selection_shows_final_retimed_frames():
+    review = {
+        "status": "pass",
+        "failures": [],
+        "warnings": [],
+        "outputs": {},
+        "visual_selection": {
+            "selections": [
+                {
+                    "segment_id": "seg-001",
+                    "candidate_id": "seg-001-candidate-01",
+                    "reviewer": "codex-vision",
+                    "reason": "supports the segment",
+                    "frames": ["candidate-frame.png"],
+                    "final_source_range": "1000-2000ms",
+                    "final_frames": ["final-frame.png"],
+                }
+            ]
+        },
+    }
+
+    markdown = build_review_markdown(review)
+    html = build_review_html(review, {"segments": []}, {"matches": []})
+
+    assert "Final selected frames" in markdown
+    assert "1000-2000ms" in markdown
+    assert "Final selected frames" in html
+    assert 'src="final-frame.png"' in html
+
+
 def test_build_review_html_contains_plain_language_summary():
     html = build_review_html(
         {"status": "warning", "outputs": {}, "warnings": ["low confidence"], "failures": []},
@@ -1210,6 +1287,32 @@ def test_write_review_html_creates_file(tmp_path: Path):
     write_review_html({"status": "pass", "outputs": {}}, {"segments": []}, {"matches": []}, output)
 
     assert output.read_text(encoding="utf-8").startswith("<!doctype html>")
+
+
+def test_write_review_html_relativizes_final_visual_frames(tmp_path: Path):
+    frame = tmp_path / "visual-selection-evidence" / "final-frames" / "seg-001-01.png"
+    frame.parent.mkdir(parents=True)
+    frame.write_bytes(b"frame")
+    output = tmp_path / "review.html"
+    review = {
+        "status": "pass",
+        "outputs": {},
+        "visual_selection": {
+            "selections": [
+                {
+                    "segment_id": "seg-001",
+                    "final_frames": [frame.as_posix()],
+                    "final_source_range": "0-1000ms",
+                }
+            ]
+        },
+    }
+
+    write_review_html(review, {"segments": []}, {"matches": []}, output)
+
+    html = output.read_text(encoding="utf-8")
+    assert 'src="visual-selection-evidence/final-frames/seg-001-01.png"' in html
+    assert str(frame) not in html
 
 
 def test_write_review_html_uses_relative_paths_for_local_outputs(tmp_path: Path):

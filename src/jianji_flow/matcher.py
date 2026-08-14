@@ -453,6 +453,9 @@ def retime_recipe_and_matches(recipe: dict, matches: dict, target_duration_ms: i
 
 def _retime_match_source_window(match: dict, duration_ms: int) -> dict:
     asset_duration_ms = int(match.get("asset_duration_ms", match["source_end_ms"]))
+    original_source_start_ms = int(match["source_start_ms"])
+    original_source_end_ms = int(match["source_end_ms"])
+    original_source_duration_ms = max(1, original_source_end_ms - original_source_start_ms)
     source_start_ms = int(match["source_start_ms"])
     source_start_ms = min(source_start_ms, max(0, asset_duration_ms - duration_ms))
     source_end_ms = source_start_ms + duration_ms
@@ -475,7 +478,44 @@ def _retime_match_source_window(match: dict, duration_ms: int) -> dict:
             _retime_candidate_source_window(candidate, duration_ms)
             for candidate in match["candidates"]
         ]
+    if isinstance(match.get("shots"), list):
+        retimed_match["shots"] = _retime_shots(
+            match["shots"],
+            original_source_start_ms,
+            original_source_end_ms,
+            source_start_ms,
+            source_end_ms,
+        )
     return retimed_match
+
+
+def _retime_shots(
+    shots: list[dict],
+    original_source_start_ms: int,
+    original_source_end_ms: int,
+    source_start_ms: int,
+    source_end_ms: int,
+) -> list[dict]:
+    original_duration_ms = max(1, original_source_end_ms - original_source_start_ms)
+    target_duration_ms = source_end_ms - source_start_ms
+    retimed: list[dict] = []
+    cursor_ms = source_start_ms
+    for index, shot in enumerate(shots):
+        relative_start = (int(shot["source_start_ms"]) - original_source_start_ms) / original_duration_ms
+        relative_end = (int(shot["source_end_ms"]) - original_source_start_ms) / original_duration_ms
+        shot_start_ms = source_start_ms + round(target_duration_ms * relative_start)
+        shot_end_ms = (
+            source_end_ms
+            if index == len(shots) - 1
+            else source_start_ms + round(target_duration_ms * relative_end)
+        )
+        shot_start_ms = max(cursor_ms, shot_start_ms)
+        shot_end_ms = max(shot_start_ms + 1, shot_end_ms)
+        retimed.append({**shot, "source_start_ms": shot_start_ms, "source_end_ms": shot_end_ms})
+        cursor_ms = shot_end_ms
+    if retimed:
+        retimed[-1]["source_end_ms"] = source_end_ms
+    return retimed
 
 
 def _retime_candidate_source_window(candidate: dict, duration_ms: int) -> dict:

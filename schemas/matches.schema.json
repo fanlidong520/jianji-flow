@@ -22,6 +22,24 @@
           "source_start_ms": {"type": "integer", "minimum": 0},
           "source_end_ms": {"type": "integer", "minimum": 0},
           "asset_duration_ms": {"type": "integer", "minimum": 1},
+          "shots": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["shot_id", "asset_id", "source_path", "source_start_ms", "source_end_ms"],
+              "properties": {
+                "shot_id": {"type": "string", "minLength": 1},
+                "asset_id": {"type": "string", "minLength": 1},
+                "source_path": {"type": "string", "minLength": 1},
+                "source_start_ms": {"type": "integer", "minimum": 0},
+                "source_end_ms": {"type": "integer", "minimum": 0},
+                "asset_duration_ms": {"type": "integer", "minimum": 1},
+                "evidence": {"type": "array", "items": {"type": "string"}}
+              }
+            }
+          },
           "confidence": {"type": "number", "minimum": 0, "maximum": 1},
           "scores": {
             "type": "object",

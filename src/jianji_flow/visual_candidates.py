@@ -339,6 +339,34 @@ def apply_visual_selections(
     return updated_matches
 
 
+def write_final_visual_selection_frames(review_data: dict, matches: dict, work_dir: Path) -> dict:
+    """Add frames sampled from the final retimed source ranges to review data."""
+    matches_by_segment = {str(match.get("segment_id")): match for match in matches.get("matches", [])}
+    frames_dir = Path(work_dir) / "visual-selection-evidence" / "final-frames"
+    if frames_dir.exists():
+        shutil.rmtree(frames_dir)
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    for item in review_data.get("selections", []):
+        segment_id = str(item.get("segment_id", ""))
+        match = matches_by_segment.get(segment_id)
+        if match is None or match.get("status") not in {"selected", "low_confidence"}:
+            continue
+        start_ms = int(match["source_start_ms"])
+        end_ms = int(match["source_end_ms"])
+        duration_ms = end_ms - start_ms
+        if duration_ms <= 0:
+            raise ValueError(f"{segment_id}: final visual selection source range must be positive")
+        final_frames = []
+        for index, fraction in enumerate(FRAME_FRACTIONS, start=1):
+            time_ms = start_ms + round(duration_ms * fraction)
+            frame_path = frames_dir / f"{segment_id}-{index:02d}.png"
+            _extract_frame(Path(str(match["source_path"])), frame_path, time_ms)
+            final_frames.append(frame_path.as_posix())
+        item["final_source_range"] = f"{start_ms}-{end_ms}ms"
+        item["final_frames"] = final_frames
+    return review_data
+
+
 def _extract_frame(video_path: Path, frame_path: Path, time_ms: int) -> None:
     ffmpeg = shutil.which("ffmpeg") or "ffmpeg"
     frame_path.parent.mkdir(parents=True, exist_ok=True)

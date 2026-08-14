@@ -627,7 +627,15 @@ def test_failed_rerun_removes_stale_remix(tmp_path, monkeypatch):
     ]
     assert main(success_args) == 0
     assert (work_dir / "remix.mp4").exists()
-    for name in ("voiceover.wav", "captions.ass", "contact-sheet.png", "review.html"):
+    for name in (
+        "voiceover.wav",
+        "captions.ass",
+        "contact-sheet.png",
+        "shot-contact-sheet.png",
+        "reference-comparison.png",
+        "shot-plan.json",
+        "review.html",
+    ):
         (work_dir / name).write_bytes(b"stale")
 
     empty_assets = tmp_path / "empty-assets"
@@ -636,7 +644,16 @@ def test_failed_rerun_removes_stale_remix(tmp_path, monkeypatch):
     failed_args[failed_args.index("--assets") + 1] = str(empty_assets)
 
     assert main(failed_args) == 1
-    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png", "review.html"):
+    for name in (
+        "remix.mp4",
+        "voiceover.wav",
+        "captions.ass",
+        "contact-sheet.png",
+        "shot-contact-sheet.png",
+        "reference-comparison.png",
+        "shot-plan.json",
+        "review.html",
+    ):
         assert not (work_dir / name).exists(), name
 
 

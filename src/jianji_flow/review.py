@@ -31,7 +31,9 @@ def build_review(
     ass_path: Path | None = None,
     voiceover_path: Path | None = None,
     contact_sheet_path: Path | None = None,
+    shot_contact_sheet_path: Path | None = None,
     reference_comparison_path: Path | None = None,
+    shot_plan: dict | None = None,
     review_html_path: Path | None = None,
     check_artifacts: bool = True,
     visual_selection: dict | None = None,
@@ -72,6 +74,9 @@ def build_review(
     elif story_support["status"] == "weak":
         warnings.append(story_support["warning"])
 
+    if shot_plan:
+        warnings.extend(str(item) for item in shot_plan.get("warnings", []))
+
     if check_artifacts:
         artifact_result = _artifact_review(
             recipe,
@@ -80,6 +85,7 @@ def build_review(
             ass_path,
             voiceover_path,
             contact_sheet_path,
+            shot_contact_sheet_path,
             reference_comparison_path,
         )
         failures.extend(artifact_result["failures"])
@@ -100,12 +106,15 @@ def build_review(
     }
     if visual_selection:
         review["visual_selection"] = visual_selection
+    if shot_plan:
+        review["shot_plan"] = shot_plan
     review["summary"] = build_review_summary(review)
     return _with_optional_outputs(
         review,
         captions_ass=ass_path,
         voiceover=voiceover_path,
         contact_sheet=contact_sheet_path,
+        shot_contact_sheet=shot_contact_sheet_path,
         reference_comparison=reference_comparison_path,
         review_html=review_html_path,
     )
@@ -270,6 +279,7 @@ def _artifact_review(
     ass_path: Path | None,
     voiceover_path: Path | None,
     contact_sheet_path: Path | None,
+    shot_contact_sheet_path: Path | None,
     reference_comparison_path: Path | None,
 ) -> dict:
     failures = []
@@ -336,6 +346,16 @@ def _artifact_review(
                     image.verify()
             except (OSError, UnidentifiedImageError) as exc:
                 failures.append(f"reference comparison sheet invalid: {exc}")
+
+    if shot_contact_sheet_path is not None:
+        if not shot_contact_sheet_path.exists() or shot_contact_sheet_path.stat().st_size <= 0:
+            failures.append(f"shot contact sheet missing or empty: {shot_contact_sheet_path}")
+        else:
+            try:
+                with Image.open(shot_contact_sheet_path) as image:
+                    image.verify()
+            except (OSError, UnidentifiedImageError) as exc:
+                failures.append(f"shot contact sheet invalid: {exc}")
 
     return {"failures": failures, "warnings": warnings}
 
@@ -490,6 +510,57 @@ def _visual_selection_markdown_section(visual_selection: dict | None) -> list[st
             )
             + " |"
         )
+    final_selections = [item for item in selections if item.get("final_frames")]
+    if final_selections:
+        lines.extend(
+            [
+                "",
+                "Final selected frames are sampled from the final retimed source ranges:",
+                "| Segment | Final source range | Final frames |",
+                "| --- | --- | --- |",
+            ]
+        )
+        for item in final_selections:
+            lines.append(
+                "| "
+                + " | ".join(
+                    _markdown_cell(str(value))
+                    for value in (
+                        item.get("segment_id", ""),
+                        item.get("final_source_range", ""),
+                        ", ".join(str(frame) for frame in item.get("final_frames", [])),
+                    )
+                )
+                + " |"
+            )
+    return lines
+
+
+def _shot_plan_markdown_section(shot_plan: dict | None) -> list[str]:
+    if not shot_plan:
+        return []
+    lines = [
+        "## Shot plan",
+        "Scene boundaries are structural evidence only; they do not prove semantic visual matching.",
+        f"- status: {shot_plan.get('status', 'unknown')}",
+        f"- total shots: {shot_plan.get('total_shots', 0)}",
+        "| Segment | Shot count | Status | Boundaries |",
+        "| --- | ---: | --- | --- |",
+    ]
+    for item in shot_plan.get("segments", []):
+        boundaries = ", ".join(f"{value}ms" for value in item.get("boundaries_ms", [])) or "none"
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    str(item.get("segment_id", "")),
+                    str(item.get("shot_count", "")),
+                    str(item.get("status", "")),
+                    boundaries,
+                ]
+            )
+            + " |"
+        )
     return lines
 
 
@@ -524,7 +595,54 @@ def _visual_selection_html(visual_selection: dict | None) -> str:
         "<table><thead><tr><th>Segment</th><th>Candidate</th><th>Reviewer</th><th>Reason</th><th>Frames</th></tr></thead>"
         f"<tbody>{''.join(rows)}</tbody></table>"
     )
-    return intro + sheet + table
+    final_rows = []
+    for item in visual_selection.get("selections", []):
+        if not isinstance(item, dict) or not item.get("final_frames"):
+            continue
+        frames = "".join(
+            f'<img alt="final selected frame" src="{escape(str(frame))}">'
+            for frame in item.get("final_frames", [])
+        )
+        final_rows.append(
+            "<tr>"
+            f"<td>{escape(str(item.get('segment_id', '')))}</td>"
+            f"<td>{escape(str(item.get('final_source_range', '')))}</td>"
+            f"<td class=\"visual-selection-frames\">{frames}</td>"
+            "</tr>"
+        )
+    final_table = ""
+    if final_rows:
+        final_table = (
+            "<h3>Final selected frames</h3>"
+            "<p>These frames are sampled from the final retimed source ranges.</p>"
+            "<table><thead><tr><th>Segment</th><th>Final source range</th><th>Frames</th></tr></thead>"
+            f"<tbody>{''.join(final_rows)}</tbody></table>"
+        )
+    return intro + sheet + table + final_table
+
+
+def _shot_plan_html(shot_plan: dict | None) -> str:
+    if not shot_plan:
+        return ""
+    rows = []
+    for item in shot_plan.get("segments", []):
+        boundaries = ", ".join(f"{value}ms" for value in item.get("boundaries_ms", [])) or "none"
+        rows.append(
+            "<tr>"
+            f"<td>{escape(str(item.get('segment_id', '')))}</td>"
+            f"<td>{escape(str(item.get('shot_count', '')))}</td>"
+            f"<td>{escape(str(item.get('status', '')))}</td>"
+            f"<td>{escape(boundaries)}</td>"
+            "</tr>"
+        )
+    return (
+        "<h2>Shot plan</h2>"
+        "<p>Scene boundaries are structural evidence only; they do not prove semantic visual matching.</p>"
+        f"<p><strong>Status:</strong> {escape(str(shot_plan.get('status', 'unknown')))} "
+        f"<strong>Total shots:</strong> {escape(str(shot_plan.get('total_shots', 0)))}</p>"
+        "<table><thead><tr><th>Segment</th><th>Shot count</th><th>Status</th><th>Boundaries</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody></table>"
+    )
 
 
 def _change_report_markdown_section(change_report: dict | None) -> list[str]:
@@ -708,6 +826,15 @@ def build_review_markdown(review: dict, recipe: dict | None = None, matches: dic
                 "",
             ]
         )
+    if outputs.get("shot_contact_sheet"):
+        lines.extend(
+            [
+                "## Shot timeline",
+                "The shot contact sheet shows one labeled frame for every final rendered shot.",
+                f"- Shot timeline: {outputs['shot_contact_sheet']}",
+                "",
+            ]
+        )
     lines.extend(_list_section("Failures", list(review.get("failures", []))))
     lines.append("")
     lines.extend(_list_section("Warnings", list(review.get("warnings", []))))
@@ -722,6 +849,9 @@ def build_review_markdown(review: dict, recipe: dict | None = None, matches: dic
     if review.get("visual_selection"):
         lines.append("")
         lines.extend(_visual_selection_markdown_section(review.get("visual_selection")))
+    if review.get("shot_plan"):
+        lines.append("")
+        lines.extend(_shot_plan_markdown_section(review.get("shot_plan")))
     if review.get("change_report"):
         lines.append("")
         lines.extend(_change_report_markdown_section(review.get("change_report")))
@@ -779,6 +909,13 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
             "<p>The same number of relative storyboard samples are shown for the reference and the remix.</p>"
             f'<img alt="reference versus remix comparison" src="{escape(str(outputs["reference_comparison"]))}">'
         )
+    shot_contact_section = ""
+    if outputs.get("shot_contact_sheet"):
+        shot_contact_section = (
+            "<h2>Shot Timeline</h2>"
+            "<p>One labeled frame per final rendered shot.</p>"
+            f'<img alt="shot contact sheet" src="{escape(str(outputs["shot_contact_sheet"]))}">'
+        )
     return f"""<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -821,6 +958,7 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
   <video controls src="{escape(str(outputs.get('remix', '')))}"></video>
   <h2>Contact Sheet</h2>
   <img alt="contact sheet" src="{escape(str(outputs.get('contact_sheet', '')))}">
+  {shot_contact_section}
   {comparison_section}
   <h2>Outputs</h2>
   <ul>{outputs_list}</ul>
@@ -833,6 +971,7 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
   <h2>Storyboard</h2>
   <section class="storyboard">{_storyboard_html(recipe, matches, review)}</section>
   {_visual_selection_section_html(review.get('visual_selection'))}
+  {_shot_plan_html(review.get('shot_plan'))}
   {_change_report_section_html(review.get('change_report'))}
   <h2>Segments</h2>
   <table>
@@ -890,6 +1029,9 @@ def _html_review_paths(review: dict, base_dir: Path) -> dict:
                 frames = item.get("frames", [])
                 if isinstance(frames, list):
                     item["frames"] = [_relative_path(value, base_dir) for value in frames]
+                final_frames = item.get("final_frames", [])
+                if isinstance(final_frames, list):
+                    item["final_frames"] = [_relative_path(value, base_dir) for value in final_frames]
     return html_review
 
 

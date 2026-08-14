@@ -254,6 +254,22 @@ Latest local checkpoint after reference comparison and crop-aware preflight v37:
 - the same real run remains `warning` because the feature role is weak and selected source frames still need review;
 - source preflight now stores cropped safe-area diagnostics, reducing irrelevant warnings from platform chrome that the renderer removes.
 
+Latest local checkpoint after opt-in multi-shot v38:
+
+- `python -m pytest -q` -> 373 passed in 344.15s;
+- `python scripts/run_smoke.py` -> smoke passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- Skill validation -> `Skill is valid!`;
+- multi-shot unit, schema, semantic, matcher, renderer, and review tests pass;
+- final `shot-plan.json` is regenerated after voiceover retiming and matches the
+  final `matches.json` shot ranges;
+- `shot-contact-sheet.png` makes every final rendered shot inspectable without
+  scrubbing the video manually;
+- the default one-window path remains covered separately, while multi-shot is
+  explicitly opt-in during real-material validation;
+- no public launch claim is made until clean packs and outside-user trials pass
+  the launch rule below.
+
 ## Launch Rule
 
 Do not announce the project publicly until:

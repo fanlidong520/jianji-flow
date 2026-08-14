@@ -35,6 +35,8 @@
 - Uses crop and caption outline for visual cleanup without adding full-frame dark bands over the video.
 - Writes `contact-sheet.png` with one frame per timeline segment.
 - Writes `reference-comparison.png` with the same number of relative storyboard samples from the reference and the remix, so the visible edit can be checked without guessing.
+- Supports opt-in `--multi-shot` scene-boundary splitting, so a long selected source window can become several short visual shots while keeping the parent caption and voiceover segment intact.
+- Writes `shot-plan.json` when `--multi-shot` is used, with the final retimed source boundaries and explicit fallback warnings.
 - Writes `candidate-review.html` and `candidate-frames/` so weak segments can be compared against visible repair candidates.
 - Supports a separate `visual-review` pass that generates opaque-filename candidate boards; Codex should inspect the frames and write the selection file for the user instead of asking the user to edit JSON.
 - Writes `review.md` and `review.html` for manual inspection, including a change report after fixes are applied.
@@ -53,6 +55,7 @@
 - It does not preserve source audio by default.
 - It does not generate music, effects, or beat-synced edits.
 - It does not truly decompose a viral reference video into camera moves, hooks, or pacing yet.
+- Its default path still uses one source window per story segment; `--multi-shot` is a bounded structural cut, not semantic reference decomposition.
 - It does not silently claim that a visual candidate board is semantic understanding; visual selection is an explicit Codex-assisted review step and still needs human product-accuracy review.
 - It does not guarantee semantic matching beyond the current auditable matching evidence.
 - It does not treat file names as visual proof. Role-labeled files help assembly, but the picture still needs review.
@@ -176,7 +179,9 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 - `voiceover.wav`: generated machine voiceover.
 - `remix.mp4`: rendered preview video.
 - `contact-sheet.png`: one representative frame per segment.
+- `shot-contact-sheet.png`: one labeled frame per final rendered shot when `--multi-shot` is enabled.
 - `reference-comparison.png`: relative samples from the reference and remix for visible before/after checking.
+- `shot-plan.json`: final source boundaries and fallback status when `--multi-shot` is enabled; scene boundaries are structural evidence only.
 - `candidate-review.html`: side-by-side visual review of weak segments, current frames, candidate frames, recommendation status, reasons, and warnings.
 - `candidate-frames/`: images used by `candidate-review.html`.
 - `review.md`: review status and checklist.
@@ -206,6 +211,14 @@ Open `visual-candidate-sheet.png`. In a Codex run, Codex inspects the board, wri
 ```powershell
 python -m jianji_flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --script fixtures\scenario-a-product\script.txt --visual-selections out\visual-board\visual-selections.json --work-dir out\visual-selected
 ```
+
+For a more visibly paced draft, add `--multi-shot`. It detects bounded scene changes inside selected source windows, renders each safe range as a separate shot, and records the final retimed boundaries in `shot-plan.json`:
+
+```powershell
+python -m jianji_flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --script fixtures\scenario-a-product\script.txt --visual-selections out\visual-board\visual-selections.json --multi-shot --work-dir out\visual-selected-multi-shot
+```
+
+This option is intentionally opt-in while it is being validated on more real material. It can improve pacing, but it does not prove that a scene boundary matches the spoken claim; inspect `remix.mp4`, `contact-sheet.png`, `shot-plan.json`, and `review.html` together.
 
 The selection is checked against the candidate manifest, asset fingerprint, source range, and sampled-frame fingerprints before rendering. Leave a segment unselected when no candidate truly supports its caption; the run should remain `warning` and the review page will name the missing story evidence. A visual change proves only that the selected window changed, not that the product claim is true. The final `reference-comparison.png` is the fastest check that the remix is visibly different from the reference.
 
@@ -278,7 +291,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 355 passed
+- `python -m pytest -q` -> 373 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 

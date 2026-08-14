@@ -124,6 +124,57 @@ def test_source_range_duration_must_match_recipe_segment_duration(tmp_path):
     assert any("source range duration" in error for error in _validate(tmp_path, recipe, matches, manifest))
 
 
+def test_multi_shot_durations_must_match_segment_duration(tmp_path):
+    recipe, matches, manifest, *_ = _inputs(tmp_path)
+    matches["matches"][0]["shots"] = [
+        {
+            "shot_id": "seg-1-shot-01",
+            "asset_id": "a-1",
+            "source_path": matches["matches"][0]["source_path"],
+            "source_start_ms": 0,
+            "source_end_ms": 400,
+        },
+        {
+            "shot_id": "seg-1-shot-02",
+            "asset_id": "a-1",
+            "source_path": matches["matches"][0]["source_path"],
+            "source_start_ms": 400,
+            "source_end_ms": 900,
+        },
+    ]
+
+    errors = _validate(tmp_path, recipe, matches, manifest)
+
+    assert any("shot durations" in error for error in errors)
+
+
+def test_multi_shot_source_path_is_checked_against_manifest_and_root(tmp_path):
+    recipe, matches, manifest, *_ = _inputs(tmp_path)
+    outside = tmp_path / "outside.mp4"
+    outside.write_bytes(b"outside")
+    matches["matches"][0]["shots"] = [
+        {
+            "shot_id": "seg-1-shot-01",
+            "asset_id": "a-1",
+            "source_path": str(outside),
+            "source_start_ms": 0,
+            "source_end_ms": 500,
+        },
+        {
+            "shot_id": "seg-1-shot-02",
+            "asset_id": "a-1",
+            "source_path": matches["matches"][0]["source_path"],
+            "source_start_ms": 500,
+            "source_end_ms": 1000,
+        },
+    ]
+
+    errors = _validate(tmp_path, recipe, matches, manifest)
+
+    assert any("shot 1" in error and "outside asset_root" in error for error in errors)
+    assert any("shot 1" in error and "manifest asset path" in error for error in errors)
+
+
 def test_selected_source_path_must_be_inside_asset_root(tmp_path):
     recipe, matches, manifest, reference, asset_root = _inputs(tmp_path)
     outside = tmp_path / "outside.mp4"

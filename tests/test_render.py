@@ -112,6 +112,49 @@ def test_render_command_uses_validated_inputs_only():
     assert "out\\remix.mp4" not in command
 
 
+def test_render_command_flattens_multi_shot_match_into_ordered_inputs():
+    recipe, matches = _recipe(Path("assets/hook.mp4"))
+    recipe["duration_ms"] = 2000
+    recipe["segments"][0]["end_ms"] = 2000
+    match = matches["matches"][0]
+    match["source_end_ms"] = 2000
+    match["asset_duration_ms"] = 3000
+    match["shots"] = [
+        {
+            "shot_id": "seg-001-shot-01",
+            "asset_id": "asset-001",
+            "source_path": "assets/hook.mp4",
+            "source_start_ms": 0,
+            "source_end_ms": 1000,
+            "asset_duration_ms": 3000,
+        },
+        {
+            "shot_id": "seg-001-shot-02",
+            "asset_id": "asset-001",
+            "source_path": "assets/hook.mp4",
+            "source_start_ms": 1000,
+            "source_end_ms": 2000,
+            "asset_duration_ms": 3000,
+        },
+    ]
+    manifest = _manifest("assets/hook.mp4")
+    manifest["assets"][0]["duration_ms"] = 3000
+
+    command = build_ffmpeg_plan(
+        recipe,
+        matches,
+        manifest,
+        Path("out/remix.mp4"),
+        work_dir=Path("out"),
+        reference_path=Path("reference.mp4"),
+        asset_root=Path("assets"),
+        captions_path=None,
+    )
+
+    assert command.count("assets/hook.mp4") == 2
+    assert "concat=n=2:v=1:a=0" in command[command.index("-filter_complex") + 1]
+
+
 def test_render_command_rejects_missing_match():
     recipe, matches = _recipe(Path("assets/hook.mp4"))
     matches["matches"][0] = {

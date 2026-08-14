@@ -64,6 +64,12 @@
   writes the selection JSON; users do not need to edit intermediate JSON files.
 - Aligned source preflight with the renderer's crop-safe area so platform chrome
   that will never reach the remix is not reported as a visible-frame risk.
+- Added opt-in `--multi-shot` scene-boundary detection that flattens selected
+  source windows into bounded short shots and writes a final retimed `shot-plan.json`.
+- Added multi-shot schema, semantic path/duration checks, renderer flattening,
+  and review-page evidence without changing the stable default one-window path.
+- Added `shot-contact-sheet.png` and embedded it in `review.html` so every
+  multi-shot render can be inspected one final shot at a time.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while
   still removing stale success artifacts such as `remix.mp4`.
 - Reframed documentation around auditable rough-cut generation, not full editor

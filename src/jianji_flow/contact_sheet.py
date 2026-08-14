@@ -30,6 +30,35 @@ def build_segment_frame_times_ms(recipe: dict) -> list[int]:
     return times
 
 
+def build_shot_frame_times_ms(recipe: dict, matches: dict) -> list[tuple[str, int]]:
+    """Return final-timeline midpoint samples for every rendered shot."""
+    matches_by_id = {str(match.get("id")): match for match in matches.get("matches", [])}
+    samples: list[tuple[str, int]] = []
+    for segment in recipe.get("segments", []):
+        match = matches_by_id.get(str(segment.get("match_id")))
+        if match is None:
+            raise ValueError(f"segment {segment.get('id')!r}: match is missing")
+        segment_id = str(segment.get("id", "segment"))
+        shots = match.get("shots")
+        if shots:
+            cursor_ms = int(segment["start_ms"])
+            for index, shot in enumerate(shots, start=1):
+                duration_ms = int(shot["source_end_ms"]) - int(shot["source_start_ms"])
+                if duration_ms <= 0:
+                    raise ValueError(f"{segment_id} shot {index}: source range must be positive")
+                samples.append((f"{segment_id} / shot-{index:02d}", cursor_ms + round(duration_ms / 2)))
+                cursor_ms += duration_ms
+        else:
+            start_ms = int(segment["start_ms"])
+            end_ms = int(segment["end_ms"])
+            if end_ms <= start_ms:
+                raise ValueError(f"{segment_id}: segment range must be positive")
+            samples.append((f"{segment_id} / shot-01", round((start_ms + end_ms) / 2)))
+    if not samples:
+        raise ValueError("recipe has no segments")
+    return samples
+
+
 def _extract_frame(ffmpeg: str, video_path: Path, frame_path: Path, time_ms: int) -> None:
     command = [
         ffmpeg,
@@ -69,6 +98,75 @@ def _write_tiled_images(frame_paths: list[Path], output_path: Path, *, tile_widt
     finally:
         for image in images:
             image.close()
+
+
+def _write_labeled_tiled_images(
+    frame_paths: list[Path],
+    labels: list[str],
+    output_path: Path,
+    *,
+    tile_width: int = 220,
+    columns: int = 4,
+    padding: int = 8,
+    label_height: int = 28,
+) -> None:
+    if len(frame_paths) != len(labels) or not frame_paths:
+        raise ValueError("frame paths and labels must be non-empty and have equal length")
+    images = []
+    try:
+        for frame_path in frame_paths:
+            image = Image.open(frame_path).convert("RGB")
+            ratio = tile_width / image.width
+            images.append(image.resize((tile_width, max(1, round(image.height * ratio)))))
+        tile_height = max(image.height for image in images)
+        rows = (len(images) + columns - 1) // columns
+        sheet_width = padding + columns * (tile_width + padding)
+        sheet_height = padding + rows * (label_height + tile_height + padding)
+        sheet = Image.new("RGB", (sheet_width, sheet_height), "#202124")
+        draw = ImageDraw.Draw(sheet)
+        for index, (image, label) in enumerate(zip(images, labels)):
+            row, column = divmod(index, columns)
+            left = padding + column * (tile_width + padding)
+            top = padding + row * (label_height + tile_height + padding)
+            draw.text((left, top + 6), label, fill="white")
+            sheet.paste(image, (left, top + label_height))
+        sheet.save(output_path)
+        sheet.close()
+    finally:
+        for image in images:
+            image.close()
+
+
+def write_shot_contact_sheet(
+    video_path: Path,
+    output_path: Path,
+    *,
+    recipe: dict,
+    matches: dict,
+) -> Path:
+    """Write one labeled frame for every final rendered shot."""
+    ffmpeg = shutil.which("ffmpeg") or "ffmpeg"
+    samples = build_shot_frame_times_ms(recipe, matches)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_dir = output_path.with_name(f".{output_path.stem}.frames")
+    if temp_dir.exists():
+        shutil.rmtree(temp_dir)
+    temp_dir.mkdir(parents=True)
+    try:
+        frame_paths = []
+        labels = []
+        for index, (label, time_ms) in enumerate(samples, start=1):
+            frame_path = temp_dir / f"shot-{index:03d}.png"
+            _extract_frame(ffmpeg, video_path, frame_path, time_ms)
+            frame_paths.append(frame_path)
+            labels.append(label)
+        _write_labeled_tiled_images(frame_paths, labels, output_path)
+    finally:
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+    if not output_path.exists() or output_path.stat().st_size <= 0:
+        raise RuntimeError(f"shot contact sheet was not created: {output_path}")
+    return output_path
 
 
 def _write_segment_contact_sheet(video_path: Path, output_path: Path, recipe: dict) -> Path:

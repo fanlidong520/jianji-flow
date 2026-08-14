@@ -1,6 +1,6 @@
 ---
 name: jianji-flow
-description: Create auditable preview videos from a reference video, a local asset directory, and optional script text; outputs diagnosis.md, manifest.json, recipe.json, matches.json, captions.srt, captions.ass, voiceover.wav, remix.mp4, contact-sheet.png, reference-comparison.png, visual candidate evidence, candidate-review.html, fixes.template.json, review.md, and review.html after validation.
+description: Create auditable preview videos from a reference video, a local asset directory, and optional script text; outputs diagnosis.md, manifest.json, recipe.json, matches.json, captions.srt, captions.ass, voiceover.wav, remix.mp4, contact-sheet.png, optional shot-contact-sheet.png, reference-comparison.png, optional shot-plan.json, visual candidate evidence, candidate-review.html, fixes.template.json, review.md, and review.html after validation.
 ---
 
 # jianji-flow
@@ -52,7 +52,8 @@ Detailed workflow:
 14. Write `fixes.template.json` for weak or low-confidence segments, including same-role visual-similarity checks for repair recommendations.
 15. Write `candidate-review.html` and `candidate-frames/` so current weak-segment frames can be compared with visible repair candidates.
 16. When `--visual-selections`, `--fixes`, or `--apply-recommendation` is used, write the corresponding visual evidence or `Change report` and diagnostics.
-17. Write `review.md` and `review.html` with pass, warning, fail status, `Story support`, a per-segment `Storyboard`, optional `Visual selection`, optional `Change report`, candidate-review link, and visual-similarity diagnostics when present.
+17. When the user requests more visible pacing, pass `--multi-shot` after visual selection. It detects only bounded structural scene changes inside selected windows, flattens safe ranges into the final timeline, writes `shot-plan.json` after voiceover retiming, and writes `shot-contact-sheet.png` with one labeled frame per final shot. Keep the result review-required until the rendered pacing is inspected.
+18. Write `review.md` and `review.html` with pass, warning, fail status, `Story support`, a per-segment `Storyboard`, optional `Visual selection`, optional `Shot plan`, optional `Change report`, candidate-review link, and visual-similarity diagnostics when present.
 
 ## Hard Rules
 
@@ -97,6 +98,12 @@ Quick home-product draft:
 
 ```powershell
 jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets
+```
+
+Paced multi-shot draft after visual selection:
+
+```powershell
+jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --script fixtures\scenario-a-product\script.txt --visual-selections out\visual-board\visual-selections.json --multi-shot --work-dir out\visual-selected-multi-shot
 ```
 
 Rerun with a segment repair file:
@@ -151,7 +158,9 @@ On success or warning, report the paths for:
 - `voiceover.wav`
 - `remix.mp4`
 - `contact-sheet.png`
+- `shot-contact-sheet.png` when `--multi-shot` is used
 - `reference-comparison.png`
+- `shot-plan.json` when `--multi-shot` is used
 - `candidate-review.html`
 - `candidate-frames/`
 - `visual-candidates.json`, `visual-candidate-sheet.png`, and `visual-selection.template.json` when `visual-review` is used
@@ -176,4 +185,5 @@ If `review.md` lists `visual_similarity_diagnostics`, explain that the folder co
 If `review.md` lists a `Change report`, use it before discussing JSON: it names the changed segment, before/after asset, before/after source range, before/after sampled frames, `Picture change`, sampling note, and override reason. Explain that `Picture change` means sampled frames differ; it is not proof that the new shot fits the script.
 Use the `Storyboard` section before discussing JSON: it is the fastest way to see each segment's caption, selected asset, source range, evidence, and risk.
 Use the `Visual selection` section when present: it lists the reviewer, candidate id, reason, and selected frames. Treat it as inspectable evidence, not proof that the product claim is accurate.
+Use the `Shot plan` section when present: it lists the final retimed source boundaries and fallback status. Open `shot-contact-sheet.png` to inspect one frame per final shot. Scene boundaries prove only structural cutting, not semantic support for the script.
 Use `candidate-review.html` before suggesting a fix: it is the fastest way to show what the current segment looks like, what candidate frames are available, and whether warnings make the candidate manual-review only.

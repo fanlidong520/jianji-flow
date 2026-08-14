@@ -188,6 +188,56 @@ def test_match_float_source_time_fails():
         validate_matches(data)
 
 
+def test_matches_accept_bounded_multi_shot_ranges():
+    data = valid_matches()
+    data["matches"][0]["shots"] = [
+        {
+            "shot_id": "seg-001-shot-01",
+            "asset_id": "asset-001",
+            "source_path": "assets/product-demo.mp4",
+            "source_start_ms": 0,
+            "source_end_ms": 1200,
+            "asset_duration_ms": 5000,
+            "evidence": ["scene-change-boundary"],
+        },
+        {
+            "shot_id": "seg-001-shot-02",
+            "asset_id": "asset-001",
+            "source_path": "assets/product-demo.mp4",
+            "source_start_ms": 1200,
+            "source_end_ms": 3000,
+            "asset_duration_ms": 5000,
+            "evidence": ["scene-change-boundary"],
+        },
+    ]
+
+    validate_matches(data)
+
+
+def test_multi_shot_rejects_unknown_nested_fields():
+    data = valid_matches()
+    data["matches"][0]["shots"] = [
+        {
+            "shot_id": "seg-001-shot-01",
+            "asset_id": "asset-001",
+            "source_path": "assets/product-demo.mp4",
+            "source_start_ms": 0,
+            "source_end_ms": 1200,
+            "unexpected": True,
+        },
+        {
+            "shot_id": "seg-001-shot-02",
+            "asset_id": "asset-001",
+            "source_path": "assets/product-demo.mp4",
+            "source_start_ms": 1200,
+            "source_end_ms": 3000,
+        },
+    ]
+
+    with pytest.raises(ValidationError):
+        validate_matches(data)
+
+
 def test_invalid_mode_fails():
     data = valid_recipe()
     data["mode"] = "bad"

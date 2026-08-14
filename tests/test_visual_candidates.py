@@ -13,6 +13,7 @@ from jianji_flow.visual_candidates import (
     apply_visual_selections,
     build_visual_candidate_manifest,
     load_visual_selection,
+    write_final_visual_selection_frames,
     write_visual_candidate_artifacts,
 )
 
@@ -217,6 +218,44 @@ def test_apply_visual_selection_updates_window_and_records_evidence(tmp_path: Pa
             "evidence": ["visual-review:seg-001-candidate-01"],
         }
     ]
+
+
+def test_write_final_visual_selection_frames_uses_retimed_match_range(tmp_path: Path, monkeypatch):
+    source = tmp_path / "IMG_001.mp4"
+    source.write_bytes(b"video")
+    review_data = {
+        "selections": [
+            {
+                "segment_id": "seg-001",
+                "frames": ["candidate-1.png"],
+            }
+        ]
+    }
+    matches = {
+        "matches": [
+            {
+                "segment_id": "seg-001",
+                "status": "selected",
+                "source_path": str(source),
+                "source_start_ms": 1000,
+                "source_end_ms": 2000,
+            }
+        ]
+    }
+    captured_times = []
+
+    def fake_extract(_video_path: Path, frame_path: Path, time_ms: int) -> None:
+        captured_times.append(time_ms)
+        Image.new("RGB", (32, 32), "#f97316").save(frame_path)
+
+    monkeypatch.setattr("jianji_flow.visual_candidates._extract_frame", fake_extract)
+
+    updated = write_final_visual_selection_frames(review_data, matches, tmp_path / "work")
+
+    assert captured_times == [1250, 1500, 1750]
+    assert updated["selections"][0]["final_source_range"] == "1000-2000ms"
+    assert len(updated["selections"][0]["final_frames"]) == 3
+    assert all(Path(path).exists() for path in updated["selections"][0]["final_frames"])
 
 
 def test_apply_visual_selection_rejects_unknown_candidate_before_render(tmp_path: Path):

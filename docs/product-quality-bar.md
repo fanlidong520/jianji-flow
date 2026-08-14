@@ -357,6 +357,33 @@ Still not good enough:
 - the editor still assembles one source window per story segment, so pacing and multi-shot montage remain limited;
 - three clean real-material packs and outside-user trials are still required before public launch.
 
+## Current v38 Judgment
+
+The optional multi-shot path now turns a selected source window into several
+short source ranges at detected scene boundaries. The renderer flattens those
+ranges into the parent story segment, and the final `shot-plan.json` is
+resynchronized after voiceover retiming so the audit file matches the output
+timeline.
+
+Passes:
+
+- scene detection is bounded by minimum shot duration and maximum shot count;
+- unsafe or failed detection falls back to the original window with a visible warning;
+- shot paths are checked against the manifest, asset root, reference hash, and
+  exact parent segment duration;
+- `review.md` and `review.html` expose final boundaries and shot counts;
+- `shot-contact-sheet.png` exposes one labeled frame for every final rendered shot;
+- the stable default path remains unchanged unless `--multi-shot` is requested.
+
+Still not good enough:
+
+- scene boundaries are structural evidence, not semantic understanding of the
+  spoken claim or reference pacing;
+- the real home-product pack still needs clean source material and stronger
+  feature evidence;
+- the multi-shot path needs three clean real-material packs and outside-user
+  trials before it can become the default or be called publish-ready.
+
 ## Product Principle
 
 Do not optimize for impressive automation claims.

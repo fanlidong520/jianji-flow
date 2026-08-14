@@ -12,7 +12,11 @@ from jianji_flow import __version__
 from jianji_flow.asset_diagnosis import diagnose_product_assets, format_asset_diagnosis
 from jianji_flow.candidate_review import write_candidate_review
 from jianji_flow.change_report import build_change_report
-from jianji_flow.contact_sheet import write_contact_sheet, write_reference_comparison_sheet
+from jianji_flow.contact_sheet import (
+    write_contact_sheet,
+    write_reference_comparison_sheet,
+    write_shot_contact_sheet,
+)
 from jianji_flow.contracts import validate_fixes, validate_manifest, validate_matches, validate_recipe
 from jianji_flow.environment import check_environment, format_environment_report
 from jianji_flow.fixtures import generate_fixtures
@@ -28,12 +32,14 @@ from jianji_flow.render import render_preview
 from jianji_flow.review import build_review, write_review_html, write_review_markdown
 from jianji_flow.review_summary import build_review_summary
 from jianji_flow.semantics import validate_semantics
+from jianji_flow.shot_detection import build_multi_shot_matches, synchronize_shot_plan
 from jianji_flow.subtitles import write_ass, write_srt
 from jianji_flow.visual_similarity import is_visually_similar
 from jianji_flow.visual_candidates import (
     apply_visual_selections,
     build_visual_candidate_manifest,
     load_visual_selection,
+    write_final_visual_selection_frames,
     write_visual_candidate_artifacts,
 )
 from jianji_flow.voiceover import create_voiceover, probe_voiceover, validate_voiceover
@@ -54,6 +60,7 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--fixes", help="optional JSON file that pins selected segments or roles to replacement assets")
     run.add_argument("--apply-recommendation", help="apply a clean recommended fix from --fixes for one segment id")
     run.add_argument("--visual-selections", help="optional Codex visual selection JSON file")
+    run.add_argument("--multi-shot", action="store_true", help="split selected windows at detected scene boundaries")
     run.add_argument("--confidence-threshold", type=float)
     run.add_argument("--target-width", type=int)
     run.add_argument("--target-height", type=int)
@@ -75,6 +82,7 @@ def _build_parser() -> argparse.ArgumentParser:
     quick.add_argument("--fixes", help="optional JSON file that pins selected segments or roles to replacement assets")
     quick.add_argument("--apply-recommendation", help="apply a clean recommended fix from --fixes for one segment id")
     quick.add_argument("--visual-selections", help="optional Codex visual selection JSON file")
+    quick.add_argument("--multi-shot", action="store_true", help="split selected windows at detected scene boundaries")
     quick.add_argument("--work-dir")
     quick.add_argument("--mode", choices=("product", "talking-head"), default="product")
     quick.add_argument("--confidence-threshold", type=float)
@@ -228,7 +236,9 @@ def _success_artifact_names() -> tuple[str, ...]:
         "voiceover.wav",
         "captions.ass",
         "contact-sheet.png",
+        "shot-contact-sheet.png",
         "reference-comparison.png",
+        "shot-plan.json",
         "candidate-review.html",
         "fixes.template.json",
         "review.html",
@@ -255,14 +265,16 @@ def _run_state_artifact_names() -> tuple[str, ...]:
         "voiceover.wav",
         "remix.mp4",
         "contact-sheet.png",
+        "shot-contact-sheet.png",
         "reference-comparison.png",
+        "shot-plan.json",
         "candidate-review.html",
         "fixes.template.json",
     )
 
 
 def _clear_success_artifacts(work_dir: Path, *, keep_diagnostics: bool = False) -> None:
-    diagnostic_names = {"contact-sheet.png"} if keep_diagnostics else set()
+    diagnostic_names = {"contact-sheet.png", "shot-contact-sheet.png"} if keep_diagnostics else set()
     for name in _success_artifact_names():
         if name in diagnostic_names:
             continue
@@ -367,6 +379,7 @@ def _remove_success_outputs_from_review(review: dict, *, keep_diagnostics: bool 
         "candidate_frames",
         "review_html",
         "reference_comparison",
+        "shot_plan",
     ]
     if not keep_diagnostics:
         removable_outputs.append("contact_sheet")
@@ -463,6 +476,9 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             selection_path = None
             candidate_manifest_path = None
             visual_selection_review = None
+        shot_plan = None
+        if getattr(args, "multi_shot", False):
+            matches, shot_plan = build_multi_shot_matches(segments, matches)
         change_requested = fixes_data is not None or visual_selection_input is not None
         recipe = build_recipe(
             args.mode,
@@ -484,7 +500,9 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         ass_path = work_dir / "captions.ass"
         voiceover_path = work_dir / "voiceover.wav"
         contact_sheet_path = work_dir / "contact-sheet.png"
+        shot_contact_sheet_path = work_dir / "shot-contact-sheet.png"
         reference_comparison_path = work_dir / "reference-comparison.png"
+        shot_plan_path = work_dir / "shot-plan.json"
         source_diagnostics_dir = work_dir / "source-diagnostics"
         review_path = work_dir / "review.md"
         review_html_path = work_dir / "review.html"
@@ -492,6 +510,8 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         candidate_review_path = work_dir / "candidate-review.html"
         candidate_frames_dir = work_dir / "candidate-frames"
         _write_json(matches_path, matches)
+        if shot_plan is not None:
+            _write_json(shot_plan_path, shot_plan)
         _write_json(recipe_path, recipe)
         write_srt(recipe, captions_path)
         write_ass(recipe, ass_path)
@@ -550,6 +570,14 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
                 f"{len(recipe.get('segments', []))} segments"
             )
         recipe, matches = retime_recipe_and_matches(recipe, matches, voiceover_duration_ms)
+        if shot_plan is not None:
+            shot_plan = synchronize_shot_plan(shot_plan, matches)
+        if visual_selection_review is not None:
+            visual_selection_review = write_final_visual_selection_frames(
+                visual_selection_review,
+                matches,
+                work_dir,
+            )
         if change_requested:
             _, base_matches_for_change_report = retime_recipe_and_matches(
                 pretime_recipe,
@@ -578,6 +606,8 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             return 1
         _write_json(matches_path, matches)
         _write_json(recipe_path, recipe)
+        if shot_plan is not None:
+            _write_json(shot_plan_path, shot_plan)
         write_srt(recipe, captions_path)
         write_ass(recipe, ass_path)
 
@@ -593,6 +623,13 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             voiceover_path=voiceover_path,
         )
         write_contact_sheet(remix_path, contact_sheet_path, recipe=recipe)
+        if shot_plan is not None:
+            write_shot_contact_sheet(
+                remix_path,
+                shot_contact_sheet_path,
+                recipe=recipe,
+                matches=matches,
+            )
         write_reference_comparison_sheet(
             reference_path,
             remix_path,
@@ -607,7 +644,9 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             ass_path=ass_path,
             voiceover_path=voiceover_path,
             contact_sheet_path=contact_sheet_path,
+            shot_contact_sheet_path=shot_contact_sheet_path if shot_plan is not None else None,
             reference_comparison_path=reference_comparison_path,
+            shot_plan=shot_plan,
             review_html_path=review_html_path,
             visual_selection=visual_selection_review,
         )
@@ -631,6 +670,9 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             review["outputs"]["visual_candidate_sheet"] = (
                 candidate_manifest_path.parent / "visual-candidate-sheet.png"
             ).as_posix()
+        if shot_plan is not None:
+            review["outputs"]["shot_plan"] = shot_plan_path.as_posix()
+            review["outputs"]["shot_contact_sheet"] = shot_contact_sheet_path.as_posix()
         fixes_template = build_fixes_template(
             recipe,
             matches,
