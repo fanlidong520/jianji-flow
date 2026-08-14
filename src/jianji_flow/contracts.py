@@ -34,3 +34,7 @@ def validate_matches(data: dict) -> None:
 
 def validate_fixes(data: dict) -> None:
     _validate("fixes.schema.json", data)
+
+
+def validate_visual_selection(data: dict) -> None:
+    _validate("visual-selection.schema.json", data)
