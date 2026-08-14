@@ -33,6 +33,7 @@ from jianji_flow.review import build_review, write_review_html, write_review_mar
 from jianji_flow.review_summary import build_review_summary
 from jianji_flow.semantics import validate_semantics
 from jianji_flow.shot_detection import build_multi_shot_matches, synchronize_shot_plan
+from jianji_flow.source_diversity import diagnose_source_diversity
 from jianji_flow.subtitles import write_ass, write_srt
 from jianji_flow.visual_similarity import is_visually_similar
 from jianji_flow.visual_candidates import (
@@ -790,18 +791,29 @@ def _run_quick_command(args: argparse.Namespace) -> int:
         segments = build_segment_plan(args.mode, reference_info.duration_ms, script_override)
         if args.mode == "product":
             visual_selection_supplied = bool(getattr(args, "visual_selections", None))
+            asset_inputs = [
+                {
+                    "asset_id": item.asset_id,
+                    "path": item.path.as_posix(),
+                    "duration_ms": item.duration_ms,
+                    "sha256": item.sha256,
+                    "width": item.width,
+                    "height": item.height,
+                    "fps": item.fps,
+                }
+                for item in records
+            ]
             report = diagnose_product_assets(
-                [
-                    {
-                        "asset_id": item.asset_id,
-                        "path": item.path.as_posix(),
-                        "duration_ms": item.duration_ms,
-                        "sha256": item.sha256,
-                    }
-                    for item in records
-                ],
+                asset_inputs,
                 segments,
             )
+            source_diversity = diagnose_source_diversity(
+                asset_inputs,
+                work_dir / "source-diversity-diagnostics",
+            )
+            report["source_diversity"] = source_diversity
+            if source_diversity["status"] == "warning" and report["status"] == "pass":
+                report["status"] = "warning"
             diagnosis_path = _write_diagnosis(
                 work_dir,
                 format_asset_diagnosis(report, visual_selection_supplied=visual_selection_supplied),

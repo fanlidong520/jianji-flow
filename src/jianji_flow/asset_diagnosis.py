@@ -164,6 +164,23 @@ def diagnose_product_assets(assets: list[dict], segments: list[dict]) -> dict:
     return {"status": status, "roles": roles, "actions": actions, "duplicate_groups": duplicate_groups}
 
 
+def _append_source_diversity_lines(lines: list[str], report: dict) -> None:
+    source_diversity = report.get("source_diversity", {})
+    for group in source_diversity.get("similar_groups", []):
+        paths = ", ".join(Path(path).name for path in group.get("paths", []))
+        score = group.get("score", "unknown")
+        lines.append(
+            f"- SIMILAR MEDIA: {paths} have visual difference score {score}; they may be a re-encoded or cropped copy. "
+            "This does not prove the same mother video."
+        )
+    for warning in source_diversity.get("warnings", []):
+        lines.append(f"- SOURCE DIVERSITY CHECK: {warning}")
+    if source_diversity.get("similar_groups") or source_diversity.get("warnings"):
+        diagnostics_dir = source_diversity.get("diagnostics_dir")
+        if diagnostics_dir:
+            lines.append(f"- Source diversity diagnostics: {diagnostics_dir}")
+
+
 def format_asset_diagnosis(report: dict, *, visual_selection_supplied: bool = False) -> str:
     if visual_selection_supplied:
         lines = [
@@ -178,6 +195,7 @@ def format_asset_diagnosis(report: dict, *, visual_selection_supplied: bool = Fa
         for group in report.get("duplicate_groups", []):
             paths = ", ".join(Path(path).name for path in group.get("paths", []))
             lines.append(f"- DUPLICATE MEDIA: {paths} are byte-identical; different filenames do not prove independent footage.")
+        _append_source_diversity_lines(lines, report)
         lines.extend(
             [
                 "",
@@ -202,6 +220,7 @@ def format_asset_diagnosis(report: dict, *, visual_selection_supplied: bool = Fa
     for group in report.get("duplicate_groups", []):
         paths = ", ".join(Path(path).name for path in group.get("paths", []))
         lines.append(f"- DUPLICATE MEDIA: {paths} are byte-identical; different filenames do not prove independent footage.")
+    _append_source_diversity_lines(lines, report)
     actions = report.get("actions", [])
     if actions:
         lines.append("")

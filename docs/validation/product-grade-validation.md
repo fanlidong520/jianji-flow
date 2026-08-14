@@ -317,8 +317,10 @@ Latest conservative source-diversity checkpoint:
   filename used for each copy;
 - a duplicate-material run reported two duplicate groups in `diagnosis.md`
   instead of treating five role-labeled names as five independent clips;
-- this gate intentionally does not claim to detect re-encoded files or clips
-  cut from the same mother video; that remains an open validation item.
+- a real re-encoded fixture pair was scored `0.18` and reported as `SIMILAR
+  MEDIA` with sampled diagnostics;
+- this gate intentionally does not claim to detect every re-encoded file or
+  clip cut from the same mother video; that remains an open validation item.
 
 Latest local A/B checkpoint after feature candidate review v42:
 

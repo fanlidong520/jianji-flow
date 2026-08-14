@@ -43,6 +43,9 @@
 - Material diagnosis now warns when different filenames share byte-identical
   media, while documenting that re-encoded or mother-video copies need further
   visual review.
+- Product `quick` now performs a conservative visual-diversity audit on
+  close-duration, same-sized candidates and reports likely re-encoded or
+  cropped copies without claiming certain mother-video identity.
 - Packaged the JSON schemas inside the wheel and added a clean-install check so
   installed `demo` runs do not depend on the repository checkout.
 - Added a storyboard section to `review.md` and `review.html` so each segment's

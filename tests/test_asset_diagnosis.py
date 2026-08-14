@@ -73,6 +73,29 @@ def test_product_asset_diagnosis_warns_when_different_names_share_exact_media():
     assert "different filenames do not prove independent footage" in text
 
 
+def test_format_asset_diagnosis_reports_visual_similarity_without_claiming_same_source():
+    report = {
+        "status": "warning",
+        "roles": {},
+        "actions": [],
+        "source_diversity": {
+            "status": "warning",
+            "similar_groups": [
+                {"paths": ["assets/source.mp4", "assets/reencoded.mp4"], "score": 1.5}
+            ],
+            "warnings": [],
+            "diagnostics_dir": "work/source-diversity-diagnostics",
+        },
+    }
+
+    text = format_asset_diagnosis(report)
+
+    assert "SIMILAR MEDIA" in text
+    assert "1.5" in text
+    assert "may be a re-encoded or cropped copy" in text
+    assert "does not prove the same mother video" in text
+
+
 def test_product_asset_diagnosis_does_not_reuse_one_clip_for_all_roles():
     segments = build_segment_plan("product", 10_000, None)
     assets = [_asset("before-after-demo-product-buy.mp4", duration_ms=30_000)]

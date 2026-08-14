@@ -182,7 +182,7 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 ## 输出文件
 
 - `manifest.json`: local asset inventory.
-- `diagnosis.md`: product material readiness report from filename/duration screening, with source preflight warnings or failures when found. `CANDIDATE` means the clip can be tried in a rough cut; it is not visual proof. It also warns when different filenames have byte-identical media. When `--visual-selections` is supplied, it explicitly records that visible choices replace filename role matching instead of calling opaque files missing.
+- `diagnosis.md`: product material readiness report from filename/duration screening, with source preflight warnings or failures when found. `CANDIDATE` means the clip can be tried in a rough cut; it is not visual proof. It also warns when different filenames have byte-identical media or when close-duration candidates look visually similar. When `--visual-selections` is supplied, it explicitly records that visible choices replace filename role matching instead of calling opaque files missing.
 - `recipe.json`: authoritative timeline.
 - `matches.json`: selected assets, confidence, and evidence.
 - `captions.srt`: editable subtitle file.
@@ -204,6 +204,7 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 - `visual-candidate-sheet.png`: contact sheet for choosing candidates without relying on file names.
 - `visual-selection.template.json`: starter JSON for recording a reviewer, candidate id, and reason for each selected segment.
 - `visual-selection-evidence/`: self-contained candidate sheet and selected frames copied into a rendered run's review folder.
+- `source-diversity-diagnostics/`: sampled frame comparisons used when close-duration assets may be re-encoded or cropped copies.
 
 `review.md` and `review.html` also include a `Storyboard` section. It lists each segment's role, caption, selected asset, source range, matching evidence, and risk, so a user can see what was cut without opening `matches.json`.
 When fixes are generated, open `candidate-review.html` from the same work directory. It shows the current segment frame next to up to three candidate frames, including whether a candidate is a clean recommendation, a warning-only option, or a wrong-role manual-inspection fallback.
