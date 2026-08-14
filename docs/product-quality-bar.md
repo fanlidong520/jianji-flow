@@ -321,6 +321,23 @@ Strict current product judgment:
 
 Do not present `jianji-flow` as a finished automatic editor. The honest current claim is a local, auditable rough-cut workflow with an explicit Codex-assisted visual shot-selection loop. The next gate is to validate independent clean material packs and compare this workflow against a blind file-order baseline before public release.
 
+## Current v36 Judgment
+
+The renderer no longer creates full-frame dark bands to cover source risk. This is a visible quality improvement: the real opaque-filename output keeps its crop and readable outlined captions without looking like a masked template. Source residue remains a warning and is not silently hidden.
+
+Passes:
+
+- the vertical render filter no longer contains default `drawbox` masks;
+- the real `run-v35f` contact sheet and extracted frame show no artificial top or bottom bands;
+- source-preflight still reports the real pack's platform chrome and original overlay text;
+- `354` tests, smoke, and P0 pass after the renderer change.
+
+Still not good enough:
+
+- the user-provided source material still contains original yellow text and is not a clean publishing pack;
+- the workflow still needs Codex-assisted visual selection for opaque filenames;
+- three independent clean packs and outside-user trials remain outstanding.
+
 ## Product Principle
 
 Do not optimize for impressive automation claims.

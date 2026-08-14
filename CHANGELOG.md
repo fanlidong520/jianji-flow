@@ -67,6 +67,8 @@
   self-contained frame evidence in the final review page.
 - Expanded source preflight to detect upper recording chrome and dark lower
   platform bars, not only dense bright subtitle text.
+- Removed the default full-frame render masks that created artificial dark
+  bands; crop, caption outline, and source-preflight warnings remain active.
 
 ## 0.2.0
 

@@ -254,8 +254,7 @@ def test_render_command_uses_default_remix_visual_treatment_for_vertical_preview
     assert "crop=iw*0.76:ih*0.58" in filter_complex
     assert "force_original_aspect_ratio=increase" in filter_complex
     assert "crop=592:1280" in filter_complex
-    assert "drawbox=x=0:y=0" in filter_complex
-    assert "drawbox=x=0:y=1119" in filter_complex
+    assert "drawbox=" not in filter_complex
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None, reason="ffmpeg required")

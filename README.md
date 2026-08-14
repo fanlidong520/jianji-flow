@@ -31,6 +31,7 @@
 - Generates `captions.srt` and `captions.ass`.
 - Generates `voiceover.wav` with a local Windows Chinese TTS voice when available.
 - Renders `remix.mp4` with burned-in captions and voiceover audio.
+- Uses crop and caption outline for visual cleanup without adding full-frame dark bands over the video.
 - Writes `contact-sheet.png` with one frame per timeline segment.
 - Writes `candidate-review.html` and `candidate-frames/` so weak segments can be compared against visible repair candidates.
 - Supports a separate `visual-review` pass that generates opaque-filename candidate boards; a Codex or human reviewer can select the actual shot by looking at frames instead of trusting file names.

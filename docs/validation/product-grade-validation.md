@@ -235,6 +235,15 @@ Product judgment:
 - the real pack is still `warning` because the feature shot is not clearly supported and the source material contains old in-video residue;
 - public launch remains blocked until three independent real-material packs, a clean non-semantic filename pass, a dirty-pack fail, clean-install verification, and outside-user trials all pass the launch rule.
 
+Latest local checkpoint after render cleanliness v36:
+
+- `python -m pytest -q` -> 354 passed in 316.92s;
+- `python scripts/run_smoke.py` -> smoke passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- `out/visual-selection-v35/run-v35f/contact-sheet.png` and an extracted frame from `remix.mp4` show the artificial gray/black top and bottom bands are gone;
+- captions remain visible through the ASS outline/shadow treatment;
+- source preflight still keeps the same run at `warning` and preserves platform-residue diagnostics, so the render cleanup did not weaken the honesty gate.
+
 ## Launch Rule
 
 Do not announce the project publicly until:
