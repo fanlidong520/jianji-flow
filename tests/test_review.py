@@ -1043,6 +1043,99 @@ def test_build_review_html_contains_storyboard_rows():
     assert "same source video" in html
 
 
+def test_build_review_markdown_contains_change_report():
+    review = {
+        "status": "warning",
+        "warnings": [],
+        "failures": [],
+        "outputs": {},
+        "change_report": {
+            "changed_segments": [
+                {
+                    "segment_id": "seg-003",
+                    "role": "feature",
+                    "caption": "Show the product detail",
+                    "before_asset": "assets/03-feature.mp4",
+                    "before_range": "0-1600ms",
+                    "before_frame": "change-diagnostics/seg-003-before.png",
+                    "after_asset": "assets/05-cta.mp4",
+                    "after_range": "200-1800ms",
+                    "after_frame": "change-diagnostics/seg-003-after.png",
+                    "visual_difference": 42.5,
+                    "reason": "override:seg-003",
+                }
+            ],
+            "unchanged_segments": ["seg-001", "seg-002"],
+            "unaccounted_segments": ["seg-004"],
+        },
+    }
+
+    markdown = build_review_markdown(review, {"segments": []}, {"matches": []})
+
+    assert "## Change report" in markdown
+    assert "Picture change only means sampled frames differ; it does not prove the new shot fits the script." in markdown
+    assert "| Segment | Role | Caption | Before | After | Picture change | Sampling note | Reason |" in markdown
+    assert "seg-003" in markdown
+    assert "assets/03-feature.mp4 @ 0-1600ms; frame: change-diagnostics/seg-003-before.png" in markdown
+    assert "assets/05-cta.mp4 @ 200-1800ms; frame: change-diagnostics/seg-003-after.png" in markdown
+    assert "42.5" in markdown
+    assert "override:seg-003" in markdown
+    assert "Unchanged segments: seg-001, seg-002" in markdown
+    assert "Unaccounted segments: seg-004" in markdown
+
+
+def test_build_review_html_contains_change_report():
+    review = {
+        "status": "warning",
+        "outputs": {},
+        "warnings": [],
+        "failures": [],
+        "change_report": {
+            "changed_segments": [
+                {
+                    "segment_id": "seg-003",
+                    "role": "feature",
+                    "caption": "Show the product detail",
+                    "before_asset": "assets/03-feature.mp4",
+                    "before_range": "0-1600ms",
+                    "before_frame": "change-diagnostics/seg-003-before.png",
+                    "after_asset": "assets/05-cta.mp4",
+                    "after_range": "200-1800ms",
+                    "after_frame": "change-diagnostics/seg-003-after.png",
+                    "visual_difference": 42.5,
+                    "visual_difference_warning": "review this sampled frame manually",
+                    "reason": "override:seg-003",
+                }
+            ],
+            "unchanged_segments": ["seg-001", "seg-002"],
+            "unaccounted_segments": ["seg-004"],
+        },
+    }
+
+    html = build_review_html(review, {"segments": []}, {"matches": []})
+
+    assert "Change report" in html
+    assert "Picture change only means sampled frames differ" in html
+    assert "seg-003" in html
+    assert "assets/03-feature.mp4 @ 0-1600ms" in html
+    assert "assets/05-cta.mp4 @ 200-1800ms" in html
+    assert 'src="change-diagnostics/seg-003-before.png"' in html
+    assert 'src="change-diagnostics/seg-003-after.png"' in html
+    assert "42.5" in html
+    assert "review this sampled frame manually" in html
+    assert "override:seg-003" in html
+    assert "Unchanged segments: seg-001, seg-002" in html
+    assert "Unaccounted segments: seg-004" in html
+
+
+def test_build_review_omits_change_report_when_not_present():
+    markdown = build_review_markdown({"status": "warning", "warnings": [], "failures": [], "outputs": {}})
+    html = build_review_html({"status": "warning", "outputs": {}, "warnings": [], "failures": []}, {"segments": []}, {"matches": []})
+
+    assert "Change report" not in markdown
+    assert "Change report" not in html
+
+
 def test_build_review_html_contains_plain_language_summary():
     html = build_review_html(
         {"status": "warning", "outputs": {}, "warnings": ["low confidence"], "failures": []},

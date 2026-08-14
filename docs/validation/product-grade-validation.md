@@ -204,6 +204,17 @@ Latest local checkpoint after same-source window candidates:
 - real-material `out/real-material-same-source-windows-v33/fixes.template.json` exposes same-source window candidates for evidence and cta while keeping the run at `warning`;
 - this is a stronger repair-inspection loop, but still not a public launch pass.
 
+Latest local checkpoint after fix-run change reports:
+
+- `review.md` and `review.html` include a `Change report` section when a fix file or clean recommendation is applied;
+- changed segments show before asset/range, after asset/range, before/after sampled frames, picture-change score, sampling note, and override reason;
+- unchanged segments are listed so users can see the fix did not rebuild the whole cut;
+- unaccounted segments are listed instead of being silently skipped;
+- `change-diagnostics/` stores the sampled frames used for the picture-change score;
+- targeted regression verifies that `--apply-recommendation seg-003` writes the change report and diagnostics;
+- real-material `out/real-material-change-report-v34/review.html` embeds before/after sampled frames for `seg-004`, with `Picture change` 51.9 and `review required` status;
+- this improves first-time usability, but it still does not prove semantic visual shot selection.
+
 ## Launch Rule
 
 Do not announce the project publicly until:

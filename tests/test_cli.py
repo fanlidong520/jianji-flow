@@ -1040,7 +1040,25 @@ def test_run_applies_recommended_source_window_from_fixes_template(tmp_path, mon
     assert by_segment["seg-003"]["source_end_ms"] > by_segment["seg-003"]["source_start_ms"]
     assert "source-window:" in " ".join(by_segment["seg-003"]["evidence"])
     assert "override:seg-003" in by_segment["seg-003"]["evidence"]
-    assert "candidate-review.html" in (fixed_work_dir / "review.md").read_text(encoding="utf-8")
+    review_markdown = (fixed_work_dir / "review.md").read_text(encoding="utf-8")
+    review_html = (fixed_work_dir / "review.html").read_text(encoding="utf-8")
+    assert "candidate-review.html" in review_markdown
+    assert "## Change report" in review_markdown
+    assert "seg-003" in review_markdown
+    assert "03-feature-product-detail.mp4 @ " in review_markdown
+    assert "Picture change" in review_markdown
+    assert "Picture change only means sampled frames differ" in review_markdown
+    assert "source-window changed" in review_markdown or "override:seg-003" in review_markdown
+    assert "Change report" in review_html
+    assert "seg-003" in review_html
+    assert "03-feature-product-detail.mp4 @ " in review_html
+    assert "Picture change only means sampled frames differ" in review_html
+    assert "seg-003-before.png" in review_html
+    assert "seg-003-after.png" in review_html
+    assert "change_diagnostics" in review_markdown
+    assert (fixed_work_dir / "change-diagnostics").exists()
+    assert (fixed_work_dir / "change-diagnostics" / "seg-003-before.png").exists()
+    assert (fixed_work_dir / "change-diagnostics" / "seg-003-after.png").exists()
 
 
 def test_run_rejects_warning_recommendation_without_traceback(tmp_path, monkeypatch, capsys):

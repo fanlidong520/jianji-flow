@@ -436,6 +436,64 @@ def _storyboard_markdown_section(recipe: dict | None, matches: dict | None, revi
     return lines
 
 
+def _change_report_markdown_section(change_report: dict | None) -> list[str]:
+    lines = ["## Change report"]
+    if not change_report:
+        lines.append("- none")
+        return lines
+    lines.append("Picture change only means sampled frames differ; it does not prove the new shot fits the script.")
+    changed_segments = [item for item in change_report.get("changed_segments", []) if isinstance(item, dict)]
+    if not changed_segments:
+        lines.append("- No segments changed.")
+    else:
+        lines.append("| Segment | Role | Caption | Before | After | Picture change | Sampling note | Reason |")
+        lines.append("| --- | --- | --- | --- | --- | --- | --- | --- |")
+        for item in changed_segments:
+            lines.append(
+                "| "
+                + " | ".join(
+                    _markdown_cell(value)
+                    for value in (
+                        str(item.get("segment_id", "")),
+                        str(item.get("role", "")),
+                        str(item.get("caption", "")),
+                        _asset_range_text(item.get("before_asset"), item.get("before_range"), item.get("before_frame")),
+                        _asset_range_text(item.get("after_asset"), item.get("after_range"), item.get("after_frame")),
+                        _difference_text(item.get("visual_difference")),
+                        str(item.get("visual_difference_warning", "")) or "ok",
+                        str(item.get("reason", "")),
+                    )
+                )
+                + " |"
+            )
+    unchanged_segments = [str(item) for item in change_report.get("unchanged_segments", [])]
+    if unchanged_segments:
+        lines.append(f"- Unchanged segments: {', '.join(unchanged_segments)}")
+    unaccounted_segments = [str(item) for item in change_report.get("unaccounted_segments", [])]
+    if unaccounted_segments:
+        lines.append(f"- Unaccounted segments: {', '.join(unaccounted_segments)}")
+    return lines
+
+
+def _asset_range_text(asset: object, source_range: object, frame: object = "") -> str:
+    asset_text = str(asset or "")
+    range_text = str(source_range or "")
+    frame_text = str(frame or "")
+    if asset_text and range_text:
+        text = f"{asset_text} @ {range_text}"
+    else:
+        text = asset_text or range_text or "unknown"
+    if frame_text:
+        return f"{text}; frame: {frame_text}"
+    return text
+
+
+def _difference_text(value: object) -> str:
+    if isinstance(value, float):
+        return f"{value:.1f}"
+    return str(value) if value not in (None, "") else "unknown"
+
+
 def _markdown_cell(value: str) -> str:
     return str(value).replace("|", "\\|").replace("\n", " ")
 
@@ -460,6 +518,59 @@ def _storyboard_html(recipe: dict | None, matches: dict | None, review: dict) ->
             "</article>"
         )
     return "".join(body)
+
+
+def _change_report_html(change_report: dict | None) -> str:
+    if not change_report:
+        return "<p>none</p>"
+    intro = "<p>Picture change only means sampled frames differ; it does not prove the new shot fits the script.</p>"
+    changed_segments = [item for item in change_report.get("changed_segments", []) if isinstance(item, dict)]
+    if not changed_segments:
+        body = "<p>No segments changed.</p>"
+    else:
+        rows = []
+        for item in changed_segments:
+            rows.append(
+                "<tr>"
+                f"<td>{escape(str(item.get('segment_id', '')))}</td>"
+                f"<td>{escape(str(item.get('role', '')))}</td>"
+                f"<td>{escape(str(item.get('caption', '')))}</td>"
+                f"<td>{_change_frame_html(item, 'before')}</td>"
+                f"<td>{_change_frame_html(item, 'after')}</td>"
+                f"<td>{escape(_difference_text(item.get('visual_difference')))}</td>"
+                f"<td>{escape(str(item.get('visual_difference_warning', '')) or 'ok')}</td>"
+                f"<td>{escape(str(item.get('reason', '')))}</td>"
+                "</tr>"
+            )
+        body = (
+            "<table>"
+            "<thead><tr><th>Segment</th><th>Role</th><th>Caption</th><th>Before</th><th>After</th><th>Picture change</th><th>Sampling note</th><th>Reason</th></tr></thead>"
+            f"<tbody>{''.join(rows)}</tbody>"
+            "</table>"
+        )
+    unchanged_segments = [str(item) for item in change_report.get("unchanged_segments", [])]
+    if unchanged_segments:
+        body += f"<p>Unchanged segments: {escape(', '.join(unchanged_segments))}</p>"
+    unaccounted_segments = [str(item) for item in change_report.get("unaccounted_segments", [])]
+    if unaccounted_segments:
+        body += f"<p>Unaccounted segments: {escape(', '.join(unaccounted_segments))}</p>"
+    return intro + body
+
+
+def _change_report_section_html(change_report: dict | None) -> str:
+    if not change_report:
+        return ""
+    return f"<h2>Change report</h2><section>{_change_report_html(change_report)}</section>"
+
+
+def _change_frame_html(item: dict, side: str) -> str:
+    asset = item.get(f"{side}_asset")
+    source_range = item.get(f"{side}_range")
+    frame = str(item.get(f"{side}_frame", "") or "")
+    text = escape(_asset_range_text(asset, source_range))
+    if not frame:
+        return text
+    return f'<figure><img alt="{escape(side)} change frame" src="{escape(frame)}"><figcaption>{text}</figcaption></figure>'
 
 
 def _outputs_html(outputs: dict) -> str:
@@ -508,6 +619,9 @@ def build_review_markdown(review: dict, recipe: dict | None = None, matches: dic
     lines.extend(_story_support_section(review.get("story_support")))
     lines.append("")
     lines.extend(_storyboard_markdown_section(recipe, matches, review))
+    if review.get("change_report"):
+        lines.append("")
+        lines.extend(_change_report_markdown_section(review.get("change_report")))
     lines.extend(
         [
             "",
@@ -576,6 +690,8 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
     .storyboard dl {{ display: grid; grid-template-columns: 120px 1fr; gap: 6px 10px; margin: 0; }}
     .storyboard dt {{ color: #5b6470; font-weight: 700; }}
     .storyboard dd {{ margin: 0; overflow-wrap: anywhere; }}
+    figure {{ margin: 0; }}
+    figcaption {{ margin-top: 6px; color: #5b6470; overflow-wrap: anywhere; }}
     .risk-warning {{ border-left: 4px solid #b45309; }}
     .risk-none {{ border-left: 4px solid #2f855a; }}
   </style>
@@ -603,6 +719,7 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
   <ul>{story_support}</ul>
   <h2>Storyboard</h2>
   <section class="storyboard">{_storyboard_html(recipe, matches, review)}</section>
+  {_change_report_section_html(review.get('change_report'))}
   <h2>Segments</h2>
   <table>
     <thead>
@@ -644,4 +761,22 @@ def _html_review_paths(review: dict, base_dir: Path) -> dict:
                 outputs[key] = candidate.resolve().relative_to(base_dir.resolve()).as_posix()
         except (OSError, ValueError):
             continue
+    change_report = html_review.get("change_report")
+    if isinstance(change_report, dict):
+        for item in change_report.get("changed_segments", []):
+            if isinstance(item, dict):
+                _relativize_change_frame(item, "before_frame", base_dir)
+                _relativize_change_frame(item, "after_frame", base_dir)
     return html_review
+
+
+def _relativize_change_frame(item: dict, key: str, base_dir: Path) -> None:
+    value = item.get(key)
+    if not isinstance(value, str) or not value:
+        return
+    try:
+        candidate = Path(value)
+        if candidate.is_absolute():
+            item[key] = candidate.resolve().relative_to(base_dir.resolve()).as_posix()
+    except (OSError, ValueError):
+        return

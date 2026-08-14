@@ -274,6 +274,26 @@ Still not good enough:
 - hook, pain, and feature still lacked clean same-role alternatives in the current real-material pack;
 - before/after change reporting is still needed so users can see exactly what a repair changed.
 
+## Current v34 Judgment
+
+Fix runs now produce a `Change report`.
+This directly addresses the usability complaint that a user could not tell what the tool actually changed.
+
+Passes:
+
+- `review.md` and `review.html` can show changed segments with before/after asset paths, before/after source ranges, before/after sampled frames, picture-change score, sampling note, and override reason;
+- `build_change_report` separates changed and unchanged segments from before/after `matches.json`;
+- `build_change_report` lists unaccounted segments instead of silently skipping mismatched before/after matches;
+- fix runs write `change-diagnostics/` frame samples used to score picture change;
+- `--apply-recommendation` integration test verifies that a recommended source-window fix produces a visible change report in both review formats.
+- real-material `out/real-material-change-report-v34/review.html` shows before/after frames for `seg-004` and keeps the run at `warning`.
+
+Still not good enough:
+
+- the change report proves what changed, not whether the new shot is semantically better;
+- the sampled picture-change score is a rough frame comparison, not a story-quality score;
+- public launch still needs non-semantic filename real-material packs and blind-user validation.
+
 ## Product Principle
 
 Do not optimize for impressive automation claims.

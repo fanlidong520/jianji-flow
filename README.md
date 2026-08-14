@@ -33,7 +33,7 @@
 - Renders `remix.mp4` with burned-in captions and voiceover audio.
 - Writes `contact-sheet.png` with one frame per timeline segment.
 - Writes `candidate-review.html` and `candidate-frames/` so weak segments can be compared against visible repair candidates.
-- Writes `review.md` and `review.html` for manual inspection.
+- Writes `review.md` and `review.html` for manual inspection, including a change report after fixes are applied.
 - Shows `CANDIDATE` in `diagnosis.md` for filename/duration-ready clips, because that is not visual proof.
 - Marks filename-only matching as `warning` because it does not prove visual understanding.
 - Adds a `Story support` review section that warns when most story roles have no non-filename visual evidence.
@@ -176,9 +176,11 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 - `review.html`: local visual review page.
 - `fixes.template.json`: editable repair file for replacing weak or low-confidence segments on the next run.
 - `visual-similarity-diagnostics/`: sampled frames used to audit visually similar or unchecked repair recommendations.
+- `change-diagnostics/`: before/after sampled frames used by the `Change report` after a fix run.
 
 `review.md` and `review.html` also include a `Storyboard` section. It lists each segment's role, caption, selected asset, source range, matching evidence, and risk, so a user can see what was cut without opening `matches.json`.
 When fixes are generated, open `candidate-review.html` from the same work directory. It shows the current segment frame next to up to three candidate frames, including whether a candidate is a clean recommendation, a warning-only option, or a wrong-role manual-inspection fallback.
+After rerunning with `--fixes` or `--apply-recommendation`, open the `Change report` section in `review.md` or `review.html`. It lists the changed segment, before/after asset, before/after source range, override reason, before/after sampled frames, and `Picture change`. `Picture change` only means sampled frames differ; it does not prove the new shot fits the script.
 
 ## 状态怎么理解
 
@@ -216,7 +218,7 @@ To apply one clean recommendation without editing JSON, pass the segment id:
 jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --fixes out\jianji-flow-quick\fixes.template.json --apply-recommendation seg-003
 ```
 
-Blank `asset_path` entries are ignored. Each segment also includes `recommended_asset_path`, optional `recommended_source_start_ms`, `recommendation_status`, and scored `candidate_assets`; when the best available option would repeat an adjacent source, reuse a different window from the same source file, look visually similar to the current segment, or fail visual checking, the status becomes `best_available_with_warnings` instead of pretending the recommendation is clean. `candidate_asset_paths` is only a compact compatibility summary; use `candidate_assets.source_start_ms` and `candidate_assets.source_end_ms` for real review when a file appears more than once. A filled path that does not exist in the scanned asset folder, a too-short replacement clip, an invalid `source_start_ms`, or an unknown segment/role fails clearly and writes the reason to `review.md`. After rerun, check `matches.json` for `override:seg-xxx` or `override:role:xxx`, then compare `contact-sheet.png` to confirm the replaced segment actually changed.
+Blank `asset_path` entries are ignored. Each segment also includes `recommended_asset_path`, optional `recommended_source_start_ms`, `recommendation_status`, and scored `candidate_assets`; when the best available option would repeat an adjacent source, reuse a different window from the same source file, look visually similar to the current segment, or fail visual checking, the status becomes `best_available_with_warnings` instead of pretending the recommendation is clean. `candidate_asset_paths` is only a compact compatibility summary; use `candidate_assets.source_start_ms` and `candidate_assets.source_end_ms` for real review when a file appears more than once. A filled path that does not exist in the scanned asset folder, a too-short replacement clip, an invalid `source_start_ms`, or an unknown segment/role fails clearly and writes the reason to `review.md`. After rerun, check the `Change report` first, then compare `contact-sheet.png` to confirm the replaced segment actually changed.
 `--apply-recommendation` only accepts `recommendation_status: recommended`; it fails clearly for `best_available_with_warnings` or `no_candidate`.
 If `recommendation_status` is `no_candidate`, do not copy a fallback candidate blindly. It means no duration-ready same-role replacement was found; add or choose clearer material for that story role instead. `candidate_assets` can still show wrong-role clips for manual inspection, but they include `role_match: false` and a role-mismatch warning.
 
@@ -248,7 +250,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 333 passed
+- `python -m pytest -q` -> 339 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 

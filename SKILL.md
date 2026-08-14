@@ -50,7 +50,8 @@ Detailed workflow:
 12. Write `contact-sheet.png` with one frame per segment.
 13. Write `fixes.template.json` for weak or low-confidence segments, including same-role visual-similarity checks for repair recommendations.
 14. Write `candidate-review.html` and `candidate-frames/` so current weak-segment frames can be compared with visible repair candidates.
-15. Write `review.md` and `review.html` with pass, warning, fail status, `Story support`, a per-segment `Storyboard`, candidate-review link, and visual-similarity diagnostics when present.
+15. When `--fixes` or `--apply-recommendation` is used, write a `Change report` and `change-diagnostics/` so changed segments and before/after sampled frames are visible.
+16. Write `review.md` and `review.html` with pass, warning, fail status, `Story support`, a per-segment `Storyboard`, optional `Change report`, candidate-review link, and visual-similarity diagnostics when present.
 
 ## Hard Rules
 
@@ -143,6 +144,7 @@ On success or warning, report the paths for:
 - `candidate-frames/`
 - `fixes.template.json`
 - `visual-similarity-diagnostics` when listed in `review.md`
+- `change-diagnostics` when a fix run lists a `Change report`
 - `review.md`
 - `review.html`
 
@@ -155,7 +157,8 @@ Never describe a failed or warning run as completed video output.
 - `warning`: generated artifacts only for manual review; do not imply the video is usable yet.
 - `fail`: blocking issue; do not point to stale success artifacts as output.
 
-If `Story support` is `weak`, report its `next_action` exactly. Explain that the named roles lack non-filename visual evidence, then ask the user to replace or manually verify those clips in `contact-sheet.png`. If the user wants to repair one segment, point them to `fixes.template.json`: check `recommended_asset_path`, optional `recommended_source_start_ms`, `recommendation_status`, `recommendation_warnings`, and `role_match`; use `candidate_assets` rather than the compact `candidate_asset_paths` summary when a file appears more than once; use `--apply-recommendation SEGMENT_ID` only when the status is `recommended`; otherwise fill one `asset_path` and optional `source_start_ms` manually only when the candidate is genuinely appropriate, rerun with `--fixes`, then compare the same segment in the new `contact-sheet.png`.
+If `Story support` is `weak`, report its `next_action` exactly. Explain that the named roles lack non-filename visual evidence, then ask the user to replace or manually verify those clips in `contact-sheet.png`. If the user wants to repair one segment, point them to `fixes.template.json`: check `recommended_asset_path`, optional `recommended_source_start_ms`, `recommendation_status`, `recommendation_warnings`, and `role_match`; use `candidate_assets` rather than the compact `candidate_asset_paths` summary when a file appears more than once; use `--apply-recommendation SEGMENT_ID` only when the status is `recommended`; otherwise fill one `asset_path` and optional `source_start_ms` manually only when the candidate is genuinely appropriate, rerun with `--fixes`, then check `Change report` before comparing the same segment in the new `contact-sheet.png`.
 If `review.md` lists `visual_similarity_diagnostics`, explain that the folder contains sampled frames used to downgrade duplicate-looking or unchecked recommendations. Do not describe those checks as semantic understanding.
+If `review.md` lists a `Change report`, use it before discussing JSON: it names the changed segment, before/after asset, before/after source range, before/after sampled frames, `Picture change`, sampling note, and override reason. Explain that `Picture change` means sampled frames differ; it is not proof that the new shot fits the script.
 Use the `Storyboard` section before discussing JSON: it is the fastest way to see each segment's caption, selected asset, source range, evidence, and risk.
 Use `candidate-review.html` before suggesting a fix: it is the fastest way to show what the current segment looks like, what candidate frames are available, and whether warnings make the candidate manual-review only.

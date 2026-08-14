@@ -53,6 +53,9 @@
 - Added same-source alternate-window repair candidates with
   `recommended_source_start_ms`, while keeping them warning-only unless a user
   manually confirms the window.
+- Added a fix-run `Change report` with before/after asset ranges, before/after
+  sampled frames, picture-change scores, sampling notes, override reasons, and
+  `change-diagnostics/` frames.
 - Changed warning CLI output from `completed` to `review required` so review-only
   rough cuts are not mistaken for passed outputs.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while

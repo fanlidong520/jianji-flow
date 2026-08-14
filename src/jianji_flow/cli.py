@@ -11,6 +11,7 @@ from jsonschema.exceptions import ValidationError
 from jianji_flow import __version__
 from jianji_flow.asset_diagnosis import diagnose_product_assets, format_asset_diagnosis
 from jianji_flow.candidate_review import write_candidate_review
+from jianji_flow.change_report import build_change_report
 from jianji_flow.contact_sheet import write_contact_sheet
 from jianji_flow.contracts import validate_fixes, validate_manifest, validate_matches, validate_recipe
 from jianji_flow.environment import check_environment, format_environment_report
@@ -122,7 +123,7 @@ def _success_artifact_names() -> tuple[str, ...]:
 
 
 def _run_diagnostic_dir_names() -> tuple[str, ...]:
-    return ("visual-similarity-diagnostics",)
+    return ("visual-similarity-diagnostics", "change-diagnostics")
 
 
 def _success_artifact_dir_names() -> tuple[str, ...]:
@@ -324,11 +325,13 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             threshold=args.confidence_threshold or 0.6,
             window_scorer=window_scorer,
         )
+        base_matches_for_change_report = matches
+        fixes_data = _read_fixes(args.fixes, apply_recommendation=args.apply_recommendation)
         matches = apply_match_overrides(
             segments,
             matches,
             records,
-            _read_fixes(args.fixes, apply_recommendation=args.apply_recommendation),
+            fixes_data,
             window_scorer=window_scorer,
         )
         recipe = build_recipe(
@@ -416,6 +419,12 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
                 f"{len(recipe.get('segments', []))} segments"
             )
         recipe, matches = retime_recipe_and_matches(recipe, matches, voiceover_duration_ms)
+        if fixes_data:
+            _, base_matches_for_change_report = retime_recipe_and_matches(
+                pretime_recipe,
+                base_matches_for_change_report,
+                voiceover_duration_ms,
+            )
         validate_voiceover(voiceover_path, expected_duration_ms=int(recipe["duration_ms"]))
         semantic_errors = validate_semantics(recipe, matches, manifest, str(reference_path), str(asset_root), str(work_dir))
         if semantic_errors:
@@ -463,6 +472,16 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             contact_sheet_path=contact_sheet_path,
             review_html_path=review_html_path,
         )
+        if fixes_data:
+            change_diagnostics_dir = work_dir / "change-diagnostics"
+            review["change_report"] = build_change_report(
+                recipe,
+                base_matches_for_change_report,
+                matches,
+                diagnostics_dir=change_diagnostics_dir,
+            )
+            if change_diagnostics_dir.exists() and any(change_diagnostics_dir.glob("*.png")):
+                review["outputs"]["change_diagnostics"] = change_diagnostics_dir.as_posix()
         review["outputs"]["manifest"] = manifest_path.as_posix()
         review["outputs"]["recipe"] = recipe_path.as_posix()
         review["outputs"]["matches"] = matches_path.as_posix()
