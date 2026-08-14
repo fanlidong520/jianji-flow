@@ -395,3 +395,34 @@ def test_retime_recipe_and_matches_scales_multi_shot_ranges():
         (1000, 1750),
         (1750, 3000),
     ]
+
+
+def test_retime_preserves_visual_reviewed_window_with_bounded_playback_rate():
+    segment = {"id": "seg-001", "role": "hook", "start_ms": 0, "end_ms": 1000, "caption": "Hook"}
+    matches = {
+        "version": "0.1",
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "selected",
+                "asset_id": "asset-hook",
+                "source_path": "assets/hook.mp4",
+                "source_start_ms": 0,
+                "source_end_ms": 2000,
+                "asset_duration_ms": 3000,
+                "confidence": 1.0,
+                "scores": {},
+                "candidates": [],
+                "evidence": ["visual-review:seg-001-candidate-01"],
+            }
+        ],
+    }
+    recipe = build_recipe("product", {"width": 1080, "height": 1920, "fps": 30}, [segment], matches)
+
+    _, retimed_matches = retime_recipe_and_matches(recipe, matches, 1000)
+
+    match = retimed_matches["matches"][0]
+    assert (match["source_start_ms"], match["source_end_ms"]) == (0, 2000)
+    assert match["playback_rate"] == 2.0
+    assert "playback-rate:2.0" in match["evidence"]

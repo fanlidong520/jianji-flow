@@ -214,6 +214,21 @@ def test_matches_accept_bounded_multi_shot_ranges():
     validate_matches(data)
 
 
+def test_matches_accept_bounded_playback_rate():
+    data = valid_matches()
+    data["matches"][0]["playback_rate"] = 1.25
+
+    validate_matches(data)
+
+
+def test_matches_reject_excessive_playback_rate():
+    data = valid_matches()
+    data["matches"][0]["playback_rate"] = 2.01
+
+    with pytest.raises(ValidationError):
+        validate_matches(data)
+
+
 def test_multi_shot_rejects_unknown_nested_fields():
     data = valid_matches()
     data["matches"][0]["shots"] = [

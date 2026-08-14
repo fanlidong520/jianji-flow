@@ -124,6 +124,30 @@ def test_source_range_duration_must_match_recipe_segment_duration(tmp_path):
     assert any("source range duration" in error for error in _validate(tmp_path, recipe, matches, manifest))
 
 
+def test_visual_reviewed_source_range_can_use_bounded_playback_rate(tmp_path):
+    recipe, matches, manifest, *_ = _inputs(tmp_path)
+    matches["matches"][0]["source_end_ms"] = 2000
+    matches["matches"][0]["asset_duration_ms"] = 3000
+    matches["matches"][0]["playback_rate"] = 2.0
+    matches["matches"][0]["evidence"] = ["visual-review:seg-1-candidate-01"]
+    manifest["assets"][0]["duration_ms"] = 3000
+
+    assert _validate(tmp_path, recipe, matches, manifest) == []
+
+
+def test_playback_rate_must_fit_final_segment_duration(tmp_path):
+    recipe, matches, manifest, *_ = _inputs(tmp_path)
+    matches["matches"][0]["source_end_ms"] = 2000
+    matches["matches"][0]["asset_duration_ms"] = 3000
+    matches["matches"][0]["playback_rate"] = 1.5
+    matches["matches"][0]["evidence"] = ["visual-review:seg-1-candidate-01"]
+    manifest["assets"][0]["duration_ms"] = 3000
+
+    errors = _validate(tmp_path, recipe, matches, manifest)
+
+    assert any("playback_rate" in error or "source range duration" in error for error in errors)
+
+
 def test_multi_shot_durations_must_match_segment_duration(tmp_path):
     recipe, matches, manifest, *_ = _inputs(tmp_path)
     matches["matches"][0]["shots"] = [

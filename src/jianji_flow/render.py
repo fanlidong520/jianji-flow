@@ -33,12 +33,23 @@ def _selected_sources(recipe: dict, matches: dict) -> list[tuple[dict, dict]]:
         reject_url_or_protocol(source_path)
         shots = match.get("shots")
         if shots:
+            playback_rate = float(match.get("playback_rate", 1.0))
+            if playback_rate <= 0:
+                raise ValueError(f"match {match.get('id')!r}: playback_rate must be positive")
             cursor_ms = int(segment["start_ms"])
             total_duration = 0
-            for shot in shots:
-                shot_duration = int(shot["source_end_ms"]) - int(shot["source_start_ms"])
-                if shot_duration <= 0:
+            segment_end_ms = int(segment["end_ms"])
+            for index, shot in enumerate(shots):
+                source_duration = int(shot["source_end_ms"]) - int(shot["source_start_ms"])
+                if source_duration <= 0:
                     raise ValueError(f"match {match.get('id')!r}: shot source range must be positive")
+                shot_duration = (
+                    segment_end_ms - cursor_ms
+                    if index == len(shots) - 1
+                    else round(source_duration / playback_rate)
+                )
+                if shot_duration <= 0:
+                    raise ValueError(f"match {match.get('id')!r}: shot timeline duration must be positive")
                 shot_segment = {**segment, "start_ms": cursor_ms, "end_ms": cursor_ms + shot_duration}
                 shot_match = {**match, **shot}
                 selected.append((shot_segment, shot_match))
@@ -50,7 +61,8 @@ def _selected_sources(recipe: dict, matches: dict) -> list[tuple[dict, dict]]:
         else:
             source_duration = int(match["source_end_ms"]) - int(match["source_start_ms"])
             segment_duration = int(segment["end_ms"]) - int(segment["start_ms"])
-            if source_duration != segment_duration:
+            playback_rate = float(match.get("playback_rate", 1.0))
+            if playback_rate <= 0 or round(source_duration / playback_rate) != segment_duration:
                 raise ValueError(f"match {match.get('id')!r}: source range duration must match recipe segment duration")
             selected.append((segment, match))
     return selected
@@ -61,7 +73,12 @@ def _subtitle_filter_path(path: Path) -> str:
     return normalized.replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
 
 
-def _filter_complex(recipe: dict, source_count: int, captions_path: Path | None = None) -> str:
+def _filter_complex(
+    recipe: dict,
+    source_count: int,
+    captions_path: Path | None = None,
+    playback_rates: list[float] | None = None,
+) -> str:
     target = recipe["target"]
     width = int(target["width"])
     height = int(target["height"])
@@ -70,12 +87,18 @@ def _filter_complex(recipe: dict, source_count: int, captions_path: Path | None 
     video_labels = []
     for index in range(source_count):
         label = f"v{index}"
+        playback_rate = float(playback_rates[index]) if playback_rates is not None else 1.0
+        if playback_rate <= 0:
+            raise ValueError("playback_rate must be positive")
+        timing_filter = "setpts=PTS-STARTPTS"
+        if playback_rate != 1.0:
+            timing_filter += f",setpts=PTS/{playback_rate:.6f}"
         video_filters.append(
             f"[{index}:v:0]"
             "crop=iw*0.76:ih*0.58:(iw-iw*0.76)/2:ih*0.08,"
             f"scale={width}:{height}:force_original_aspect_ratio=increase,"
             f"crop={width}:{height},"
-            f"fps={fps},setsar=1,setpts=PTS-STARTPTS"
+            f"fps={fps},setsar=1,{timing_filter}"
             f"[{label}]"
         )
         video_labels.append(f"[{label}]")
@@ -124,16 +147,20 @@ def build_ffmpeg_plan(
     ffmpeg = shutil.which("ffmpeg") or "ffmpeg"
     command = [ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin", "-y"]
     total_duration_s = 0.0
+    playback_rates = []
     for segment, match in selected:
         source_start_s = int(match["source_start_ms"]) / 1000
-        duration_s = (int(match["source_end_ms"]) - int(match["source_start_ms"])) / 1000
-        total_duration_s += duration_s
+        source_duration_s = (int(match["source_end_ms"]) - int(match["source_start_ms"])) / 1000
+        timeline_duration_s = (int(segment["end_ms"]) - int(segment["start_ms"])) / 1000
+        total_duration_s += timeline_duration_s
+        playback_rate = float(match.get("playback_rate", 1.0))
+        playback_rates.append(playback_rate)
         command.extend(
             [
                 "-ss",
                 f"{source_start_s:.3f}",
                 "-t",
-                f"{duration_s:.3f}",
+                f"{source_duration_s:.3f}",
                 "-i",
                 str(match["source_path"]).replace("\\", "/"),
             ]
@@ -182,7 +209,7 @@ def build_ffmpeg_plan(
     command.extend(
         [
             "-filter_complex",
-            _filter_complex(recipe, len(selected), captions_path),
+            _filter_complex(recipe, len(selected), captions_path, playback_rates),
             *audio_options,
             "-c:v",
             "libx264",

@@ -54,6 +54,29 @@ def test_build_shot_frame_times_ms_uses_final_timeline_shot_midpoints():
     ]
 
 
+def test_build_shot_frame_times_ms_applies_playback_rate():
+    recipe = {
+        "segments": [{"id": "seg-001", "start_ms": 0, "end_ms": 1000, "match_id": "match-001"}]
+    }
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "playback_rate": 2.0,
+                "shots": [
+                    {"source_start_ms": 0, "source_end_ms": 1000},
+                    {"source_start_ms": 1000, "source_end_ms": 2000},
+                ],
+            }
+        ]
+    }
+
+    assert build_shot_frame_times_ms(recipe, matches) == [
+        ("seg-001 / shot-01", 250),
+        ("seg-001 / shot-02", 750),
+    ]
+
+
 def test_shot_contact_sheet_contains_labeled_tiles(tmp_path, monkeypatch):
     def fake_extract(_ffmpeg, _video_path, frame_path, _time_ms):
         Image.new("RGB", (100, 200), "#3b82f6").save(frame_path)

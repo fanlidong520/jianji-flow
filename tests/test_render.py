@@ -155,6 +155,33 @@ def test_render_command_flattens_multi_shot_match_into_ordered_inputs():
     assert "concat=n=2:v=1:a=0" in command[command.index("-filter_complex") + 1]
 
 
+def test_render_command_preserves_visual_window_with_playback_rate():
+    recipe, matches = _recipe(Path("assets/hook.mp4"))
+    match = matches["matches"][0]
+    match["source_end_ms"] = 2000
+    match["asset_duration_ms"] = 3000
+    match["playback_rate"] = 2.0
+    match["evidence"] = ["visual-review:seg-001-candidate-01"]
+    manifest = _manifest("assets/hook.mp4")
+    manifest["assets"][0]["duration_ms"] = 3000
+
+    command = build_ffmpeg_plan(
+        recipe,
+        matches,
+        manifest,
+        Path("out/remix.mp4"),
+        work_dir=Path("out"),
+        reference_path=Path("reference.mp4"),
+        asset_root=Path("assets"),
+        captions_path=None,
+    )
+
+    filter_text = command[command.index("-filter_complex") + 1]
+    assert "-t" in command
+    assert "2.000" in command
+    assert "setpts=PTS/2.000000" in filter_text
+
+
 def test_render_command_rejects_missing_match():
     recipe, matches = _recipe(Path("assets/hook.mp4"))
     matches["matches"][0] = {

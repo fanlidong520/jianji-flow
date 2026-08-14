@@ -373,6 +373,8 @@ Passes:
   exact parent segment duration;
 - `review.md` and `review.html` expose final boundaries and shot counts;
 - `shot-contact-sheet.png` exposes one labeled frame for every final rendered shot;
+- visually confirmed source windows keep their reviewed content across voiceover
+  retiming through a bounded recorded playback rate;
 - the stable default path remains unchanged unless `--multi-shot` is requested.
 
 Still not good enough:

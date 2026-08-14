@@ -70,6 +70,9 @@
   and review-page evidence without changing the stable default one-window path.
 - Added `shot-contact-sheet.png` and embedded it in `review.html` so every
   multi-shot render can be inspected one final shot at a time.
+- Preserved visually confirmed source windows across voiceover retiming with a
+  bounded `playback_rate`, and added final-source frame evidence so reviewed
+  content is not silently trimmed before rendering.
 - Preserved diagnostic `contact-sheet.png` on artifact-review failures while
   still removing stale success artifacts such as `remix.mp4`.
 - Reframed documentation around auditable rough-cut generation, not full editor

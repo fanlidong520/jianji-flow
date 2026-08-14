@@ -163,8 +163,19 @@ def validate_semantics(
                 or source_end > duration
             ):
                 errors.append(f"match {match_id!r}: source range exceeds asset duration or is invalid")
-            elif start is not None and end is not None and (source_end - source_start) != (end - start):
-                errors.append(f"match {match_id!r}: source range duration must match recipe segment duration")
+            elif start is not None and end is not None:
+                playback_rate = match.get("playback_rate")
+                if playback_rate is None:
+                    duration_matches = (source_end - source_start) == (end - start)
+                else:
+                    try:
+                        duration_matches = round((source_end - source_start) / float(playback_rate)) == (end - start)
+                    except (TypeError, ValueError, ZeroDivisionError):
+                        duration_matches = False
+                if not duration_matches:
+                    errors.append(
+                        f"match {match_id!r}: source range duration must match recipe segment duration"
+                    )
 
         source_path = match.get("source_path")
         if not isinstance(source_path, str) or _has_url_or_protocol(source_path):
@@ -221,7 +232,20 @@ def _validate_match_shots(
 
     errors: list[str] = []
     match_id = str(match.get("id", "unknown"))
-    expected_duration = int(segment.get("end_ms", 0)) - int(segment.get("start_ms", 0))
+    source_duration = int(match.get("source_end_ms", 0)) - int(match.get("source_start_ms", 0))
+    playback_rate = match.get("playback_rate")
+    if playback_rate is None:
+        expected_duration = int(segment.get("end_ms", 0)) - int(segment.get("start_ms", 0))
+    else:
+        try:
+            expected_duration = source_duration
+            if round(source_duration / float(playback_rate)) != (
+                int(segment.get("end_ms", 0)) - int(segment.get("start_ms", 0))
+            ):
+                errors.append(f"match {match_id!r}: playback_rate does not fit segment duration")
+        except (TypeError, ValueError, ZeroDivisionError):
+            errors.append(f"match {match_id!r}: playback_rate is invalid")
+            expected_duration = source_duration
     total_duration = 0
     for index, shot in enumerate(shots, start=1):
         label = f"match {match_id!r} shot {index}"

@@ -43,6 +43,9 @@ whether a shot supports the spoken claim.
    last shot to preserve exact duration.
 7. Generate the shot contact sheet from the final retimed recipe and matches,
    so the visual audit board cannot drift from the rendered timeline.
+8. When a visual candidate was explicitly confirmed and voiceover retiming
+   changes its duration, preserve the confirmed source window and record a
+   bounded `playback_rate` instead of silently trimming the reviewed content.
 
 ## Safety Invariants
 
@@ -50,6 +53,8 @@ whether a shot supports the spoken claim.
   outside the scanned asset directory.
 - Each shot range must be inside its manifest asset duration.
 - Ordered shot durations must sum exactly to the parent segment duration.
+- A preserved visual window may use only a bounded playback rate and the rate
+  must make its source duration equal the final segment duration.
 - A failed detector cannot produce a partial or stale success artifact.
 - Structural boundaries and frame-difference scores must never be reported as
   proof that a shot matches the script.

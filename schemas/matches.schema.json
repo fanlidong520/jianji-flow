@@ -22,6 +22,7 @@
           "source_start_ms": {"type": "integer", "minimum": 0},
           "source_end_ms": {"type": "integer", "minimum": 0},
           "asset_duration_ms": {"type": "integer", "minimum": 1},
+          "playback_rate": {"type": "number", "exclusiveMinimum": 0.01, "maximum": 2.0},
           "shots": {
             "type": "array",
             "minItems": 2,

@@ -69,6 +69,7 @@ Detailed workflow:
 - Do not call weak `Story support` usable; tell the user to confirm hook, pain, feature, evidence, and CTA in `contact-sheet.png`.
 - Do not hide source-platform residue with a full-frame dark mask; rely on crop where appropriate and keep source-preflight warnings visible.
 - Do not treat `visual-candidate-sheet.png` or a Codex visual selection as automatic semantic truth; it is explicit model-assisted review evidence and must remain auditable.
+- When a visual selection is applied, preserve its full source window across voiceover retiming with the recorded bounded playback rate; do not silently trim the visually reviewed content.
 - Do not fill or apply a candidate selection when the frames do not genuinely support the segment caption; partial selection is allowed and should remain `warning` when story evidence is incomplete.
 - Do not silently ignore filled fixes entries. Unknown segment/role targets, missing replacement paths, and too-short clips must fail clearly.
 - Do not present a risky replacement as clean. If `recommendation_status` is `best_available_with_warnings`, report the warning before suggesting the fix.

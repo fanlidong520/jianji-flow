@@ -40,12 +40,23 @@ def build_shot_frame_times_ms(recipe: dict, matches: dict) -> list[tuple[str, in
             raise ValueError(f"segment {segment.get('id')!r}: match is missing")
         segment_id = str(segment.get("id", "segment"))
         shots = match.get("shots")
+        playback_rate = float(match.get("playback_rate", 1.0))
+        if playback_rate <= 0:
+            raise ValueError(f"{segment_id}: playback_rate must be positive")
         if shots:
             cursor_ms = int(segment["start_ms"])
+            segment_end_ms = int(segment["end_ms"])
             for index, shot in enumerate(shots, start=1):
-                duration_ms = int(shot["source_end_ms"]) - int(shot["source_start_ms"])
-                if duration_ms <= 0:
+                source_duration_ms = int(shot["source_end_ms"]) - int(shot["source_start_ms"])
+                if source_duration_ms <= 0:
                     raise ValueError(f"{segment_id} shot {index}: source range must be positive")
+                duration_ms = (
+                    segment_end_ms - cursor_ms
+                    if index == len(shots)
+                    else round(source_duration_ms / playback_rate)
+                )
+                if duration_ms <= 0:
+                    raise ValueError(f"{segment_id} shot {index}: timeline range must be positive")
                 samples.append((f"{segment_id} / shot-{index:02d}", cursor_ms + round(duration_ms / 2)))
                 cursor_ms += duration_ms
         else:

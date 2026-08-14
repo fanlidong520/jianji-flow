@@ -37,6 +37,7 @@
 - Writes `reference-comparison.png` with the same number of relative storyboard samples from the reference and the remix, so the visible edit can be checked without guessing.
 - Supports opt-in `--multi-shot` scene-boundary splitting, so a long selected source window can become several short visual shots while keeping the parent caption and voiceover segment intact.
 - Writes `shot-plan.json` when `--multi-shot` is used, with the final retimed source boundaries and explicit fallback warnings.
+- Preserves a visually confirmed source window across voiceover retiming with a bounded, auditable `playback_rate`, instead of silently trimming the reviewed content.
 - Writes `candidate-review.html` and `candidate-frames/` so weak segments can be compared against visible repair candidates.
 - Supports a separate `visual-review` pass that generates opaque-filename candidate boards; Codex should inspect the frames and write the selection file for the user instead of asking the user to edit JSON.
 - Writes `review.md` and `review.html` for manual inspection, including a change report after fixes are applied.
@@ -291,7 +292,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 373 passed
+- `python -m pytest -q` -> 380 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 

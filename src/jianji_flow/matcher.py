@@ -456,6 +456,27 @@ def _retime_match_source_window(match: dict, duration_ms: int) -> dict:
     original_source_start_ms = int(match["source_start_ms"])
     original_source_end_ms = int(match["source_end_ms"])
     original_source_duration_ms = max(1, original_source_end_ms - original_source_start_ms)
+    visual_reviewed = any(str(item).startswith("visual-review:") for item in match.get("evidence", []))
+    preserve_visual_window = visual_reviewed and 0.5 <= original_source_duration_ms / max(1, duration_ms) <= 2.0
+    if preserve_visual_window:
+        playback_rate = round(original_source_duration_ms / duration_ms, 6)
+        evidence = [
+            item
+            for item in match.get("evidence", [])
+            if not str(item).startswith("playback-rate:")
+        ]
+        if playback_rate != 1.0:
+            evidence.append(f"playback-rate:{playback_rate}")
+        preserved = {
+            **match,
+            "asset_duration_ms": asset_duration_ms,
+            "evidence": evidence,
+        }
+        if playback_rate == 1.0:
+            preserved.pop("playback_rate", None)
+        else:
+            preserved["playback_rate"] = playback_rate
+        return preserved
     source_start_ms = int(match["source_start_ms"])
     source_start_ms = min(source_start_ms, max(0, asset_duration_ms - duration_ms))
     source_end_ms = source_start_ms + duration_ms
