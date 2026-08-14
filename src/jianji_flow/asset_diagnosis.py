@@ -79,6 +79,20 @@ def _assets_by_primary_role(assets: list[dict]) -> dict[str, list[dict]]:
     return grouped
 
 
+def _duplicate_media_groups(assets: list[dict]) -> list[dict]:
+    by_digest: dict[str, list[str]] = {}
+    for asset in assets:
+        digest = str(asset.get("sha256", "")).strip().casefold()
+        path = _asset_path(asset)
+        if digest and path:
+            by_digest.setdefault(digest, []).append(path)
+    return [
+        {"sha256": digest, "paths": paths}
+        for digest, paths in by_digest.items()
+        if len(paths) > 1
+    ]
+
+
 def primary_role_for_asset(asset: dict) -> str | None:
     name = Path(_asset_path(asset)).stem.casefold()
     direct_roles = [role for role in ROLE_HINTS if role.casefold() in name]
@@ -110,6 +124,13 @@ def diagnose_product_assets(assets: list[dict], segments: list[dict]) -> dict:
             "actions": ["No decodable video assets found. Add local .mp4 clips to the assets folder."],
         }
 
+    duplicate_groups = _duplicate_media_groups(assets)
+    for group in duplicate_groups:
+        paths = ", ".join(Path(path).name for path in group["paths"])
+        actions.append(
+            f"Duplicate media detected: {paths} are byte-identical; different filenames do not prove independent footage."
+        )
+
     assets_by_role = _assets_by_primary_role(assets)
     for role in ROLE_HINTS:
         needed_ms = _role_segment_duration(role, segments)
@@ -136,9 +157,11 @@ def diagnose_product_assets(assets: list[dict], segments: list[dict]) -> dict:
         status = "fail"
     elif any(item["status"] == "weak" for item in roles.values()):
         status = "warning"
+    elif duplicate_groups:
+        status = "warning"
     else:
         status = "pass"
-    return {"status": status, "roles": roles, "actions": actions}
+    return {"status": status, "roles": roles, "actions": actions, "duplicate_groups": duplicate_groups}
 
 
 def format_asset_diagnosis(report: dict, *, visual_selection_supplied: bool = False) -> str:
@@ -152,6 +175,9 @@ def format_asset_diagnosis(report: dict, *, visual_selection_supplied: bool = Fa
         for role in report.get("roles", {}):
             role_label = f"{role} / {ROLE_LABELS.get(role, role)}"
             lines.append(f"- {role_label}: VISUAL REVIEW SUPPLIED - candidate frames will be checked before rendering.")
+        for group in report.get("duplicate_groups", []):
+            paths = ", ".join(Path(path).name for path in group.get("paths", []))
+            lines.append(f"- DUPLICATE MEDIA: {paths} are byte-identical; different filenames do not prove independent footage.")
         lines.extend(
             [
                 "",
@@ -173,6 +199,9 @@ def format_asset_diagnosis(report: dict, *, visual_selection_supplied: bool = Fa
         if status == "ready":
             message = f"{message}; not visual proof"
         lines.append(f"- {role_label}: {label} - {message}")
+    for group in report.get("duplicate_groups", []):
+        paths = ", ".join(Path(path).name for path in group.get("paths", []))
+        lines.append(f"- DUPLICATE MEDIA: {paths} are byte-identical; different filenames do not prove independent footage.")
     actions = report.get("actions", [])
     if actions:
         lines.append("")

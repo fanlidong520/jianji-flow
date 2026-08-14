@@ -149,6 +149,8 @@ winget install Gyan.FFmpeg
 - `assets/`: 你自己的本地素材文件夹，里面放可用的 `.mp4` 素材。
 - `script.txt`: 可选文案。产品带货建议按“开头、痛点、卖点、演示、行动提醒”写成 3 到 8 段短句。
 
+如果多个文件只是复制后改了名字，`diagnosis.md` 会标记为 `DUPLICATE MEDIA`。这是保守的字节级检查，不代表已经能识别所有重新编码或从同一母片截出的文件，仍需看画面和素材来源。
+
 素材命名越清楚，当前匹配越稳。例如：
 
 - `01-hook-cleaning.mp4`
@@ -180,7 +182,7 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 ## 输出文件
 
 - `manifest.json`: local asset inventory.
-- `diagnosis.md`: product material readiness report from filename/duration screening, with source preflight warnings or failures when found. `CANDIDATE` means the clip can be tried in a rough cut; it is not visual proof. When `--visual-selections` is supplied, it explicitly records that visible choices replace filename role matching instead of calling opaque files missing.
+- `diagnosis.md`: product material readiness report from filename/duration screening, with source preflight warnings or failures when found. `CANDIDATE` means the clip can be tried in a rough cut; it is not visual proof. It also warns when different filenames have byte-identical media. When `--visual-selections` is supplied, it explicitly records that visible choices replace filename role matching instead of calling opaque files missing.
 - `recipe.json`: authoritative timeline.
 - `matches.json`: selected assets, confidence, and evidence.
 - `captions.srt`: editable subtitle file.

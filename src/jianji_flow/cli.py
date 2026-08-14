@@ -792,7 +792,12 @@ def _run_quick_command(args: argparse.Namespace) -> int:
             visual_selection_supplied = bool(getattr(args, "visual_selections", None))
             report = diagnose_product_assets(
                 [
-                    {"asset_id": item.asset_id, "path": item.path.as_posix(), "duration_ms": item.duration_ms}
+                    {
+                        "asset_id": item.asset_id,
+                        "path": item.path.as_posix(),
+                        "duration_ms": item.duration_ms,
+                        "sha256": item.sha256,
+                    }
                     for item in records
                 ],
                 segments,

@@ -55,6 +55,24 @@ def test_product_asset_diagnosis_marks_chinese_role_filenames_ready():
     assert report["status"] == "pass"
 
 
+def test_product_asset_diagnosis_warns_when_different_names_share_exact_media():
+    segments = build_segment_plan("product", 10_000, None)
+    assets = [_asset(f"01-{role}.mp4") for role in ("hook", "pain", "feature", "evidence", "cta")]
+    assets[1]["sha256"] = "same-media"
+    assets[2]["sha256"] = "same-media"
+
+    report = diagnose_product_assets(assets, segments)
+
+    assert report["status"] == "warning"
+    assert report["duplicate_groups"] == [
+        {"sha256": "same-media", "paths": ["01-pain.mp4", "01-feature.mp4"]}
+    ]
+    assert any("duplicate media" in action.lower() for action in report["actions"])
+    text = format_asset_diagnosis(report)
+    assert "DUPLICATE MEDIA" in text
+    assert "different filenames do not prove independent footage" in text
+
+
 def test_product_asset_diagnosis_does_not_reuse_one_clip_for_all_roles():
     segments = build_segment_plan("product", 10_000, None)
     assets = [_asset("before-after-demo-product-buy.mp4", duration_ms=30_000)]
