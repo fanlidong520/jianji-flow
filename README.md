@@ -305,6 +305,7 @@ Latest local result:
 - `python -m pytest -q` -> 384 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
+- `python -m jianji_flow --version` -> `jianji-flow 0.3.0.dev0`
 - the latest real-material A/B run keeps low-confidence segments as one source
   window; the better feature candidate removes the identical adjacent shot
   sequence, but the run remains `warning` until dirty source frames are

@@ -288,6 +288,17 @@ audit v41:
 - the current real run is not evidence for public launch; it is a quality gate
   showing exactly what still needs better source material.
 
+Latest package consistency and repeat-validation checkpoint:
+
+- the package now reports `jianji-flow 0.3.0.dev0` from both the source tree
+  and a fresh non-editable installation;
+- one long-suite run recorded a transient `ffprobe` timeout after 383 passing
+  tests; the affected test passed in five isolated reruns, and the next full
+  suite passed 384/384 in 344.27 seconds;
+- smoke, P0, and skill validation passed again after the version change;
+- this does not relax the product launch rule: real-material quality and
+  outside-user trials are still outstanding.
+
 Latest local A/B checkpoint after feature candidate review v42:
 
 - the feature role remains visually supported and `Story support` is `pass`;
