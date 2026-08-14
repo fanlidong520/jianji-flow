@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "jianji-flow matches",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "matches"],
+  "properties": {
+    "version": {"const": "0.1"},
+    "matches": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "segment_id", "status", "confidence", "scores", "candidates", "evidence"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "segment_id": {"type": "string", "minLength": 1},
+          "status": {"enum": ["selected", "low_confidence", "missing", "rejected"]},
+          "asset_id": {"type": "string", "minLength": 1},
+          "source_path": {"type": "string", "minLength": 1},
+          "source_start_ms": {"type": "integer", "minimum": 0},
+          "source_end_ms": {"type": "integer", "minimum": 0},
+          "asset_duration_ms": {"type": "integer", "minimum": 1},
+          "playback_rate": {"type": "number", "exclusiveMinimum": 0.01, "maximum": 2.0},
+          "shots": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["shot_id", "asset_id", "source_path", "source_start_ms", "source_end_ms"],
+              "properties": {
+                "shot_id": {"type": "string", "minLength": 1},
+                "asset_id": {"type": "string", "minLength": 1},
+                "source_path": {"type": "string", "minLength": 1},
+                "source_start_ms": {"type": "integer", "minimum": 0},
+                "source_end_ms": {"type": "integer", "minimum": 0},
+                "asset_duration_ms": {"type": "integer", "minimum": 1},
+                "evidence": {"type": "array", "items": {"type": "string"}}
+              }
+            }
+          },
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+          "scores": {
+            "type": "object",
+            "additionalProperties": false,
+            "patternProperties": {
+              "^[a-z][a-z0-9_]*$": {"type": "number", "minimum": 0, "maximum": 1}
+            }
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["asset_id", "source_path", "source_start_ms", "source_end_ms", "score"],
+              "properties": {
+                "asset_id": {"type": "string", "minLength": 1},
+                "source_path": {"type": "string", "minLength": 1},
+                "source_start_ms": {"type": "integer", "minimum": 0},
+                "source_end_ms": {"type": "integer", "minimum": 0},
+                "asset_duration_ms": {"type": "integer", "minimum": 1},
+                "score": {"type": "number", "minimum": 0, "maximum": 1},
+                "evidence": {"type": "array", "items": {"type": "string"}}
+              }
+            }
+          },
+          "evidence": {"type": "array", "items": {"type": "string"}},
+          "missing_reason": {"type": "string", "minLength": 1},
+          "rejected_reason": {"type": "string", "minLength": 1}
+        },
+        "allOf": [
+          {
+            "if": {"properties": {"status": {"enum": ["selected", "low_confidence"]}}},
+            "then": {
+              "required": ["asset_id", "source_path", "source_start_ms", "source_end_ms", "asset_duration_ms"],
+              "not": {"anyOf": [{"required": ["missing_reason"]}, {"required": ["rejected_reason"]}]}
+            }
+          },
+          {
+            "if": {"properties": {"status": {"const": "missing"}}},
+            "then": {
+              "required": ["missing_reason"],
+              "not": {"anyOf": [
+                {"required": ["asset_id"]},
+                {"required": ["source_path"]},
+                {"required": ["source_start_ms"]},
+                {"required": ["source_end_ms"]},
+                {"required": ["rejected_reason"]}
+              ]}
+            }
+          },
+          {
+            "if": {"properties": {"status": {"const": "rejected"}}},
+            "then": {
+              "required": ["rejected_reason"],
+              "not": {"anyOf": [
+                {"required": ["asset_id"]},
+                {"required": ["source_path"]},
+                {"required": ["source_start_ms"]},
+                {"required": ["source_end_ms"]},
+                {"required": ["missing_reason"]}
+              ]}
+            }
+          }
+        ]
+      }
+    }
+  }
+}

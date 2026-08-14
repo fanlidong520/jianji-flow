@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "jianji-flow recipe",
+  "type": "object",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "audio_strategy": {"const": "voiceover-only"}
+        },
+        "required": ["audio_strategy"]
+      },
+      "then": {
+        "required": ["voiceover_path", "caption_burn_in"],
+        "properties": {
+          "caption_burn_in": {"const": true}
+        }
+      }
+    }
+  ],
+  "required": ["version", "mode", "duration_ms", "target", "audio_strategy", "segments"],
+  "properties": {
+    "version": {"const": "0.1"},
+    "mode": {"enum": ["product", "talking-head"]},
+    "duration_ms": {"type": "integer", "minimum": 0},
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "fps"],
+      "properties": {
+        "width": {"type": "integer", "minimum": 1},
+        "height": {"type": "integer", "minimum": 1},
+        "fps": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "audio_strategy": {"enum": ["silent-preview", "voiceover-only"]},
+    "output_path": {"type": "string", "minLength": 1},
+    "voiceover_path": {"type": "string", "minLength": 1},
+    "caption_burn_in": {"type": "boolean"},
+    "segments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "role", "start_ms", "end_ms", "match_id", "caption"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "role": {"type": "string", "minLength": 1},
+          "start_ms": {"type": "integer", "minimum": 0},
+          "end_ms": {"type": "integer", "minimum": 0},
+          "match_id": {"type": "string", "minLength": 1},
+          "caption": {"type": "string"}
+        }
+      }
+    }
+  }
+}

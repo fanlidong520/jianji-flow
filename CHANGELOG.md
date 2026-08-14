@@ -36,6 +36,8 @@
 - Added conservative multi-shot handling that keeps low-confidence matches as
   one source window and warns when adjacent segments repeat the same shot
   sequence.
+- Packaged the JSON schemas inside the wheel and added a clean-install check so
+  installed `demo` runs do not depend on the repository checkout.
 - Added a storyboard section to `review.md` and `review.html` so each segment's
   role, caption, source range, evidence, and risk can be checked without opening
   JSON files.

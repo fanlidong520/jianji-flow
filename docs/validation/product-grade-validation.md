@@ -275,7 +275,7 @@ Latest local checkpoint after opt-in multi-shot v38:
 Latest local checkpoint after conservative multi-shot and duplicate-sequence
 audit v41:
 
-- `python -m pytest -q` -> 383 passed in 415.46s;
+- `python -m pytest -q` -> 384 passed in 1108.41s;
 - `python scripts/run_smoke.py` -> smoke passed;
 - `python scripts/run_p0.py` -> p0 passed;
 - Skill validation -> `Skill is valid!`;
@@ -299,6 +299,18 @@ Latest local A/B checkpoint after feature candidate review v42:
   source video;
 - this is the strongest result from the current pack, not a clean-pack or
   public-launch result.
+
+Latest clean-install checkpoint:
+
+- created a fresh Python 3.11 virtual environment outside the repository;
+- installed the built project with `pip install "E:\\AI-Companion\\jianji-flow[dev]"`;
+- `python -m jianji_flow --version` returned `jianji-flow 0.2.0`;
+- `python -m jianji_flow doctor` returned `Ready to run quick draft`;
+- `python -m jianji_flow demo --target-width 320 --target-height 180
+  --target-fps 12` exited successfully and wrote `remix.mp4`, `review.md`,
+  `review.html`, and the contact sheets;
+- this check caught and fixed a missing packaged-schema failure before the
+  project is presented as installable.
 
 ## Launch Rule
 

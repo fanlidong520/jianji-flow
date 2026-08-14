@@ -100,6 +100,14 @@ jianji-flow doctor
 ```
 
 健康输出会以 `Ready to run quick draft` 结尾。
+首次安装建议先确认版本和内置 demo 都能运行：
+
+```powershell
+python -m jianji_flow --version
+jianji-flow demo
+```
+
+`demo` 会在本地生成合成素材和可检查的 `remix.mp4`；它不需要你的真实素材，也不会联网寻找素材。
 
 ## v0.3 Quick Start
 
@@ -294,7 +302,7 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 383 passed
+- `python -m pytest -q` -> 384 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 - the latest real-material A/B run keeps low-confidence segments as one source

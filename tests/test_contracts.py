@@ -1,14 +1,28 @@
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 from jsonschema.exceptions import ValidationError
 
+import jianji_flow.contracts as contracts
 from jianji_flow.contracts import (
     validate_fixes,
     validate_manifest,
     validate_matches,
     validate_recipe,
 )
+
+
+def test_schema_files_are_available_inside_the_installed_package():
+    package_schema_dir = Path(contracts.__file__).resolve().parent / "schemas"
+
+    assert {path.name for path in package_schema_dir.glob("*.schema.json")} == {
+        "fixes.schema.json",
+        "manifest.schema.json",
+        "matches.schema.json",
+        "recipe.schema.json",
+        "visual-selection.schema.json",
+    }
 
 
 def valid_manifest():

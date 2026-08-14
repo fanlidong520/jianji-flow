@@ -26,6 +26,9 @@ vision = [
 [project.scripts]
 jianji-flow = "jianji_flow.cli:main"
 
+[tool.setuptools.package-data]
+jianji_flow = ["schemas/*.schema.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
