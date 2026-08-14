@@ -33,6 +33,9 @@
   for manual inspection but are not presented as clean recommendations.
 - Added repair recommendation conflict warnings when multiple weak segments
   would reuse the same replacement asset.
+- Added conservative multi-shot handling that keeps low-confidence matches as
+  one source window and warns when adjacent segments repeat the same shot
+  sequence.
 - Added a storyboard section to `review.md` and `review.html` so each segment's
   role, caption, source range, evidence, and risk can be checked without opening
   JSON files.

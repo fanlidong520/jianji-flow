@@ -272,6 +272,22 @@ Latest local checkpoint after opt-in multi-shot v38:
 - no public launch claim is made until clean packs and outside-user trials pass
   the launch rule below.
 
+Latest local checkpoint after conservative multi-shot and duplicate-sequence
+audit v41:
+
+- `python -m pytest -q` -> 383 passed in 415.46s;
+- `python scripts/run_smoke.py` -> smoke passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- Skill validation -> `Skill is valid!`;
+- the real home-product run has all five story roles visually supported after
+  reviewing the feature candidate, but remains `warning` because source frames
+  contain original platform/subtitle residue and adjacent segments repeat the
+  same shot sequence;
+- low-confidence segments are kept as one source window instead of being
+  automatically split into more questionable shots;
+- the current real run is not evidence for public launch; it is a quality gate
+  showing exactly what still needs better source material.
+
 ## Launch Rule
 
 Do not announce the project publicly until:

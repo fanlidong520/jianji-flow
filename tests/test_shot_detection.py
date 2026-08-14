@@ -83,6 +83,69 @@ def test_build_multi_shot_falls_back_without_mutating_parent_match():
     assert plan["segments"] == [{"segment_id": "seg-001", "shot_count": 1, "status": "fallback"}]
 
 
+def test_build_multi_shot_skips_low_confidence_match_with_explicit_warning():
+    matches = _matches()
+    matches["matches"][0]["status"] = "low_confidence"
+
+    updated, plan = build_multi_shot_matches(
+        [{"id": "seg-001", "start_ms": 0, "end_ms": 3000, "role": "hook", "caption": "开头"}],
+        matches,
+        detector=lambda path, start, end: [start, start + 1000, end],
+    )
+
+    assert "shots" not in updated["matches"][0]
+    assert plan["status"] == "warning"
+    assert plan["total_shots"] == 1
+    assert plan["segments"] == [
+        {"segment_id": "seg-001", "shot_count": 1, "status": "skipped_low_confidence"}
+    ]
+    assert "visual review is required" in plan["warnings"][0]
+
+
+def test_synchronize_shot_plan_preserves_low_confidence_skip_status():
+    plan = {
+        "version": "0.1",
+        "status": "warning",
+        "total_shots": 1,
+        "segments": [{"segment_id": "seg-001", "shot_count": 1, "status": "skipped_low_confidence"}],
+        "warnings": ["visual review is required"],
+        "limits": {"min_shot_ms": 900, "max_shots": 4},
+    }
+
+    refreshed = synchronize_shot_plan(
+        plan,
+        {"matches": [{"segment_id": "seg-001", "status": "low_confidence"}]},
+    )
+
+    assert refreshed["segments"] == [
+        {"segment_id": "seg-001", "shot_count": 1, "status": "skipped_low_confidence"}
+    ]
+
+
+def test_build_multi_shot_warns_when_adjacent_segments_repeat_same_shot_sequence():
+    matches = _matches()
+    matches["matches"].append(
+        {
+            **matches["matches"][0],
+            "id": "match-002",
+            "segment_id": "seg-002",
+        }
+    )
+
+    updated, plan = build_multi_shot_matches(
+        [
+            {"id": "seg-001", "start_ms": 0, "end_ms": 3000, "role": "hook", "caption": "开头"},
+            {"id": "seg-002", "start_ms": 3000, "end_ms": 6000, "role": "evidence", "caption": "证明"},
+        ],
+        matches,
+        detector=lambda path, start, end: [start, start + 1000, end],
+    )
+
+    assert len(updated["matches"]) == 2
+    assert plan["status"] == "warning"
+    assert any("repeat the same source shot sequence" in warning for warning in plan["warnings"])
+
+
 def test_synchronize_shot_plan_uses_final_retimed_ranges():
     plan = {
         "version": "0.1",

@@ -110,6 +110,24 @@ def build_multi_shot_matches(
             updated_matches.append(match)
             continue
 
+        if match.get("status") == "low_confidence":
+            # Scene boundaries cannot repair a weak semantic match. Keep the
+            # source window intact and make the missing review explicit.
+            plan_segments.append(
+                {
+                    "segment_id": segment_id,
+                    "shot_count": 1,
+                    "status": "skipped_low_confidence",
+                }
+            )
+            warnings.append(
+                f"{segment_id}: low-confidence match was kept as one source window; "
+                "visual review is required before multi-shot splitting"
+            )
+            updated_matches.append(match)
+            total_shots += 1
+            continue
+
         start_ms = int(match["source_start_ms"])
         end_ms = int(match["source_end_ms"])
         try:
@@ -154,6 +172,34 @@ def build_multi_shot_matches(
         total_shots += len(shots)
         updated_matches.append(match)
 
+    updated_by_segment = {
+        str(match.get("segment_id")): match for match in updated_matches
+    }
+    previous_segment_id: str | None = None
+    previous_signature: tuple[str, tuple[tuple[int, int], ...]] | None = None
+    for segment in segments:
+        segment_id = str(segment.get("id", ""))
+        match = updated_by_segment.get(segment_id)
+        if match is None or match.get("status") not in {"selected", "low_confidence"}:
+            previous_segment_id = None
+            previous_signature = None
+            continue
+        shots = match.get("shots") or [match]
+        signature = (
+            str(match.get("source_path", "")).casefold(),
+            tuple(
+                (int(shot.get("source_start_ms", -1)), int(shot.get("source_end_ms", -1)))
+                for shot in shots
+            ),
+        )
+        if previous_signature == signature and previous_segment_id is not None:
+            warnings.append(
+                f"{previous_segment_id} and {segment_id}: adjacent segments repeat the same "
+                "source shot sequence; choose distinct footage if the cut feels repetitive"
+            )
+        previous_segment_id = segment_id
+        previous_signature = signature
+
     plan = {
         "version": "0.1",
         "status": "warning" if warnings else "pass",
@@ -184,7 +230,8 @@ def synchronize_shot_plan(plan: dict, matches: dict) -> dict:
             ]
         else:
             item["shot_count"] = 1
-            item["status"] = "fallback"
+            if item.get("status") != "skipped_low_confidence":
+                item["status"] = "fallback"
             item.pop("boundaries_ms", None)
         total_shots += int(item.get("shot_count", 0))
     refreshed["total_shots"] = total_shots

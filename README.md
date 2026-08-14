@@ -213,11 +213,13 @@ Open `visual-candidate-sheet.png`. In a Codex run, Codex inspects the board, wri
 python -m jianji_flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --script fixtures\scenario-a-product\script.txt --visual-selections out\visual-board\visual-selections.json --work-dir out\visual-selected
 ```
 
-For a more visibly paced draft, add `--multi-shot`. It detects bounded scene changes inside selected source windows, renders each safe range as a separate shot, and records the final retimed boundaries in `shot-plan.json`:
+For a more visibly paced draft, add `--multi-shot`. It detects bounded scene changes inside selected source windows, renders each safe range as a separate shot, and records the final retimed boundaries in `shot-plan.json`. Low-confidence matches are deliberately kept as one source window until visual review confirms the material:
 
 ```powershell
 python -m jianji_flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets --script fixtures\scenario-a-product\script.txt --visual-selections out\visual-board\visual-selections.json --multi-shot --work-dir out\visual-selected-multi-shot
 ```
+
+The shot plan also warns when adjacent segments repeat the same source shot sequence. Keep that warning visible until the adjacent footage is intentionally distinct or the repetition has been manually accepted.
 
 This option is intentionally opt-in while it is being validated on more real material. It can improve pacing, but it does not prove that a scene boundary matches the spoken claim; inspect `remix.mp4`, `contact-sheet.png`, `shot-plan.json`, and `review.html` together.
 
@@ -292,9 +294,12 @@ python scripts/run_p0.py
 
 Latest local result:
 
-- `python -m pytest -q` -> 380 passed
+- `python -m pytest -q` -> 383 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
+- the latest real-material multi-shot run keeps low-confidence segments as one
+  source window, marks adjacent duplicate shot sequences as warnings, and
+  remains `warning` until dirty source frames are replaced;
 
 ## Safety Rules
 

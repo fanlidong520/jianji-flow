@@ -375,6 +375,11 @@ Passes:
 - `shot-contact-sheet.png` exposes one labeled frame for every final rendered shot;
 - visually confirmed source windows keep their reviewed content across voiceover
   retiming through a bounded recorded playback rate;
+- low-confidence matches are excluded from automatic multi-shot splitting and
+  remain visible in the shot plan as `skipped_low_confidence` until visual
+  review confirms them;
+- adjacent segments with an identical source shot sequence are flagged in the
+  shot plan so repeated footage is reviewed before publishing;
 - the stable default path remains unchanged unless `--multi-shot` is requested.
 
 Still not good enough:
