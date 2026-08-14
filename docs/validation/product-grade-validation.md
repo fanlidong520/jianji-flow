@@ -288,6 +288,18 @@ audit v41:
 - the current real run is not evidence for public launch; it is a quality gate
   showing exactly what still needs better source material.
 
+Latest local A/B checkpoint after feature candidate review v42:
+
+- the feature role remains visually supported and `Story support` is `pass`;
+- candidate 04 removes the identical adjacent feature/evidence shot sequence
+  found in candidate 05 while keeping a 20-shot plan and a 37.9-second
+  video-plus-voiceover output;
+- the run remains `warning` because the source pack contains original
+  platform/subtitle residue and adjacent segments still draw from the same
+  source video;
+- this is the strongest result from the current pack, not a clean-pack or
+  public-launch result.
+
 ## Launch Rule
 
 Do not announce the project publicly until:

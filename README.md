@@ -297,9 +297,10 @@ Latest local result:
 - `python -m pytest -q` -> 383 passed
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
-- the latest real-material multi-shot run keeps low-confidence segments as one
-  source window, marks adjacent duplicate shot sequences as warnings, and
-  remains `warning` until dirty source frames are replaced;
+- the latest real-material A/B run keeps low-confidence segments as one source
+  window; the better feature candidate removes the identical adjacent shot
+  sequence, but the run remains `warning` until dirty source frames are
+  replaced;
 
 ## Safety Rules
 
