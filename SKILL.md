@@ -52,7 +52,7 @@ Detailed workflow:
 14. Write `fixes.template.json` for weak or low-confidence segments, including same-role visual-similarity checks for repair recommendations.
 15. Write `candidate-review.html` and `candidate-frames/` so current weak-segment frames can be compared with visible repair candidates.
 16. When `--visual-selections`, `--fixes`, or `--apply-recommendation` is used, write the corresponding visual evidence or `Change report` and diagnostics.
-17. When the user requests more visible pacing, pass `--multi-shot` after visual selection. It detects only bounded structural scene changes inside selected windows, flattens safe ranges into the final timeline, writes `shot-plan.json` after voiceover retiming, and writes `shot-contact-sheet.png` with one labeled frame per final shot. Keep the result review-required until the rendered pacing is inspected.
+17. When the user requests more visible pacing, pass `--multi-shot` after visual selection. It detects only bounded structural scene changes inside selected windows, flattens safe ranges into the final timeline, writes `shot-plan.json` after voiceover retiming, and writes `shot-contact-sheet.png` with one labeled frame per final shot. Low-confidence matches stay as one source window until visual review confirms them. Keep the result review-required until the rendered pacing is inspected.
 18. Write `review.md` and `review.html` with pass, warning, fail status, `Story support`, a per-segment `Storyboard`, optional `Visual selection`, optional `Shot plan`, optional `Change report`, candidate-review link, and visual-similarity diagnostics when present.
 
 ## Hard Rules
@@ -75,6 +75,8 @@ Detailed workflow:
 - Do not present a risky replacement as clean. If `recommendation_status` is `best_available_with_warnings`, report the warning before suggesting the fix.
 - Do not auto-apply a visually similar or visually unchecked recommendation. Treat `visually similar to current segment` and `visual similarity check failed` as review-required warnings.
 - Do not treat `candidate-review.html` as proof of semantic visual matching. It is a human-facing evidence page for current frames, candidates, reasons, and warnings.
+- Do not use scene boundaries to make a low-confidence match look more trustworthy. Keep it as one source window and report `skipped_low_confidence` in the shot plan.
+- Treat an identical adjacent source shot sequence as a publish-blocking review warning; inspect the shot contact sheet and choose distinct footage when the repetition is not intentional.
 - Do not present same-source-window candidates as clean improvements. They may expose a better time window inside a long file, but they require manual review before use.
 - Do not present wrong-role fallback candidates as recommendations. If `recommendation_status` is `no_candidate`, explain that no same-role replacement was found; fallback candidates are manual-inspection options only.
 - Do not claim image support, music, effects, publishing, source-audio preservation, true reference decomposition, or editor draft export.
@@ -187,4 +189,5 @@ If `review.md` lists a `Change report`, use it before discussing JSON: it names 
 Use the `Storyboard` section before discussing JSON: it is the fastest way to see each segment's caption, selected asset, source range, evidence, and risk.
 Use the `Visual selection` section when present: it lists the reviewer, candidate id, reason, and selected frames. Treat it as inspectable evidence, not proof that the product claim is accurate.
 Use the `Shot plan` section when present: it lists the final retimed source boundaries and fallback status. Open `shot-contact-sheet.png` to inspect one frame per final shot. Scene boundaries prove only structural cutting, not semantic support for the script.
+If the shot plan lists `skipped_low_confidence` or an adjacent repeated shot sequence, report that warning before discussing pacing quality. Do not call the multi-shot pass clean until the repeated footage is intentionally accepted or replaced.
 Use `candidate-review.html` before suggesting a fix: it is the fastest way to show what the current segment looks like, what candidate frames are available, and whether warnings make the candidate manual-review only.
