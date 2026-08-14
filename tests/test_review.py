@@ -1136,6 +1136,60 @@ def test_build_review_omits_change_report_when_not_present():
     assert "Change report" not in html
 
 
+def test_build_review_markdown_contains_visual_selection_evidence(tmp_path: Path):
+    review = {
+        "status": "pass",
+        "failures": [],
+        "warnings": [],
+        "outputs": {},
+        "visual_selection": {
+            "candidate_sheet": "visual-candidate-sheet.png",
+            "selections": [
+                {
+                    "segment_id": "seg-001",
+                    "candidate_id": "seg-001-candidate-01",
+                    "reviewer": "codex-vision",
+                    "reason": "画面展示了使用过程。",
+                    "frames": ["visual-candidates/seg-001-candidate-01-02.png"],
+                }
+            ],
+        },
+    }
+    markdown = build_review_markdown(review)
+
+    assert "## Visual selection" in markdown
+    assert "Codex visual review" in markdown
+    assert "seg-001-candidate-01" in markdown
+    assert "not semantic proof" in markdown
+
+
+def test_build_review_html_contains_visual_selection_evidence(tmp_path: Path):
+    review = {
+        "status": "pass",
+        "failures": [],
+        "warnings": [],
+        "outputs": {},
+        "visual_selection": {
+            "candidate_sheet": "visual-candidate-sheet.png",
+            "selections": [
+                {
+                    "segment_id": "seg-001",
+                    "candidate_id": "seg-001-candidate-01",
+                    "reviewer": "codex-vision",
+                    "reason": "画面展示了使用过程。",
+                    "frames": ["visual-candidates/seg-001-candidate-01-02.png"],
+                }
+            ],
+        },
+    }
+    html = build_review_html(review, {"segments": []}, {"matches": []})
+
+    assert "Visual selection" in html
+    assert "Codex visual review" in html
+    assert "seg-001-candidate-01" in html
+    assert "not semantic proof" in html
+
+
 def test_build_review_html_contains_plain_language_summary():
     html = build_review_html(
         {"status": "warning", "outputs": {}, "warnings": ["low confidence"], "failures": []},

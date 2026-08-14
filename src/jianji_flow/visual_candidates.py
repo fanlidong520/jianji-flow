@@ -9,7 +9,7 @@ from typing import Any, Iterable
 
 from PIL import Image, ImageDraw, ImageOps
 
-from jianji_flow.contracts import validate_visual_selection
+from jianji_flow.contracts import validate_matches, validate_visual_selection
 from jianji_flow.window_scoring import score_frame_information
 
 
@@ -164,6 +164,7 @@ def _write_candidate_frames(candidate: dict, work_dir: Path) -> None:
     candidate["frames"] = []
     candidate["warnings"] = []
     candidate["available"] = True
+    quality_samples: list[float] = []
     duration_ms = int(candidate["source_end_ms"]) - int(candidate["source_start_ms"])
     for index, fraction in enumerate(FRAME_FRACTIONS, start=1):
         time_ms = int(candidate["source_start_ms"] + round(duration_ms * fraction))
@@ -185,8 +186,8 @@ def _write_candidate_frames(candidate: dict, work_dir: Path) -> None:
                 "sha256": frame_sha,
             }
         )
-        qualities = [float(candidate["quality"].get("frame_information") or 0.0), quality]
-        candidate["quality"]["frame_information"] = round(sum(qualities) / len(qualities), 6)
+        quality_samples.append(quality)
+        candidate["quality"]["frame_information"] = round(sum(quality_samples) / len(quality_samples), 6)
     if len(candidate["frames"]) != len(FRAME_FRACTIONS):
         candidate["available"] = False
     candidate["quality"]["is_semantic"] = False
@@ -291,6 +292,14 @@ def apply_visual_selections(
             raise ValueError(f"visual selection source range is outside asset duration: {candidate_id}")
         if len(candidate.get("frames", [])) != len(FRAME_FRACTIONS):
             raise ValueError(f"visual selection candidate has no complete frame evidence: {candidate_id}")
+        manifest_root = str(candidate_manifest.get("generated_in", "")).strip()
+        if manifest_root:
+            for frame in candidate.get("frames", []):
+                frame_path = Path(manifest_root) / str(frame.get("path", ""))
+                if not frame_path.exists():
+                    raise ValueError(f"visual selection frame evidence is missing: {candidate_id}")
+                if _sha256(frame_path) != str(frame.get("sha256", "")):
+                    raise ValueError(f"visual selection frame fingerprint changed for {candidate_id}")
 
         existing = match_by_segment.get(segment_id)
         if existing is None:
@@ -299,6 +308,15 @@ def apply_visual_selections(
         evidence.append(f"visual-review:{candidate_id}")
         scores = dict(existing.get("scores", {}))
         scores["visual_review"] = 1.0
+        selected_candidate = {
+            "asset_id": _asset_id(asset),
+            "source_path": _asset_path(asset),
+            "source_start_ms": start_ms,
+            "source_end_ms": end_ms,
+            "asset_duration_ms": _duration_ms(asset),
+            "score": 1.0,
+            "evidence": [f"visual-review:{candidate_id}"],
+        }
         updates[segment_id] = {
             **existing,
             "status": "selected",
@@ -309,13 +327,16 @@ def apply_visual_selections(
             "asset_duration_ms": _duration_ms(asset),
             "confidence": 1.0,
             "scores": scores,
+            "candidates": [selected_candidate],
             "evidence": evidence,
         }
 
-    return {
+    updated_matches = {
         **matches,
         "matches": [updates.get(str(match.get("segment_id")), dict(match)) for match in matches.get("matches", [])],
     }
+    validate_matches(updated_matches)
+    return updated_matches
 
 
 def _extract_frame(video_path: Path, frame_path: Path, time_ms: int) -> None:

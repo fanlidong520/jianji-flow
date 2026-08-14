@@ -33,6 +33,7 @@ def build_review(
     contact_sheet_path: Path | None = None,
     review_html_path: Path | None = None,
     check_artifacts: bool = True,
+    visual_selection: dict | None = None,
 ) -> dict:
     by_id = _match_by_id(matches)
     failures: list[str] = []
@@ -88,6 +89,8 @@ def build_review(
         },
         "story_support": story_support,
     }
+    if visual_selection:
+        review["visual_selection"] = visual_selection
     review["summary"] = build_review_summary(review)
     return _with_optional_outputs(
         review,
@@ -436,6 +439,73 @@ def _storyboard_markdown_section(recipe: dict | None, matches: dict | None, revi
     return lines
 
 
+def _visual_selection_markdown_section(visual_selection: dict | None) -> list[str]:
+    lines = ["## Visual selection"]
+    if not visual_selection:
+        lines.append("- none")
+        return lines
+    lines.append("Codex visual review is model-assisted evidence; local quality metrics are not semantic proof.")
+    if visual_selection.get("candidate_sheet"):
+        lines.append(f"- candidate_sheet: {visual_selection['candidate_sheet']}")
+    selections = [item for item in visual_selection.get("selections", []) if isinstance(item, dict)]
+    if not selections:
+        lines.append("- none")
+        return lines
+    lines.append("| Segment | Candidate | Reviewer | Reason | Frames |")
+    lines.append("| --- | --- | --- | --- | --- |")
+    for item in selections:
+        frames = ", ".join(str(frame) for frame in item.get("frames", [])) or "none"
+        lines.append(
+            "| "
+            + " | ".join(
+                _markdown_cell(str(value))
+                for value in (
+                    item.get("segment_id", ""),
+                    item.get("candidate_id", ""),
+                    item.get("reviewer", ""),
+                    item.get("reason", ""),
+                    frames,
+                )
+            )
+            + " |"
+        )
+    return lines
+
+
+def _visual_selection_html(visual_selection: dict | None) -> str:
+    if not visual_selection:
+        return "<p>none</p>"
+    intro = "<p>Codex visual review is model-assisted evidence; local quality metrics are not semantic proof.</p>"
+    sheet = ""
+    if visual_selection.get("candidate_sheet"):
+        sheet = (
+            f'<figure><img alt="visual candidate sheet" src="{escape(str(visual_selection["candidate_sheet"]))}">'
+            "<figcaption>Candidate sheet</figcaption></figure>"
+        )
+    rows = []
+    for item in visual_selection.get("selections", []):
+        if not isinstance(item, dict):
+            continue
+        frame_html = "".join(
+            f'<img alt="visual candidate frame" src="{escape(str(frame))}">'
+            for frame in item.get("frames", [])
+        ) or "none"
+        rows.append(
+            "<tr>"
+            f"<td>{escape(str(item.get('segment_id', '')))}</td>"
+            f"<td>{escape(str(item.get('candidate_id', '')))}</td>"
+            f"<td>{escape(str(item.get('reviewer', '')))}</td>"
+            f"<td>{escape(str(item.get('reason', '')))}</td>"
+            f"<td class=\"visual-selection-frames\">{frame_html}</td>"
+            "</tr>"
+        )
+    table = (
+        "<table><thead><tr><th>Segment</th><th>Candidate</th><th>Reviewer</th><th>Reason</th><th>Frames</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody></table>"
+    )
+    return intro + sheet + table
+
+
 def _change_report_markdown_section(change_report: dict | None) -> list[str]:
     lines = ["## Change report"]
     if not change_report:
@@ -619,6 +689,9 @@ def build_review_markdown(review: dict, recipe: dict | None = None, matches: dic
     lines.extend(_story_support_section(review.get("story_support")))
     lines.append("")
     lines.extend(_storyboard_markdown_section(recipe, matches, review))
+    if review.get("visual_selection"):
+        lines.append("")
+        lines.extend(_visual_selection_markdown_section(review.get("visual_selection")))
     if review.get("change_report"):
         lines.append("")
         lines.extend(_change_report_markdown_section(review.get("change_report")))
@@ -694,6 +767,8 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
     figcaption {{ margin-top: 6px; color: #5b6470; overflow-wrap: anywhere; }}
     .risk-warning {{ border-left: 4px solid #b45309; }}
     .risk-none {{ border-left: 4px solid #2f855a; }}
+    .visual-selection-frames {{ display: flex; gap: 8px; flex-wrap: wrap; }}
+    .visual-selection-frames img {{ width: 120px; max-height: 240px; object-fit: contain; }}
   </style>
 </head>
 <body>
@@ -719,6 +794,7 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
   <ul>{story_support}</ul>
   <h2>Storyboard</h2>
   <section class="storyboard">{_storyboard_html(recipe, matches, review)}</section>
+  {_visual_selection_section_html(review.get('visual_selection'))}
   {_change_report_section_html(review.get('change_report'))}
   <h2>Segments</h2>
   <table>
@@ -767,7 +843,40 @@ def _html_review_paths(review: dict, base_dir: Path) -> dict:
             if isinstance(item, dict):
                 _relativize_change_frame(item, "before_frame", base_dir)
                 _relativize_change_frame(item, "after_frame", base_dir)
+    visual_selection = html_review.get("visual_selection")
+    if isinstance(visual_selection, dict):
+        for key in ("candidate_sheet",):
+            _relativize_visual_path(visual_selection, key, base_dir)
+        for item in visual_selection.get("selections", []):
+            if isinstance(item, dict):
+                frames = item.get("frames", [])
+                if isinstance(frames, list):
+                    item["frames"] = [_relative_path(value, base_dir) for value in frames]
     return html_review
+
+
+def _visual_selection_section_html(visual_selection: dict | None) -> str:
+    if not visual_selection:
+        return ""
+    return f"<h2>Visual selection</h2><section>{_visual_selection_html(visual_selection)}</section>"
+
+
+def _relativize_visual_path(data: dict, key: str, base_dir: Path) -> None:
+    value = data.get(key)
+    if isinstance(value, str) and value:
+        data[key] = _relative_path(value, base_dir)
+
+
+def _relative_path(value: object, base_dir: Path) -> str:
+    if not isinstance(value, str) or not value:
+        return str(value or "")
+    try:
+        candidate = Path(value)
+        if candidate.is_absolute():
+            return candidate.resolve().relative_to(base_dir.resolve()).as_posix()
+    except (OSError, ValueError):
+        pass
+    return value
 
 
 def _relativize_change_frame(item: dict, key: str, base_dir: Path) -> None:

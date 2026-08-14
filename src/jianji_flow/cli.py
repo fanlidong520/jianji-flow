@@ -30,6 +30,12 @@ from jianji_flow.review_summary import build_review_summary
 from jianji_flow.semantics import validate_semantics
 from jianji_flow.subtitles import write_ass, write_srt
 from jianji_flow.visual_similarity import is_visually_similar
+from jianji_flow.visual_candidates import (
+    apply_visual_selections,
+    build_visual_candidate_manifest,
+    load_visual_selection,
+    write_visual_candidate_artifacts,
+)
 from jianji_flow.voiceover import create_voiceover, probe_voiceover, validate_voiceover
 from jianji_flow.window_scoring import score_source_window
 
@@ -47,6 +53,7 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--script")
     run.add_argument("--fixes", help="optional JSON file that pins selected segments or roles to replacement assets")
     run.add_argument("--apply-recommendation", help="apply a clean recommended fix from --fixes for one segment id")
+    run.add_argument("--visual-selections", help="optional Codex visual selection JSON file")
     run.add_argument("--confidence-threshold", type=float)
     run.add_argument("--target-width", type=int)
     run.add_argument("--target-height", type=int)
@@ -67,12 +74,20 @@ def _build_parser() -> argparse.ArgumentParser:
     quick.add_argument("--script")
     quick.add_argument("--fixes", help="optional JSON file that pins selected segments or roles to replacement assets")
     quick.add_argument("--apply-recommendation", help="apply a clean recommended fix from --fixes for one segment id")
+    quick.add_argument("--visual-selections", help="optional Codex visual selection JSON file")
     quick.add_argument("--work-dir")
     quick.add_argument("--mode", choices=("product", "talking-head"), default="product")
     quick.add_argument("--confidence-threshold", type=float)
     quick.add_argument("--target-width", type=int)
     quick.add_argument("--target-height", type=int)
     quick.add_argument("--target-fps", type=float)
+
+    visual_review = commands.add_parser("visual-review", help="build a visual candidate board without rendering")
+    visual_review.add_argument("--reference", required=True)
+    visual_review.add_argument("--assets", required=True)
+    visual_review.add_argument("--work-dir", required=True)
+    visual_review.add_argument("--script")
+    visual_review.add_argument("--mode", choices=("product", "talking-head"), default="product")
     return parser
 
 
@@ -110,6 +125,103 @@ def _read_fixes(path_text: str | None, *, apply_recommendation: str | None = Non
     return data
 
 
+def _read_visual_selection_input(
+    path_text: str | None,
+) -> tuple[dict, dict, Path, Path] | None:
+    if path_text is None:
+        return None
+    selection_path = resolve_existing_file(path_text)
+    selection = load_visual_selection(selection_path)
+    manifest_reference = Path(str(selection["candidate_manifest"]))
+    manifest_path = manifest_reference if manifest_reference.is_absolute() else selection_path.parent / manifest_reference
+    if not manifest_path.exists():
+        raise ValueError(f"visual candidate manifest not found: {manifest_path}")
+    try:
+        candidate_manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"visual candidate manifest is not valid JSON: {manifest_path}: {exc}") from exc
+    if not isinstance(candidate_manifest, dict) or not isinstance(candidate_manifest.get("candidates"), list):
+        raise ValueError(f"visual candidate manifest is invalid: {manifest_path}")
+    return selection, candidate_manifest, selection_path, manifest_path
+
+
+def _visual_selection_review_data(selection: dict, candidate_manifest: dict, manifest_path: Path) -> dict:
+    candidate_by_id = {str(item.get("candidate_id")): item for item in candidate_manifest.get("candidates", [])}
+    selections = []
+    for segment_id, entry in selection.get("selections", {}).items():
+        candidate = candidate_by_id.get(str(entry.get("candidate_id")))
+        if candidate is None:
+            continue
+        frames = [
+            (manifest_path.parent / str(frame.get("path", ""))).as_posix()
+            for frame in candidate.get("frames", [])
+        ]
+        selections.append(
+            {
+                "segment_id": str(segment_id),
+                "candidate_id": str(entry.get("candidate_id", "")),
+                "reviewer": str(entry.get("reviewer", "")),
+                "reason": str(entry.get("reason", "")),
+                "asset_path": str(candidate.get("asset_path", "")),
+                "source_range": f"{candidate.get('source_start_ms', '')}-{candidate.get('source_end_ms', '')}ms",
+                "frames": frames,
+            }
+        )
+    return {
+        "candidate_sheet": (manifest_path.parent / "visual-candidate-sheet.png").as_posix(),
+        "selections": selections,
+    }
+
+
+def _materialize_visual_selection_review_data(
+    selection: dict,
+    candidate_manifest: dict,
+    manifest_path: Path,
+    work_dir: Path,
+) -> dict:
+    review_data = _visual_selection_review_data(selection, candidate_manifest, manifest_path)
+    evidence_dir = work_dir / "visual-selection-evidence"
+    if evidence_dir.exists():
+        shutil.rmtree(evidence_dir)
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    candidate_sheet = Path(review_data["candidate_sheet"])
+    if candidate_sheet.exists():
+        copied_sheet = evidence_dir / "visual-candidate-sheet.png"
+        shutil.copy2(candidate_sheet, copied_sheet)
+        review_data["candidate_sheet"] = copied_sheet.as_posix()
+    for item in review_data.get("selections", []):
+        copied_frames = []
+        for index, frame_text in enumerate(item.get("frames", []), start=1):
+            frame_path = Path(frame_text)
+            if not frame_path.exists():
+                continue
+            copied_frame = evidence_dir / f"{item['segment_id']}-{index:02d}.png"
+            shutil.copy2(frame_path, copied_frame)
+            copied_frames.append(copied_frame.as_posix())
+        item["frames"] = copied_frames
+    return review_data
+
+
+def _write_visual_board(segments: list[dict], records: list, work_dir: Path) -> dict[str, str]:
+    manifest = build_visual_candidate_manifest(segments, records, work_dir)
+    return write_visual_candidate_artifacts(manifest, segments, work_dir)
+
+
+def _visual_board_diagnosis_text(outputs: dict[str, str]) -> str:
+    return "\n".join(
+        [
+            "",
+            "## Visual candidate review",
+            "Candidate frames were generated without using filename role labels.",
+            f"- Candidate sheet: {outputs.get('visual_candidate_sheet', '')}",
+            f"- Selection template: {outputs.get('visual_selection_template', '')}",
+            "- Next: let Codex inspect the candidate sheet, fill candidate_id and reason in the template, then rerun with --visual-selections.",
+            "- Local frame quality metrics are not semantic proof; publishing still requires human review.",
+            "",
+        ]
+    )
+
+
 def _success_artifact_names() -> tuple[str, ...]:
     return (
         "remix.mp4",
@@ -123,7 +235,7 @@ def _success_artifact_names() -> tuple[str, ...]:
 
 
 def _run_diagnostic_dir_names() -> tuple[str, ...]:
-    return ("visual-similarity-diagnostics", "change-diagnostics")
+    return ("visual-similarity-diagnostics", "change-diagnostics", "visual-selection-evidence")
 
 
 def _success_artifact_dir_names() -> tuple[str, ...]:
@@ -297,6 +409,7 @@ def _build_visual_similarity_checker(work_dir: Path):
 def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None = None) -> int:
     work_dir: Path | None = None
     try:
+        visual_selection_input = _read_visual_selection_input(getattr(args, "visual_selections", None))
         work_dir = make_output_dir(Path(args.work_dir).resolve().parent, Path(args.work_dir).name)
         _clear_success_artifacts(work_dir)
         remix_path = work_dir / "remix.mp4"
@@ -334,6 +447,20 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             fixes_data,
             window_scorer=window_scorer,
         )
+        if visual_selection_input is not None:
+            selection, candidate_manifest, selection_path, candidate_manifest_path = visual_selection_input
+            matches = apply_visual_selections(segments, matches, records, selection, candidate_manifest)
+            visual_selection_review = _materialize_visual_selection_review_data(
+                selection,
+                candidate_manifest,
+                candidate_manifest_path,
+                work_dir,
+            )
+        else:
+            selection_path = None
+            candidate_manifest_path = None
+            visual_selection_review = None
+        change_requested = fixes_data is not None or visual_selection_input is not None
         recipe = build_recipe(
             args.mode,
             target,
@@ -419,7 +546,7 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
                 f"{len(recipe.get('segments', []))} segments"
             )
         recipe, matches = retime_recipe_and_matches(recipe, matches, voiceover_duration_ms)
-        if fixes_data:
+        if change_requested:
             _, base_matches_for_change_report = retime_recipe_and_matches(
                 pretime_recipe,
                 base_matches_for_change_report,
@@ -471,8 +598,9 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             voiceover_path=voiceover_path,
             contact_sheet_path=contact_sheet_path,
             review_html_path=review_html_path,
+            visual_selection=visual_selection_review,
         )
-        if fixes_data:
+        if change_requested:
             change_diagnostics_dir = work_dir / "change-diagnostics"
             review["change_report"] = build_change_report(
                 recipe,
@@ -486,6 +614,12 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         review["outputs"]["recipe"] = recipe_path.as_posix()
         review["outputs"]["matches"] = matches_path.as_posix()
         review["outputs"]["captions_ass"] = ass_path.as_posix()
+        if selection_path is not None and candidate_manifest_path is not None:
+            review["outputs"]["visual_selections"] = selection_path.as_posix()
+            review["outputs"]["visual_candidate_manifest"] = candidate_manifest_path.as_posix()
+            review["outputs"]["visual_candidate_sheet"] = (
+                candidate_manifest_path.parent / "visual-candidate-sheet.png"
+            ).as_posix()
         fixes_template = build_fixes_template(
             recipe,
             matches,
@@ -548,6 +682,7 @@ def _run_demo_command(args: argparse.Namespace) -> int:
             work_dir=str(work_dir),
             fixes=None,
             apply_recommendation=None,
+            visual_selections=None,
             confidence_threshold=None,
             target_width=args.target_width,
             target_height=args.target_height,
@@ -557,6 +692,27 @@ def _run_demo_command(args: argparse.Namespace) -> int:
     except Exception as exc:
         work_dir.mkdir(parents=True, exist_ok=True)
         _clear_run_state_artifacts(work_dir)
+        _write_failure_review(work_dir, str(exc))
+        print(f"jianji-flow failed: {exc}", file=sys.stderr)
+        return 1
+
+
+def _run_visual_review_command(args: argparse.Namespace) -> int:
+    work_dir = Path(args.work_dir).resolve()
+    try:
+        work_dir = make_output_dir(work_dir.parent, work_dir.name)
+        reference_path = resolve_existing_file(args.reference)
+        asset_root = resolve_existing_dir(args.assets)
+        script_text = _read_script(args.script) if args.script else (default_product_script() if args.mode == "product" else None)
+        reference_info = run_ffprobe(reference_path)
+        records = scan_assets(asset_root)
+        segments = build_segment_plan(args.mode, reference_info.duration_ms, script_text)
+        outputs = _write_visual_board(segments, records, work_dir)
+        print(f"jianji-flow visual review board written: {outputs['visual_candidate_sheet']}")
+        print(f"selection template: {outputs['visual_selection_template']}")
+        return 0
+    except Exception as exc:
+        work_dir.mkdir(parents=True, exist_ok=True)
         _write_failure_review(work_dir, str(exc))
         print(f"jianji-flow failed: {exc}", file=sys.stderr)
         return 1
@@ -589,6 +745,10 @@ def _run_quick_command(args: argparse.Namespace) -> int:
             )
             diagnosis_path = _write_diagnosis(work_dir, format_asset_diagnosis(report))
             if report["status"] == "fail":
+                board_outputs = _write_visual_board(segments, records, work_dir)
+                _append_existing_diagnosis(work_dir, _visual_board_diagnosis_text(board_outputs))
+                if getattr(args, "visual_selections", None):
+                    return _run_pipeline(args, script_text_override=script_override)
                 _clear_run_state_artifacts(work_dir)
                 print(f"quick stopped; diagnosis written to {diagnosis_path}", file=sys.stderr)
                 return 1
@@ -620,6 +780,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if report["status"] == "pass" else 1
     if args.command == "demo":
         return _run_demo_command(args)
+    if args.command == "visual-review":
+        return _run_visual_review_command(args)
     if args.command == "quick":
         return _run_quick_command(args)
     if args.command == "run":

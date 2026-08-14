@@ -206,6 +206,17 @@ def test_apply_visual_selection_updates_window_and_records_evidence(tmp_path: Pa
     assert match["source_start_ms"] == 3000
     assert match["source_end_ms"] == 5000
     assert "visual-review:seg-001-candidate-01" in match["evidence"]
+    assert match["candidates"] == [
+        {
+            "asset_id": "asset-b",
+            "source_path": (tmp_path / "IMG_002.mp4").as_posix(),
+            "source_start_ms": 3000,
+            "source_end_ms": 5000,
+            "asset_duration_ms": 6000,
+            "score": 1.0,
+            "evidence": ["visual-review:seg-001-candidate-01"],
+        }
+    ]
 
 
 def test_apply_visual_selection_rejects_unknown_candidate_before_render(tmp_path: Path):
@@ -260,4 +271,31 @@ def test_apply_visual_selection_rejects_stale_asset_fingerprint(tmp_path: Path):
     }
 
     with pytest.raises(ValueError, match="fingerprint"):
+        apply_visual_selections(_segments(), _matches(), _assets(tmp_path), selected, manifest)
+
+
+def test_apply_visual_selection_rejects_stale_frame_evidence(tmp_path: Path):
+    manifest = _candidate_manifest(tmp_path)
+    manifest["generated_in"] = (tmp_path / "board").as_posix()
+    board = tmp_path / "board"
+    for frame in manifest["candidates"][0]["frames"]:
+        frame_path = board / frame["path"]
+        frame_path.parent.mkdir(parents=True, exist_ok=True)
+        frame_path.write_bytes(frame["path"].encode("utf-8"))
+        frame["sha256"] = hashlib.sha256(frame_path.read_bytes()).hexdigest()
+    first_frame = board / manifest["candidates"][0]["frames"][0]["path"]
+    first_frame.write_bytes(b"changed after review")
+    selected = {
+        "version": "0.1",
+        "candidate_manifest": "visual-candidates.json",
+        "selections": {
+            "seg-001": {
+                "candidate_id": "seg-001-candidate-01",
+                "reviewer": "codex-vision",
+                "reason": "看过候选画面。",
+            }
+        },
+    }
+
+    with pytest.raises(ValueError, match="frame fingerprint"):
         apply_visual_selections(_segments(), _matches(), _assets(tmp_path), selected, manifest)
