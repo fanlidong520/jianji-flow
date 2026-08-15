@@ -297,6 +297,11 @@ Visual similarity checking samples three frames from the actual selected source 
 
 ## Validation
 
+The release and business gates are documented in
+[`docs/launch-and-business.md`](docs/launch-and-business.md). The intended
+order is quality evidence, public free core, paid manual delivery, and only
+then repeated paid product layers.
+
 ```powershell
 python -m pytest -q
 python scripts/run_smoke.py
