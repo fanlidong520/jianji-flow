@@ -74,8 +74,64 @@ def test_diagnose_source_diversity_skips_obviously_different_candidates(tmp_path
     result = diagnose_source_diversity(
         [
             _asset("01-source.mp4", sha256="one", duration_ms=10_000),
-            _asset("02-longer.mp4", sha256="two", duration_ms=20_000),
+            _asset("02-longer.mp4", sha256="two", duration_ms=50_000),
             _asset("03-wide.mp4", sha256="three", width=1080, height=1920),
+        ],
+        tmp_path / "source-diversity-diagnostics",
+    )
+
+    assert result["status"] == "pass"
+    assert result["similar_groups"] == []
+
+
+def test_diagnose_source_diversity_warns_on_partial_mother_clip_overlap(tmp_path, monkeypatch):
+    calls = []
+
+    monkeypatch.setattr(
+        "jianji_flow.source_diversity.mean_frame_difference",
+        lambda *args, **kwargs: 20.0,
+    )
+
+    def fake_normalized_frame_overlap(left_path, right_path, **kwargs):
+        calls.append((left_path, right_path, kwargs))
+        return {"score": 1.2, "coverage": 0.67}
+
+    monkeypatch.setattr("jianji_flow.source_diversity.normalized_frame_overlap", fake_normalized_frame_overlap)
+
+    result = diagnose_source_diversity(
+        [
+            _asset("01-mother-clip.mp4", sha256="original", duration_ms=10_000),
+            _asset("02-short-cut.mp4", sha256="cut", duration_ms=4_500),
+        ],
+        tmp_path / "source-diversity-diagnostics",
+    )
+
+    assert result["status"] == "warning"
+    assert result["similar_groups"] == [
+        {
+            "paths": ["01-mother-clip.mp4", "02-short-cut.mp4"],
+            "score": 1.2,
+            "coverage": 0.67,
+            "match_mode": "partial-overlap",
+        }
+    ]
+    assert len(calls) == 1
+
+
+def test_diagnose_source_diversity_ignores_low_partial_overlap_coverage(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "jianji_flow.source_diversity.mean_frame_difference",
+        lambda *args, **kwargs: 20.0,
+    )
+    monkeypatch.setattr(
+        "jianji_flow.source_diversity.normalized_frame_overlap",
+        lambda *args, **kwargs: {"score": 1.2, "coverage": 0.33},
+    )
+
+    result = diagnose_source_diversity(
+        [
+            _asset("01-scene-a.mp4", sha256="one", duration_ms=10_000),
+            _asset("02-scene-b.mp4", sha256="two", duration_ms=4_500),
         ],
         tmp_path / "source-diversity-diagnostics",
     )

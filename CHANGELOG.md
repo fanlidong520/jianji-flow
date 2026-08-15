@@ -46,6 +46,9 @@
 - Product `quick` now performs a conservative visual-diversity audit on
   close-duration, same-sized candidates and reports likely re-encoded or
   cropped copies without claiming certain mother-video identity.
+- The visual-diversity audit also checks selected longer/shorter pairs for
+  conservative partial-frame overlap, reports coverage, and still avoids
+  claiming certain mother-video identity.
 - Source preflight no longer escalates one warning repeatedly when the same
   source video is reused across segments; it still escalates repeated samples
   within a segment or the same warning across independent source files.

@@ -169,8 +169,15 @@ def _append_source_diversity_lines(lines: list[str], report: dict) -> None:
     for group in source_diversity.get("similar_groups", []):
         paths = ", ".join(Path(path).name for path in group.get("paths", []))
         score = group.get("score", "unknown")
+        mode = str(group.get("match_mode", "aligned"))
+        coverage = group.get("coverage")
+        overlap_note = (
+            f" partial-overlap coverage {coverage};"
+            if mode == "partial-overlap" and coverage is not None
+            else ""
+        )
         lines.append(
-            f"- SIMILAR MEDIA: {paths} have visual difference score {score}; they may be a re-encoded or cropped copy. "
+            f"- SIMILAR MEDIA: {paths} have visual difference score {score};{overlap_note} they may be a re-encoded or cropped copy. "
             "This does not prove the same mother video."
         )
     for warning in source_diversity.get("warnings", []):

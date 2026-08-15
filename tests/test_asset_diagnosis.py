@@ -96,6 +96,32 @@ def test_format_asset_diagnosis_reports_visual_similarity_without_claiming_same_
     assert "does not prove the same mother video" in text
 
 
+def test_format_asset_diagnosis_reports_partial_overlap_coverage():
+    report = {
+        "status": "warning",
+        "roles": {},
+        "actions": [],
+        "source_diversity": {
+            "status": "warning",
+            "similar_groups": [
+                {
+                    "paths": ["assets/mother.mp4", "assets/cut.mp4"],
+                    "score": 3.154,
+                    "coverage": 0.667,
+                    "match_mode": "partial-overlap",
+                }
+            ],
+            "warnings": [],
+            "diagnostics_dir": "work/source-diversity-diagnostics",
+        },
+    }
+
+    text = format_asset_diagnosis(report)
+
+    assert "partial-overlap" in text
+    assert "0.667" in text
+
+
 def test_product_asset_diagnosis_does_not_reuse_one_clip_for_all_roles():
     segments = build_segment_plan("product", 10_000, None)
     assets = [_asset("before-after-demo-product-buy.mp4", duration_ms=30_000)]

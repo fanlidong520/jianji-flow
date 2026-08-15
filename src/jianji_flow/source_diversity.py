@@ -3,7 +3,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from .visual_similarity import mean_frame_difference
+from .visual_similarity import mean_frame_difference, normalized_frame_overlap
 
 
 def _value(asset: dict, name: str, default=0):
@@ -39,8 +39,11 @@ def _is_candidate(left: dict, right: dict, *, duration_tolerance_ms: int) -> boo
     right_duration = _duration_ms(right)
     if left_duration <= 0 or right_duration <= 0:
         return False
+    ratio = max(left_duration, right_duration) / min(left_duration, right_duration)
+    if ratio > 3.0:
+        return False
     tolerance = max(duration_tolerance_ms, round(min(left_duration, right_duration) * 0.05))
-    return abs(left_duration - right_duration) <= tolerance
+    return abs(left_duration - right_duration) <= tolerance or ratio > 1.25
 
 
 def diagnose_source_diversity(
@@ -70,6 +73,28 @@ def diagnose_source_diversity(
                     duration_ms=min(_duration_ms(left), _duration_ms(right)),
                     diagnostics_dir=pair_dir,
                 )
+                ratio = max(_duration_ms(left), _duration_ms(right)) / min(
+                    _duration_ms(left), _duration_ms(right)
+                )
+                if score > threshold and ratio >= 2.0:
+                    overlap = normalized_frame_overlap(
+                        left_path,
+                        right_path,
+                        left_duration_ms=_duration_ms(left),
+                        right_duration_ms=_duration_ms(right),
+                        diagnostics_dir=pair_dir,
+                        threshold=threshold,
+                    )
+                    if overlap["coverage"] >= (2 / 3) and overlap["score"] <= max(threshold, 4.0):
+                        similar_groups.append(
+                            {
+                                "paths": [left_path.as_posix(), right_path.as_posix()],
+                                "score": round(float(overlap["score"]), 3),
+                                "coverage": round(float(overlap["coverage"]), 3),
+                                "match_mode": "partial-overlap",
+                            }
+                        )
+                        continue
             except (OSError, RuntimeError, ValueError) as exc:
                 warnings.append(
                     f"Could not compare {left_path.name} and {right_path.name} for source diversity: {exc}"

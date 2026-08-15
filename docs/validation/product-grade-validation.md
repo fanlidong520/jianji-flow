@@ -319,6 +319,8 @@ Latest conservative source-diversity checkpoint:
   instead of treating five role-labeled names as five independent clips;
 - a real re-encoded fixture pair was scored `0.18` and reported as `SIMILAR
   MEDIA` with sampled diagnostics;
+- a real middle segment cut from a longer source was detected as
+  `partial-overlap` with score `3.154` and coverage `0.667`;
 - this gate intentionally does not claim to detect every re-encoded file or
   clip cut from the same mother video; that remains an open validation item.
 
@@ -365,7 +367,7 @@ Latest preflight false-positive recalibration and default-script checkpoint:
   byte-identical copies do not become false independent-warning evidence;
 - the escalation rule still fails repeated sampled warnings within one source
   segment or the same warning family across independent source files;
-- the regression suite now passes `396/396`, with smoke and P0 passing again;
+- the regression suite now passes `399/399`, with smoke and P0 passing again;
 - the no-script quick path now produces a five-beat cleaning product script
   instead of placeholder labels: hook, pain, feature, demonstration, and
   closing line;
@@ -375,6 +377,17 @@ Latest preflight false-positive recalibration and default-script checkpoint:
   reuse;
 - visual inspection of the real contact sheet confirms that the preview is
   visibly re-edited, but the source pack is still not publish-ready.
+
+Latest partial-mother-clip audit checkpoint:
+
+- the source-diversity audit now compares a longer/shorter pair across
+  uniformly extracted frames instead of assuming matching timestamps;
+- a real 4.5-second middle cut from `IMG_003.mp4` was reported as
+  `partial-overlap`, score `3.154`, coverage `0.667`;
+- the audit remains a warning-only signal and does not prove all clips from
+  the same mother video are detected;
+- the full suite remains green at `399/399` after the new audit and output
+  formatting.
 
 ## Launch Rule
 

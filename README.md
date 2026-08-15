@@ -149,7 +149,7 @@ winget install Gyan.FFmpeg
 - `assets/`: 你自己的本地素材文件夹，里面放可用的 `.mp4` 素材。
 - `script.txt`: 可选文案。产品带货建议按“开头、痛点、卖点、演示、行动提醒”写成 3 到 8 段短句。
 
-如果多个文件只是复制后改了名字，`diagnosis.md` 会标记为 `DUPLICATE MEDIA`。这是保守的字节级检查，不代表已经能识别所有重新编码或从同一母片截出的文件，仍需看画面和素材来源。
+如果多个文件只是复制后改了名字，`diagnosis.md` 会标记为 `DUPLICATE MEDIA`。对于尺寸相同、时长接近的重新编码文件，以及时长相差不超过约 3 倍、短片大多数采样帧能在长片中找到对应画面的文件，它会标记 `SIMILAR MEDIA`；这仍是保守的风险提示，不代表已经证明来自同一母片，仍需看画面和素材来源。
 
 素材命名越清楚，当前匹配越稳。例如：
 
@@ -204,7 +204,7 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 - `visual-candidate-sheet.png`: contact sheet for choosing candidates without relying on file names.
 - `visual-selection.template.json`: starter JSON for recording a reviewer, candidate id, and reason for each selected segment.
 - `visual-selection-evidence/`: self-contained candidate sheet and selected frames copied into a rendered run's review folder.
-- `source-diversity-diagnostics/`: sampled frame comparisons used when close-duration assets may be re-encoded or cropped copies.
+- `source-diversity-diagnostics/`: sampled frame comparisons used when assets may be re-encoded, cropped, or partial overlaps from one source.
 
 `review.md` and `review.html` also include a `Storyboard` section. It lists each segment's role, caption, selected asset, source range, matching evidence, and risk, so a user can see what was cut without opening `matches.json`.
 When fixes are generated, open `candidate-review.html` from the same work directory. It shows the current segment frame next to up to three candidate frames, including whether a candidate is a clean recommendation, a warning-only option, or a wrong-role manual-inspection fallback.
