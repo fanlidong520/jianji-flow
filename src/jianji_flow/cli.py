@@ -308,22 +308,35 @@ def _clear_run_state_artifacts(work_dir: Path) -> None:
             path.unlink()
 
 
-def _write_failure_review(work_dir: Path, failure: str) -> None:
+def _write_failure_review(
+    work_dir: Path,
+    failure: str,
+    *,
+    outputs: dict[str, str] | None = None,
+    recipe: dict | None = None,
+    matches: dict | None = None,
+) -> None:
     review_path = work_dir / "review.md"
     review_html_path = work_dir / "review.html"
+    review_outputs = dict(outputs or {})
+    review_outputs.update(
+        {
+            "review_md": review_path.as_posix(),
+            "review_html": review_html_path.as_posix(),
+        }
+    )
     review = {
         "status": "fail",
         "failures": [failure],
         "warnings": [],
         "missing_segments": [],
         "low_confidence_segments": [],
-        "outputs": {
-            "review_md": review_path.as_posix(),
-            "review_html": review_html_path.as_posix(),
-        },
+        "outputs": review_outputs,
     }
-    write_review_markdown(review, review_path)
-    write_review_html(review, {"segments": []}, {"matches": []}, review_html_path)
+    html_recipe = recipe or {"segments": []}
+    html_matches = matches or {"matches": []}
+    write_review_markdown(review, review_path, recipe, matches)
+    write_review_html(review, html_recipe, html_matches, review_html_path)
 
 
 def _write_diagnosis(work_dir: Path, text: str) -> Path:
@@ -546,7 +559,7 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             review["outputs"]["review_html"] = review_html_path.as_posix()
             write_review_markdown(review, review_path, recipe, matches)
             write_review_html(review, recipe, matches, review_html_path)
-            print(f"validation failed; review written to {review_path}", file=sys.stderr)
+            print(f"validation failed; open review.html: {review_html_path}", file=sys.stderr)
             return 1
 
         source_identity = {}
@@ -584,7 +597,7 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             review["outputs"]["review_html"] = review_html_path.as_posix()
             write_review_markdown(review, review_path, recipe, matches)
             write_review_html(review, recipe, matches, review_html_path)
-            print(f"source preflight failed; review written to {review_path}", file=sys.stderr)
+            print(f"source preflight failed; open review.html: {review_html_path}", file=sys.stderr)
             return 1
 
         create_voiceover(recipe, voiceover_path)
@@ -733,11 +746,12 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             review["outputs"]["review_html"] = review_html_path.as_posix()
             write_review_markdown(review, review_path, recipe, matches)
             write_review_html(review, recipe, matches, review_html_path)
-            print(f"jianji-flow failed review: {review_path}", file=sys.stderr)
+            print(f"jianji-flow failed review; open review.html: {review_html_path}", file=sys.stderr)
             return 1
         review["outputs"]["review_md"] = review_path.as_posix()
         write_review_markdown(review, review_path, recipe, matches)
         write_review_html(review, recipe, matches, review_html_path)
+        print(f"open review.html: {review_html_path}")
         if review["status"] == "warning":
             print(f"jianji-flow review required: {review_path}")
         else:
@@ -853,7 +867,18 @@ def _run_quick_command(args: argparse.Namespace) -> int:
                 if visual_selection_supplied:
                     return _run_pipeline(args, script_text_override=script_override)
                 _clear_run_state_artifacts(work_dir)
-                print(f"quick stopped; diagnosis written to {diagnosis_path}", file=sys.stderr)
+                failure_details = "; ".join(str(item) for item in report.get("actions", []))
+                _write_failure_review(
+                    work_dir,
+                    f"Material diagnosis blocked quick: {failure_details or 'required product roles are missing.'}",
+                    outputs={"diagnosis": diagnosis_path.as_posix(), **board_outputs},
+                    recipe={"segments": segments},
+                    matches={"matches": []},
+                )
+                print(
+                    f"quick stopped; open review.html: {work_dir / 'review.html'}; diagnosis written to {diagnosis_path}",
+                    file=sys.stderr,
+                )
                 return 1
         return _run_pipeline(args, script_text_override=script_override)
     except Exception as exc:

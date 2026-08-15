@@ -205,6 +205,10 @@ exists, then compare `Reference vs Remix` and the `Contact Sheet`. When a run
 is blocked before rendering, the page says that the video was not generated,
 links the machine-readable files, and embeds the source diagnostic frames that
 caused the block.
+
+When `quick` stops during material diagnosis, it also writes `review.html`.
+Open that page to see the missing or weak roles, `diagnosis.md`, and the
+candidate board; do not look for a nonexistent `remix.mp4`.
 - `fixes.template.json`: editable repair file for replacing weak or low-confidence segments on the next run.
 - `visual-similarity-diagnostics/`: sampled frames used to audit visually similar or unchecked repair recommendations.
 - `change-diagnostics/`: before/after sampled frames used by the `Change report` after a fix run.

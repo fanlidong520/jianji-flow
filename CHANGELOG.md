@@ -5,6 +5,9 @@
 - Failed runs now keep a local `review.html` alongside `review.md`; the page
   clearly marks missing media as not generated, links review artifacts, and
   embeds source-preflight diagnostic frames when available.
+- Product `quick` material-diagnosis failures now also write that review page
+  with `diagnosis.md` and the visual candidate board, and CLI runs print the
+  page to open directly.
 - Planned v0.3 usability layer: `doctor`, `demo`, `quick`, material diagnosis,
   source preflight, and plain-language review summary.
 - Added source preflight checks that stop before voiceover/render when selected

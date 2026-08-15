@@ -454,6 +454,10 @@ def test_quick_stops_before_render_when_product_roles_are_missing(tmp_path, monk
     assert code == 1
     assert (work_dir / "diagnosis.md").exists()
     assert "缺少" in (work_dir / "diagnosis.md").read_text(encoding="utf-8")
+    assert (work_dir / "review.html").exists()
+    review_html = (work_dir / "review.html").read_text(encoding="utf-8")
+    assert "Material diagnosis blocked quick" in review_html
+    assert "diagnosis.md" in review_html
     assert not (work_dir / "remix.mp4").exists()
 
 
@@ -490,8 +494,10 @@ def test_quick_material_failure_removes_stale_review_outputs(tmp_path, monkeypat
 
     assert main(failed_args) == 1
     assert (work_dir / "diagnosis.md").exists()
-    for name in ("review.md", "review.html", "manifest.json", "recipe.json", "matches.json", "captions.srt", "captions.ass"):
+    for name in ("manifest.json", "recipe.json", "matches.json", "captions.srt", "captions.ass"):
         assert not (work_dir / name).exists(), name
+    assert (work_dir / "review.md").exists()
+    assert (work_dir / "review.html").exists()
 
 
 def test_cli_help_when_argv_none(monkeypatch, capsys):

@@ -176,7 +176,7 @@ On success or warning, report the paths for:
 - `review.md`
 - `review.html`
 
-On fail, report `review.md`, `review.html`, and any diagnostic files that were written, including `source-diagnostics` or preserved `contact-sheet.png`. The HTML page is the first stop: it must say when no video was generated and show the source diagnostic frames when available.
+On fail, report `review.md`, `review.html`, and any diagnostic files that were written, including `diagnosis.md`, `visual-candidate-sheet.png`, `source-diagnostics`, or preserved `contact-sheet.png`. The HTML page is the first stop: it must say when no video was generated and show the source diagnostic frames when available.
 Never describe a failed or warning run as completed video output.
 
 ## Review Status Language
