@@ -9,8 +9,9 @@
   with `diagnosis.md` and the visual candidate board, and CLI runs print the
   page to open directly.
 - The release gate now requires non-empty `review.html`, `remix.mp4`, and
-  `contact-sheet.png` evidence for each real pass, and verifies that dirty
-  packs do not leave a remix artifact.
+  `contact-sheet.png` evidence for each real pass, validates that the remix is
+  decodable with video and audio and that the contact sheet is a real image,
+  and verifies that dirty packs do not leave a remix artifact.
 - Planned v0.3 usability layer: `doctor`, `demo`, `quick`, material diagnosis,
   source preflight, and plain-language review summary.
 - Added source preflight checks that stop before voiceover/render when selected

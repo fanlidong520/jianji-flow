@@ -331,13 +331,14 @@ python scripts/check_release_gate.py --evidence path\to\release-evidence.json
 The command writes `release-gate.md` and `release-gate.json`. Missing evidence
 or a mismatch between a ledger entry and the referenced `review.md` produces
 `blocked`; it also requires real packs to reference non-empty `review.html`,
-`remix.mp4`, and `contact-sheet.png` artifacts. A dirty pack must reference
-the expected `remix.mp4` path and prove that the file is absent. The gate
-cannot turn a warning run or an unverified user trial into a release pass.
+an `ffprobe`-decodable `remix.mp4` with video and audio, and a valid
+`contact-sheet.png`. A dirty pack must reference the expected `remix.mp4` path
+and prove that the file is absent. The gate cannot turn a warning run or an
+unverified user trial into a release pass.
 
 Latest local result:
 
-- `python -m pytest -q` -> 414 passed in 330.17s
+- `python -m pytest -q` -> 416 passed in 320.14s
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 - `python -m jianji_flow --version` -> `jianji-flow 0.3.0.dev0`

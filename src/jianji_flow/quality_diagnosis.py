@@ -126,21 +126,25 @@ def _bright_component_stats(image: Image.Image) -> dict[str, float | int]:
     }
 
 
-def diagnose_frame(image: Image.Image) -> dict:
+def diagnose_frame(image: Image.Image, *, check_chrome: bool = True) -> dict:
     band = _lower_band(image)
     upper = _upper_band(image)
-    top_chrome = image.crop((0, 0, image.width, round(image.height * 0.16)))
-    bottom_chrome = image.crop((0, round(image.height * 0.82), image.width, image.height))
+    top_chrome = image.crop((0, 0, image.width, round(image.height * 0.16))) if check_chrome else None
+    bottom_chrome = image.crop((0, round(image.height * 0.82), image.width, image.height)) if check_chrome else None
     bright_ratio = _bright_pixel_ratio(band)
     upper_bright_ratio = _bright_pixel_ratio(upper)
     horizontal_coverage = _bright_horizontal_coverage(band)
     component_stats = _bright_component_stats(band)
-    top_component_stats = _bright_component_stats(top_chrome)
-    bottom_component_stats = _bright_component_stats(bottom_chrome)
-    top_bright_ratio = _bright_pixel_ratio(top_chrome)
-    top_horizontal_coverage = _bright_horizontal_coverage(top_chrome)
-    bottom_bright_ratio = _bright_pixel_ratio(bottom_chrome)
-    bottom_dark_ratio = _dark_pixel_ratio(bottom_chrome)
+    top_component_stats = _bright_component_stats(top_chrome) if top_chrome is not None else {
+        "bright_fragment_count": 0
+    }
+    bottom_component_stats = _bright_component_stats(bottom_chrome) if bottom_chrome is not None else {
+        "bright_fragment_count": 0
+    }
+    top_bright_ratio = _bright_pixel_ratio(top_chrome) if top_chrome is not None else 0.0
+    top_horizontal_coverage = _bright_horizontal_coverage(top_chrome) if top_chrome is not None else 0.0
+    bottom_bright_ratio = _bright_pixel_ratio(bottom_chrome) if bottom_chrome is not None else 0.0
+    bottom_dark_ratio = _dark_pixel_ratio(bottom_chrome) if bottom_chrome is not None else 0.0
     fragment_count = int(component_stats["bright_fragment_count"])
     fragment_area_ratio = float(component_stats["bright_fragment_area_ratio"])
     warnings: list[str] = []
@@ -173,12 +177,12 @@ def diagnose_frame(image: Image.Image) -> dict:
             warnings.append(
                 "Possible platform UI or original subtitles in the lower safe area; captions may overlap and should be reviewed."
             )
-    if has_top_chrome:
+    if check_chrome and has_top_chrome:
         severity = "warning" if severity == "pass" else severity
         warnings.append(
             "Possible platform UI or original overlay text in the upper safe area; crop or replace this source clip."
         )
-    if has_bottom_chrome:
+    if check_chrome and has_bottom_chrome:
         severity = "warning" if severity == "pass" else severity
         warnings.append(
             "Possible platform UI in the bottom safe area; crop or replace this source clip."
@@ -207,9 +211,9 @@ def diagnose_frame(image: Image.Image) -> dict:
     }
 
 
-def diagnose_image(path: Path) -> dict:
+def diagnose_image(path: Path, *, check_chrome: bool = True) -> dict:
     with Image.open(path) as image:
-        result = diagnose_frame(image.convert("RGB"))
+        result = diagnose_frame(image.convert("RGB"), check_chrome=check_chrome)
     result["source"] = path.as_posix()
     return result
 
@@ -305,7 +309,7 @@ def diagnose_source_matches(
                     safe_area = _render_safe_area(image.convert("RGB"))
                 safe_area.save(frame_path)
                 safe_area.close()
-                result = diagnose_image(frame_path)
+                result = diagnose_image(frame_path, check_chrome=False)
             except (OSError, RuntimeError, ValueError) as exc:
                 warnings.append(f"{segment_id}: source preflight skipped at frame {index}: {exc}")
                 segment_issue_count += 1

@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,58 @@ def _require_nonempty_file(value: Any, repo_root: Path, label: str, reasons: lis
                 reasons.append(f"{label} file is empty")
         except OSError:
             reasons.append(f"{label} file cannot be inspected")
+    return path
+
+
+def _require_decodable_video(value: Any, repo_root: Path, label: str, reasons: list[str]) -> Path:
+    path = _require_nonempty_file(value, repo_root, label, reasons)
+    if not path.is_file() or path.stat().st_size <= 0:
+        return path
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json", str(path)],
+            check=False,
+            shell=False,
+            timeout=30,
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        reasons.append(f"{label} file could not be inspected by ffprobe")
+        return path
+    if result.returncode != 0:
+        reasons.append(f"{label} file is not a decodable video")
+        return path
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        reasons.append(f"{label} file is not a decodable video")
+        return path
+    streams = payload.get("streams", []) if isinstance(payload, dict) else []
+    has_video = any(isinstance(stream, dict) and stream.get("codec_type") == "video" for stream in streams)
+    has_audio = any(isinstance(stream, dict) and stream.get("codec_type") == "audio" for stream in streams)
+    format_data = payload.get("format", {}) if isinstance(payload, dict) else {}
+    try:
+        duration = float(format_data.get("duration", 0))
+    except (TypeError, ValueError):
+        duration = 0.0
+    if not has_video or duration <= 0 or not has_audio:
+        reasons.append(f"{label} file is not a decodable video")
+    return path
+
+
+def _require_valid_image(value: Any, repo_root: Path, label: str, reasons: list[str]) -> Path:
+    path = _require_nonempty_file(value, repo_root, label, reasons)
+    if not path.is_file() or path.stat().st_size <= 0:
+        return path
+    try:
+        from PIL import Image
+
+        with Image.open(path) as image:
+            image.verify()
+    except Exception:
+        reasons.append(f"{label} file is not a valid image")
     return path
 
 
@@ -133,8 +186,8 @@ def evaluate_gate(evidence: dict[str, Any], *, repo_root: Path) -> dict[str, Any
         elif observed_status != "pass":
             reasons.append(f"review status is {observed_status or 'unknown'}, expected pass")
         _require_nonempty_file(pack.get("review_html"), repo_root, "review_html", reasons)
-        _require_nonempty_file(pack.get("remix"), repo_root, "remix", reasons)
-        _require_nonempty_file(pack.get("contact_sheet"), repo_root, "contact_sheet", reasons)
+        _require_decodable_video(pack.get("remix"), repo_root, "remix", reasons)
+        _require_valid_image(pack.get("contact_sheet"), repo_root, "contact_sheet", reasons)
         if pack.get("independent") is not True:
             reasons.append("pack is not marked independent")
         if str(pack.get("human_judgment", "")).casefold() != "pass":

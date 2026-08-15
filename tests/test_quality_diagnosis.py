@@ -206,7 +206,7 @@ def test_diagnose_source_matches_escalates_repeated_warnings_before_rendering(tm
     monkeypatch.setattr("jianji_flow.quality_diagnosis._extract_frame", fake_extract_frame)
     monkeypatch.setattr(
         "jianji_flow.quality_diagnosis.diagnose_image",
-        lambda path: {
+        lambda path, **kwargs: {
             "severity": "warning",
             "warnings": ["possible platform UI or original subtitles"],
             "metrics": {},
@@ -247,6 +247,41 @@ def test_diagnose_source_matches_escalates_repeated_warnings_before_rendering(tm
     assert "seg-002" in result["failures"][0]
 
 
+def test_source_preflight_does_not_treat_safe_area_product_detail_as_top_chrome(tmp_path: Path, monkeypatch):
+    source = tmp_path / "source.mp4"
+    source.write_bytes(b"fake video; extraction is monkeypatched")
+
+    def fake_extract_frame(video_path: Path, frame_path: Path, time_ms: int) -> None:
+        image = Image.new("RGB", (592, 1280), "#c8d8d0")
+        draw = ImageDraw.Draw(image)
+        for column in range(10):
+            x = 30 + column * 52
+            draw.rectangle((x, 180, x + 18, 192), fill="white")
+        draw.rectangle((170, 520, 420, 860), fill="#557a95")
+        image.save(frame_path)
+
+    monkeypatch.setattr("jianji_flow.quality_diagnosis._extract_frame", fake_extract_frame)
+    recipe = {"segments": [{"id": "seg-001", "match_id": "match-001"}]}
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "selected",
+                "source_path": source.as_posix(),
+                "source_start_ms": 0,
+                "source_end_ms": 1000,
+            }
+        ]
+    }
+
+    result = diagnose_source_matches(recipe, matches, tmp_path / "diagnostics", samples_per_segment=1)
+
+    assert result["status"] == "pass"
+    assert result["warnings"] == []
+    assert result["failures"] == []
+
+
 def test_diagnose_source_matches_does_not_escalate_reused_source_warning(tmp_path: Path, monkeypatch):
     source = tmp_path / "source.mp4"
     source.write_bytes(b"fake video; extraction is monkeypatched")
@@ -257,7 +292,7 @@ def test_diagnose_source_matches_does_not_escalate_reused_source_warning(tmp_pat
     monkeypatch.setattr("jianji_flow.quality_diagnosis._extract_frame", fake_extract_frame)
     monkeypatch.setattr(
         "jianji_flow.quality_diagnosis.diagnose_image",
-        lambda path: {
+        lambda path, **kwargs: {
             "severity": "warning",
             "warnings": ["possible platform UI or original subtitles"],
             "metrics": {},
@@ -309,7 +344,7 @@ def test_diagnose_source_matches_does_not_escalate_byte_duplicate_warning(tmp_pa
     monkeypatch.setattr("jianji_flow.quality_diagnosis._extract_frame", fake_extract_frame)
     monkeypatch.setattr(
         "jianji_flow.quality_diagnosis.diagnose_image",
-        lambda path: {
+        lambda path, **kwargs: {
             "severity": "warning",
             "warnings": ["possible platform UI or original subtitles"],
             "metrics": {},
@@ -369,7 +404,7 @@ def test_diagnose_source_matches_keeps_one_warning_reviewable(tmp_path: Path, mo
     monkeypatch.setattr("jianji_flow.quality_diagnosis._extract_frame", fake_extract_frame)
     monkeypatch.setattr(
         "jianji_flow.quality_diagnosis.diagnose_image",
-        lambda path: {
+        lambda path, **kwargs: {
             "severity": "warning",
             "warnings": ["possible platform UI or original subtitles"],
             "metrics": {},

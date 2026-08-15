@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
+from PIL import Image
+
 from scripts.check_release_gate import evaluate_gate, main
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _review(path: Path, status: str) -> str:
@@ -26,9 +32,24 @@ def _real_artifacts(root: Path, status: str = "pass") -> dict[str, str]:
     review_html = root / "review.html"
     review_html.write_text(f"<html>Status: {status}</html>\n", encoding="utf-8")
     remix = root / "remix.mp4"
-    remix.write_bytes(b"remix")
+    shutil.copy2(REPO_ROOT / "fixtures" / "scenario-a-product" / "reference.mp4", remix)
     contact_sheet = root / "contact-sheet.png"
-    contact_sheet.write_bytes(b"contact-sheet")
+    Image.new("RGB", (2, 2), "white").save(contact_sheet)
+    return {
+        "review_html": review_html.as_posix(),
+        "remix": remix.as_posix(),
+        "contact_sheet": contact_sheet.as_posix(),
+    }
+
+
+def _invalid_real_artifacts(root: Path) -> dict[str, str]:
+    root.mkdir(parents=True, exist_ok=True)
+    review_html = root / "review.html"
+    review_html.write_text("<html>Status: pass</html>\n", encoding="utf-8")
+    remix = root / "remix.mp4"
+    remix.write_bytes(b"not-a-video")
+    contact_sheet = root / "contact-sheet.png"
+    contact_sheet.write_bytes(b"not-an-image")
     return {
         "review_html": review_html.as_posix(),
         "remix": remix.as_posix(),
@@ -109,6 +130,34 @@ def test_release_gate_requires_rendered_real_pack_artifacts(tmp_path: Path):
     assert "review_html file is missing" in blocker_text
     assert "remix file is missing" in blocker_text
     assert "contact_sheet file is missing" in blocker_text
+
+
+def test_release_gate_rejects_nondecodable_real_pack_artifacts(tmp_path: Path):
+    evidence = {
+        "quality": _quality(),
+        "real_material_packs": [
+            {
+                "name": "corrupt-output-pack",
+                "review": _review(tmp_path / "pack" / "review.md", "pass"),
+                "manifest": _manifest(tmp_path / "pack" / "manifest.json", "sha-one"),
+                **_invalid_real_artifacts(tmp_path / "pack"),
+                "independent": True,
+                "opaque_filenames": True,
+                "human_judgment": "pass",
+            }
+        ],
+        "dirty_material_packs": [],
+        "outside_users": [],
+        "known_false_passes": [],
+        "readme": "README.md",
+    }
+
+    result = evaluate_gate(evidence, repo_root=tmp_path)
+
+    assert result["checks"]["real_material_passes"] == 0
+    blocker_text = "\n".join(result["blockers"])
+    assert "remix file is not a decodable video" in blocker_text
+    assert "contact_sheet file is not a valid image" in blocker_text
 
 
 def test_release_gate_passes_only_with_matching_review_and_human_evidence(tmp_path: Path):

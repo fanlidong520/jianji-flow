@@ -84,11 +84,11 @@ required row is absent or inconsistent.
 
 Each real-material and dirty-material row must include its `review.md`,
 `review.html`, `manifest.json`, and a human judgment. Real packs must also
-reference non-empty `remix.mp4` and `contact-sheet.png` artifacts, plus an
-`independent` declaration. Dirty packs must reference the expected `remix.mp4`
-path and prove that no remix file exists. The gate derives a material identity
-from the manifest's asset SHA-256 values, so different report files cannot make
-one source pack count three times.
+reference an `ffprobe`-decodable `remix.mp4` with video and audio, a valid
+`contact-sheet.png`, plus an `independent` declaration. Dirty packs must
+reference the expected `remix.mp4` path and prove that no remix file exists.
+The gate derives a material identity from the manifest's asset SHA-256 values,
+so different report files cannot make one source pack count three times.
 
 Each outside-user row must include a stable `id`,
 `readme_quickstart: true`, completion time, and a visible-remix judgment; a
