@@ -83,6 +83,8 @@ def build_visual_candidate_manifest(
                     {
                         "candidate_id": _candidate_id(segment_id, len(segment_candidates) + 1),
                         "segment_id": segment_id,
+                        "role": str(segment.get("role", "")),
+                        "caption": str(segment.get("caption", "")),
                         "asset_id": _asset_id(asset),
                         "asset_path": _asset_path(asset),
                         "asset_sha256": _asset_sha256(asset),
@@ -265,6 +267,19 @@ def apply_visual_selections(
         segment_id = str(segment_id)
         if segment_id not in segment_by_id:
             raise ValueError(f"visual selection segment not found: {segment_id}")
+        segment = segment_by_id[segment_id]
+        supplied_role = str(selection_entry.get("role", "")).strip()
+        expected_role = str(segment.get("role", "")).strip()
+        if supplied_role and supplied_role != expected_role:
+            raise ValueError(
+                f"visual selection role changed for {segment_id}; create a fresh candidate board"
+            )
+        supplied_caption = str(selection_entry.get("caption", "")).strip()
+        expected_caption = str(segment.get("caption", "")).strip()
+        if supplied_caption and supplied_caption != expected_caption:
+            raise ValueError(
+                f"visual selection caption changed for {segment_id}; create a fresh candidate board"
+            )
         candidate_id = str(selection_entry.get("candidate_id", ""))
         candidate = candidate_by_id.get(candidate_id)
         if candidate is None:
@@ -272,6 +287,18 @@ def apply_visual_selections(
         if str(candidate.get("segment_id")) != segment_id:
             raise ValueError(
                 f"visual selection candidate {candidate_id} belongs to segment {candidate.get('segment_id')}, not {segment_id}"
+            )
+        candidate_role = str(candidate.get("role", "")).strip()
+        expected_role = str(segment.get("role", "")).strip()
+        if candidate_role and candidate_role != expected_role:
+            raise ValueError(
+                f"visual candidate role changed for {segment_id}; create a fresh candidate board"
+            )
+        candidate_caption = str(candidate.get("caption", "")).strip()
+        expected_caption = str(segment.get("caption", "")).strip()
+        if candidate_caption and candidate_caption != expected_caption:
+            raise ValueError(
+                f"visual candidate caption changed for {segment_id}; create a fresh candidate board"
             )
         if not candidate.get("available", False):
             raise ValueError(f"visual selection candidate is unavailable: {candidate_id}")
@@ -283,7 +310,7 @@ def apply_visual_selections(
         if _asset_sha256(asset) != str(candidate.get("asset_sha256", "")):
             raise ValueError(f"visual selection asset fingerprint changed for {candidate_id}")
 
-        segment_duration_ms = _segment_duration_ms(segment_by_id[segment_id])
+        segment_duration_ms = _segment_duration_ms(segment)
         start_ms = int(candidate.get("source_start_ms", -1))
         end_ms = int(candidate.get("source_end_ms", -1))
         if end_ms - start_ms != segment_duration_ms:

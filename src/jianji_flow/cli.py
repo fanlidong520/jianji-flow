@@ -194,10 +194,14 @@ def _materialize_visual_selection_review_data(
         shutil.rmtree(evidence_dir)
     evidence_dir.mkdir(parents=True, exist_ok=True)
     candidate_sheet = Path(review_data["candidate_sheet"])
-    if candidate_sheet.exists():
-        copied_sheet = evidence_dir / "visual-candidate-sheet.png"
-        shutil.copy2(candidate_sheet, copied_sheet)
-        review_data["candidate_sheet"] = copied_sheet.as_posix()
+    if not candidate_sheet.exists():
+        raise ValueError(
+            f"visual candidate sheet missing: {candidate_sheet}; rerun `jianji-flow visual-review` "
+            "and use the fresh selection file"
+        )
+    copied_sheet = evidence_dir / "visual-candidate-sheet.png"
+    shutil.copy2(candidate_sheet, copied_sheet)
+    review_data["candidate_sheet"] = copied_sheet.as_posix()
     for item in review_data.get("selections", []):
         copied_frames = []
         for index, frame_text in enumerate(item.get("frames", []), start=1):
@@ -679,9 +683,8 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         if selection_path is not None and candidate_manifest_path is not None:
             review["outputs"]["visual_selections"] = selection_path.as_posix()
             review["outputs"]["visual_candidate_manifest"] = candidate_manifest_path.as_posix()
-            review["outputs"]["visual_candidate_sheet"] = (
-                candidate_manifest_path.parent / "visual-candidate-sheet.png"
-            ).as_posix()
+            if visual_selection_review and visual_selection_review.get("candidate_sheet"):
+                review["outputs"]["visual_candidate_sheet"] = visual_selection_review["candidate_sheet"]
         if shot_plan is not None:
             review["outputs"]["shot_plan"] = shot_plan_path.as_posix()
             review["outputs"]["shot_contact_sheet"] = shot_contact_sheet_path.as_posix()

@@ -389,6 +389,26 @@ Latest partial-mother-clip audit checkpoint:
 - the full suite remains green at `399/399` after the new audit and output
   formatting.
 
+Latest visual-selection integrity checkpoint:
+
+- a stale real selection file from the previous script was rejected before
+  rendering with `visual selection caption changed`;
+- generated candidate manifests now carry role and caption metadata, so
+  deleting those fields from the selection JSON cannot bypass stale-board
+  detection;
+- a missing `visual-candidate-sheet.png` is a blocking input error, and final
+  reports reference the copied evidence inside the current work directory;
+- a fresh real-material selection was correctly blocked by repeated old-title
+  and platform-residue warnings across independent source files, so no dirty
+  remix was emitted.
+
+Latest regression checkpoint after visual-selection integrity hardening:
+
+- `python -m pytest -q` -> `403 passed in 376.18s`;
+- smoke, P0, Skill validation, and `jianji-flow doctor` passed;
+- the clean synthetic workflows still emit `review required` for review-only
+  output instead of claiming a publish-ready result.
+
 ## Launch Rule
 
 Do not announce the project publicly until:

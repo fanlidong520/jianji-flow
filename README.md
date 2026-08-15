@@ -40,6 +40,7 @@
 - Preserves a visually confirmed source window across voiceover retiming with a bounded, auditable `playback_rate`, instead of silently trimming the reviewed content.
 - Writes `candidate-review.html` and `candidate-frames/` so weak segments can be compared against visible repair candidates.
 - Supports a separate `visual-review` pass that generates opaque-filename candidate boards; Codex should inspect the frames and write the selection file for the user instead of asking the user to edit JSON.
+- Binds visual selections to the candidate board's role and caption metadata; changed scripts require a fresh board, and a missing candidate sheet stops the run before rendering.
 - Writes `review.md` and `review.html` for manual inspection, including a change report after fixes are applied.
 - Records selected visual candidates, frame evidence, and asset fingerprints in `review.md`, `review.html`, and `matches.json`.
 - Shows `CANDIDATE` in `diagnosis.md` for filename/duration-ready clips, because that is not visual proof.

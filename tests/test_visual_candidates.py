@@ -220,6 +220,64 @@ def test_apply_visual_selection_updates_window_and_records_evidence(tmp_path: Pa
     ]
 
 
+def test_apply_visual_selection_rejects_stale_caption_metadata(tmp_path: Path):
+    selected = {
+        "version": "0.1",
+        "candidate_manifest": "visual-candidates.json",
+        "selections": {
+            "seg-001": {
+                "role": "hook",
+                "caption": "A different script",
+                "candidate_id": "seg-001-candidate-01",
+                "reviewer": "codex-vision",
+                "reason": "The selected frame supports the current beat.",
+            }
+        },
+    }
+
+    with pytest.raises(ValueError, match="caption changed"):
+        apply_visual_selections(_segments(), _matches(), _assets(tmp_path), selected, _candidate_manifest(tmp_path))
+
+
+def test_apply_visual_selection_rejects_stale_role_metadata(tmp_path: Path):
+    selected = {
+        "version": "0.1",
+        "candidate_manifest": "visual-candidates.json",
+        "selections": {
+            "seg-001": {
+                "role": "cta",
+                "caption": "寮€澶?",
+                "candidate_id": "seg-001-candidate-01",
+                "reviewer": "codex-vision",
+                "reason": "The selected frame supports the current beat.",
+            }
+        },
+    }
+
+    with pytest.raises(ValueError, match="role changed"):
+        apply_visual_selections(_segments(), _matches(), _assets(tmp_path), selected, _candidate_manifest(tmp_path))
+
+
+def test_apply_visual_selection_rejects_stale_candidate_story_metadata(tmp_path: Path):
+    manifest = _candidate_manifest(tmp_path)
+    manifest["candidates"][0]["role"] = "hook"
+    manifest["candidates"][0]["caption"] = "A previous caption"
+    selected = {
+        "version": "0.1",
+        "candidate_manifest": "visual-candidates.json",
+        "selections": {
+            "seg-001": {
+                "candidate_id": "seg-001-candidate-01",
+                "reviewer": "codex-vision",
+                "reason": "The selected frame supports the current beat.",
+            }
+        },
+    }
+
+    with pytest.raises(ValueError, match="candidate caption changed"):
+        apply_visual_selections(_segments(), _matches(), _assets(tmp_path), selected, manifest)
+
+
 def test_write_final_visual_selection_frames_uses_retimed_match_range(tmp_path: Path, monkeypatch):
     source = tmp_path / "IMG_001.mp4"
     source.write_bytes(b"video")

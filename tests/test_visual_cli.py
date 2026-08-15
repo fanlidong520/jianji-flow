@@ -3,6 +3,8 @@ from __future__ import annotations
 from argparse import Namespace
 from pathlib import Path
 
+import pytest
+
 from jianji_flow import cli
 from jianji_flow.media_probe import MediaInfo
 from jianji_flow.media_scan import AssetRecord
@@ -139,3 +141,16 @@ def test_quick_does_not_stop_for_missing_filename_roles_when_visual_selection_ex
 
     assert result == 0
     assert calls and calls[0].visual_selections == selection_path.as_posix()
+
+
+def test_materialize_visual_selection_requires_candidate_sheet(tmp_path: Path):
+    manifest_path = tmp_path / "visual-candidates.json"
+    manifest_path.write_text("{}", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="visual candidate sheet missing"):
+        cli._materialize_visual_selection_review_data(
+            {"selections": {}},
+            {"candidates": []},
+            manifest_path,
+            tmp_path / "work",
+        )
