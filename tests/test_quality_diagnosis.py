@@ -195,6 +195,59 @@ def test_diagnose_source_matches_reports_preflight_failures(tmp_path: Path, monk
 
 
 def test_diagnose_source_matches_escalates_repeated_warnings_before_rendering(tmp_path: Path, monkeypatch):
+    source_a = tmp_path / "source-a.mp4"
+    source_b = tmp_path / "source-b.mp4"
+    source_a.write_bytes(b"fake video a; extraction is monkeypatched")
+    source_b.write_bytes(b"fake video b; extraction is monkeypatched")
+
+    def fake_extract_frame(video_path: Path, frame_path: Path, time_ms: int) -> None:
+        Image.new("RGB", (592, 1280), "#c8d8d0").save(frame_path)
+
+    monkeypatch.setattr("jianji_flow.quality_diagnosis._extract_frame", fake_extract_frame)
+    monkeypatch.setattr(
+        "jianji_flow.quality_diagnosis.diagnose_image",
+        lambda path: {
+            "severity": "warning",
+            "warnings": ["possible platform UI or original subtitles"],
+            "metrics": {},
+        },
+    )
+    recipe = {
+        "segments": [
+            {"id": "seg-001", "match_id": "match-001"},
+            {"id": "seg-002", "match_id": "match-002"},
+        ]
+    }
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "selected",
+                "source_path": source_a.as_posix(),
+                "source_start_ms": 0,
+                "source_end_ms": 3000,
+            },
+            {
+                "id": "match-002",
+                "segment_id": "seg-002",
+                "status": "selected",
+                "source_path": source_b.as_posix(),
+                "source_start_ms": 0,
+                "source_end_ms": 3000,
+            },
+        ]
+    }
+
+    result = diagnose_source_matches(recipe, matches, tmp_path / "source-diagnostics", samples_per_segment=1)
+
+    assert result["status"] == "fail"
+    assert any("Repeated platform UI/original-subtitle warnings" in failure for failure in result["failures"])
+    assert "seg-001" in result["failures"][0]
+    assert "seg-002" in result["failures"][0]
+
+
+def test_diagnose_source_matches_does_not_escalate_reused_source_warning(tmp_path: Path, monkeypatch):
     source = tmp_path / "source.mp4"
     source.write_bytes(b"fake video; extraction is monkeypatched")
 
@@ -239,10 +292,9 @@ def test_diagnose_source_matches_escalates_repeated_warnings_before_rendering(tm
 
     result = diagnose_source_matches(recipe, matches, tmp_path / "source-diagnostics", samples_per_segment=1)
 
-    assert result["status"] == "fail"
-    assert any("Repeated platform UI/original-subtitle warnings" in failure for failure in result["failures"])
-    assert "seg-001" in result["failures"][0]
-    assert "seg-002" in result["failures"][0]
+    assert result["status"] == "warning"
+    assert result["failures"] == []
+    assert result["warnings"]
 
 
 def test_diagnose_source_matches_keeps_one_warning_reviewable(tmp_path: Path, monkeypatch):

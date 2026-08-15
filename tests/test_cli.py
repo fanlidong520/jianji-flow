@@ -174,7 +174,10 @@ def test_quick_uses_default_product_script_when_script_is_missing(tmp_path, monk
 
     assert code == 0
     assert (work_dir / "remix.mp4").exists()
-    assert "家里乱" in (work_dir / "captions.srt").read_text(encoding="utf-8")
+    captions = (work_dir / "captions.srt").read_text(encoding="utf-8")
+    assert "家里难清理" in captions
+    assert "普通抹布" in captions
+    assert "顺手工具" in captions
 
 
 def test_quick_diagnosis_respects_supplied_visual_selection(tmp_path, monkeypatch):

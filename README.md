@@ -131,7 +131,7 @@ jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets
 
 上面这条命令需要先运行 `python scripts/generate_fixtures.py --output fixtures`，或者把路径换成你自己的参考视频和素材文件夹。
 
-`quick` 在没有传 `--script` 时会使用一组很短的家居生活用品默认文案。默认文案只适合清洁类家居样例；如果是收纳、厨房、床品、灯具等其他产品，请传入自己的 `--script`。产品模式每次都会写出 `diagnosis.md`，先说明素材只是通过文件名和时长初筛；素材明显不够时，它会先停下，不会硬剪出一条误导性的坏视频。
+`quick` 在没有传 `--script` 时会使用一组家居清洁带货样例文案，包含开头、痛点、分工、演示和收尾五段。默认文案只适合清洁类家居样例；如果是收纳、厨房、床品、灯具等其他产品，请传入自己的 `--script`。产品模式每次都会写出 `diagnosis.md`，先说明素材只是通过文件名和时长初筛；素材明显不够时，它会先停下，不会硬剪出一条误导性的坏视频。
 
 如果 `doctor` 显示 FFmpeg 或 ffprobe 缺失，Windows 上可以先尝试：
 
@@ -292,7 +292,7 @@ Visual similarity checking samples three frames from the actual selected source 
 - 如果报告出现 `filename-only`，说明系统只是按文件名角色组装，必须看 `contact-sheet.png` 确认画面是否真的对上文案。
 - 如果报告出现 `visual_similarity_diagnostics`，说明有推荐被视觉相似或无法确认降级，先看诊断图再决定是否手动替换。
 - 如果 `Story support` 是 `weak`，说明这条视频可能只是按角色拼接，还没有足够证据证明产品故事成立。先看 `next_action` 里点名的角色，替换或人工确认对应素材，再确认开头、痛点、卖点、证据、行动提醒是否都被画面支撑。
-- 如果报告出现 `source_diagnostics` 或 `source-diagnostics`，说明源素材预检发现问题，优先替换对应素材。
+- 如果报告出现 `source_diagnostics` 或 `source-diagnostics`，说明源素材预检发现问题，优先替换对应素材；同一源视频在多个片段中复用不会被重复计数，但同一片多个采样点持续报警仍会拦截渲染。
 - 如果使用了视觉选择，先看 `review.html` 的 `Visual selection` 区域，确认每个候选画面和选择理由；如果某个角色没有选择记录，不要把它当成自动理解成功。
 
 ## Validation

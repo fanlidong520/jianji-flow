@@ -46,6 +46,12 @@
 - Product `quick` now performs a conservative visual-diversity audit on
   close-duration, same-sized candidates and reports likely re-encoded or
   cropped copies without claiming certain mother-video identity.
+- Source preflight no longer escalates one warning repeatedly when the same
+  source video is reused across segments; it still escalates repeated samples
+  within a segment or the same warning across independent source files.
+- The no-script `quick` path now uses a complete five-beat home-cleaning
+  product script instead of placeholder labels, so the first preview has a
+  real hook, pain, feature, demonstration, and closing line.
 - Packaged the JSON schemas inside the wheel and added a clean-install check so
   installed `demo` runs do not depend on the repository checkout.
 - Added a storyboard section to `review.md` and `review.html` so each segment's

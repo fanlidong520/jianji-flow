@@ -3,13 +3,16 @@ from pathlib import Path
 from jianji_flow.quickstart import default_product_script, default_quick_work_dir
 
 
-def test_default_product_script_has_five_short_lines():
+def test_default_product_script_has_five_usable_story_lines():
     lines = default_product_script().splitlines()
 
     assert len(lines) == 5
     assert all(line.strip() for line in lines)
-    assert all(len(line) <= 6 for line in lines)
+    assert all(len(line) <= 28 for line in lines)
     assert not any("保证" in line or "最低价" in line for line in lines)
+    assert "普通抹布" in lines[1]
+    assert "分工清楚" in lines[2]
+    assert "顺手工具" in lines[4]
 
 
 def test_default_product_script_is_for_home_product_drafts():

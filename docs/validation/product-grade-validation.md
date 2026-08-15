@@ -357,6 +357,23 @@ Latest clean-install checkpoint:
 - this check caught and fixed a missing packaged-schema failure before the
   project is presented as installable.
 
+Latest preflight false-positive recalibration and default-script checkpoint:
+
+- source preflight no longer escalates the same warning repeatedly when one
+  source video is reused across multiple timeline segments;
+- the escalation rule still fails repeated sampled warnings within one source
+  segment or the same warning family across independent source files;
+- the regression suite now passes `395/395`, with smoke and P0 passing again;
+- the no-script quick path now produces a five-beat cleaning product script
+  instead of placeholder labels: hook, pain, feature, demonstration, and
+  closing line;
+- real-material run `out/visual-selection-v50/run-default-script/` renders a
+  20-shot preview with the default script and remains `warning` because the
+  source pack still contains original overlay/UI risk and adjacent source
+  reuse;
+- visual inspection of the real contact sheet confirms that the preview is
+  visibly re-edited, but the source pack is still not publish-ready.
+
 ## Launch Rule
 
 Do not announce the project publicly until:

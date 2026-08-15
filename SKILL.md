@@ -29,10 +29,10 @@ For first-time users, prefer:
 2. `jianji-flow demo`
 3. `jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets`
 
-For product `quick`, report `diagnosis.md` even when the run continues; it starts as a filename/duration screening report and appends source preflight warnings or failures when selected source frames look risky. It is not proof of visual correctness.
+For product `quick`, report `diagnosis.md` even when the run continues; it starts as a filename/duration screening report and appends duplicate-media, source-diversity, and source-preflight warnings or failures when selected source frames look risky. It is not proof of visual correctness.
 In `diagnosis.md`, use `CANDIDATE` for filename/duration-ready clips. Do not call those clips `READY`; that wording overstates visual understanding.
 If the user runs `quick` without `--script`, say the default script is only for
-cleaning-style home-product examples; other products need their own script.
+cleaning-style home-product examples and contains five short story beats; other products need their own script.
 
 Detailed workflow:
 
@@ -44,7 +44,7 @@ Detailed workflow:
 6. Build the segment plan and create `matches.json` and `recipe.json`.
 7. Run JSON Schema validation and semantic validation.
 8. Stop before rendering if validation has any blocking failure.
-9. Run source preflight on selected source frames; append warnings/failures to product quick `diagnosis.md` when present, and stop before voiceover/render if severe old subtitles or platform UI are detected.
+9. Run source preflight on selected source frames; append warnings/failures to product quick `diagnosis.md` when present, and stop before voiceover/render if severe residue or repeated independent evidence is detected. Do not count the same sampled risk again merely because one source video is reused across timeline segments.
 10. Write `captions.srt` and `captions.ass`.
 11. Generate `voiceover.wav` with local machine TTS.
 12. Render `remix.mp4` only from validated manifest assets, burned-in captions, and generated voiceover.
@@ -66,6 +66,7 @@ Detailed workflow:
 - Do not describe a run as publish-ready. `pass` still needs human review; `warning` means review-required rough cut only.
 - Do not call a filename-only warning visually verified; tell the user it must be checked in `contact-sheet.png`.
 - Do not describe `diagnosis.md` `CANDIDATE` clips as visually ready; they only passed pre-render filename/duration screening.
+- Treat `DUPLICATE MEDIA` and `SIMILAR MEDIA` as material-risk evidence, not proof that every file came from the same mother video; inspect the listed diagnostics and source frames.
 - Do not call weak `Story support` usable; tell the user to confirm hook, pain, feature, evidence, and CTA in `contact-sheet.png`.
 - Do not hide source-platform residue with a full-frame dark mask; rely on crop where appropriate and keep source-preflight warnings visible.
 - Do not treat `visual-candidate-sheet.png` or a Codex visual selection as automatic semantic truth; it is explicit model-assisted review evidence and must remain auditable.

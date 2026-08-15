@@ -275,6 +275,8 @@ def diagnose_source_matches(
     metrics: dict[str, list[dict]] = {}
     clean_segment_ids: list[str] = []
     warning_frame_counts: dict[str, int] = {}
+    warning_source_paths: dict[str, set[str]] = {}
+    warning_segments: dict[str, set[str]] = {}
     by_id = _match_by_id(matches)
     diagnostics_dir.mkdir(parents=True, exist_ok=True)
 
@@ -317,6 +319,11 @@ def diagnose_source_matches(
             elif result.get("warnings"):
                 segment_issue_count += 1
                 warning_frame_counts[segment_id] = warning_frame_counts.get(segment_id, 0) + 1
+                source_key = source_path.resolve().as_posix().casefold()
+                for warning in result.get("warnings", []):
+                    warning_key = str(warning).strip().casefold()
+                    warning_source_paths.setdefault(warning_key, set()).add(source_key)
+                    warning_segments.setdefault(warning_key, set()).add(segment_id)
                 warnings.append(
                     f"{segment_id} source frame {index}: possible platform UI or original subtitles before rendering; "
                     "review this source clip."
@@ -325,7 +332,7 @@ def diagnose_source_matches(
             clean_segment_ids.append(segment_id)
 
     repeated_segments = [segment_id for segment_id, count in warning_frame_counts.items() if count >= 2]
-    if not failures and (len(warning_frame_counts) >= 2 or repeated_segments):
+    if not failures and repeated_segments:
         affected_segments = list(warning_frame_counts)
         if len(affected_segments) >= 2:
             location = f"across {', '.join(affected_segments)}"
@@ -333,6 +340,25 @@ def diagnose_source_matches(
             location = f"within {affected_segments[0]}"
         failures.append(
             f"Repeated platform UI/original-subtitle warnings {location}; preflight blocked rendering. "
+            "Replace or crop these source clips before retrying."
+        )
+
+    repeated_warning_families = [
+        warning_key
+        for warning_key, source_paths in warning_source_paths.items()
+        if len(source_paths) >= 2
+    ]
+    if not failures and repeated_warning_families:
+        affected_segments = sorted(
+            {
+                segment_id
+                for warning_key in repeated_warning_families
+                for segment_id in warning_segments.get(warning_key, set())
+            }
+        )
+        location = ", ".join(affected_segments) if affected_segments else "multiple segments"
+        failures.append(
+            f"Repeated platform UI/original-subtitle warnings across {location}; preflight blocked rendering. "
             "Replace or crop these source clips before retrying."
         )
 
