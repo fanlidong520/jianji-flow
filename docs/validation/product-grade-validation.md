@@ -72,6 +72,9 @@ Latest review-page checkpoint:
 - the blocked run retains one browser-openable review page with `Do not use
   yet`, missing-output explanations, artifact links, and 15 embedded source
   diagnostic frames;
+- `out/material-failure-v55/review.html` shows the same first-stop behavior
+  when material diagnosis finds no decodable video assets, with direct links
+  to `diagnosis.md` and the candidate board;
 - public launch remains blocked until the independent real-material packs,
   dirty-pack failure, and outside-user trials in the release gate are real
   evidence rather than local placeholders.
@@ -430,7 +433,7 @@ Latest release-gate automation checkpoint:
   independent packs;
 - the example ledger correctly returns `blocked` and writes both machine and
   human reports when evidence is absent;
-- `python -m pytest -q` -> `413 passed in 406.51s`;
+- `python -m pytest -q` -> `413 passed in 326.49s`;
 - smoke, P0, Skill validation, and `jianji-flow doctor` passed again.
 
 ## Launch Rule

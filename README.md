@@ -335,7 +335,7 @@ release pass.
 
 Latest local result:
 
-- `python -m pytest -q` -> 413 passed in 406.51s
+- `python -m pytest -q` -> 413 passed in 326.49s
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 - `python -m jianji_flow --version` -> `jianji-flow 0.3.0.dev0`
