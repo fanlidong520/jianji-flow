@@ -18,6 +18,19 @@ def _resolve_path(value: Any, repo_root: Path) -> Path:
     return path if path.is_absolute() else repo_root / path
 
 
+def _require_nonempty_file(value: Any, repo_root: Path, label: str, reasons: list[str]) -> Path:
+    path = _resolve_path(value, repo_root)
+    if not path.is_file():
+        reasons.append(f"{label} file is missing")
+    else:
+        try:
+            if path.stat().st_size <= 0:
+                reasons.append(f"{label} file is empty")
+        except OSError:
+            reasons.append(f"{label} file cannot be inspected")
+    return path
+
+
 def _review_status(value: Any, repo_root: Path) -> str | None:
     path = _resolve_path(value, repo_root)
     if not path.is_file():
@@ -119,6 +132,9 @@ def evaluate_gate(evidence: dict[str, Any], *, repo_root: Path) -> dict[str, Any
             reasons.append("review file is missing")
         elif observed_status != "pass":
             reasons.append(f"review status is {observed_status or 'unknown'}, expected pass")
+        _require_nonempty_file(pack.get("review_html"), repo_root, "review_html", reasons)
+        _require_nonempty_file(pack.get("remix"), repo_root, "remix", reasons)
+        _require_nonempty_file(pack.get("contact_sheet"), repo_root, "contact_sheet", reasons)
         if pack.get("independent") is not True:
             reasons.append("pack is not marked independent")
         if str(pack.get("human_judgment", "")).casefold() != "pass":
@@ -157,6 +173,12 @@ def evaluate_gate(evidence: dict[str, Any], *, repo_root: Path) -> dict[str, Any
             reasons.append("review file is missing")
         elif observed_status != "fail":
             reasons.append(f"review status is {observed_status or 'unknown'}, expected fail")
+        _require_nonempty_file(pack.get("review_html"), repo_root, "review_html", reasons)
+        remix_value = pack.get("remix")
+        if not str(remix_value or "").strip():
+            reasons.append("remix path is required to prove no output artifact")
+        elif _resolve_path(remix_value, repo_root).exists():
+            reasons.append("dirty pack produced a remix artifact")
         if str(pack.get("human_judgment", "")).casefold() != "fail":
             reasons.append("human judgment is not fail")
         if reasons:

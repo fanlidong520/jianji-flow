@@ -21,6 +21,31 @@ def _manifest(path: Path, *sha256: str) -> str:
     return path.as_posix()
 
 
+def _real_artifacts(root: Path, status: str = "pass") -> dict[str, str]:
+    root.mkdir(parents=True, exist_ok=True)
+    review_html = root / "review.html"
+    review_html.write_text(f"<html>Status: {status}</html>\n", encoding="utf-8")
+    remix = root / "remix.mp4"
+    remix.write_bytes(b"remix")
+    contact_sheet = root / "contact-sheet.png"
+    contact_sheet.write_bytes(b"contact-sheet")
+    return {
+        "review_html": review_html.as_posix(),
+        "remix": remix.as_posix(),
+        "contact_sheet": contact_sheet.as_posix(),
+    }
+
+
+def _dirty_artifacts(root: Path) -> dict[str, str]:
+    root.mkdir(parents=True, exist_ok=True)
+    review_html = root / "review.html"
+    review_html.write_text("<html>Status: fail</html>\n", encoding="utf-8")
+    return {
+        "review_html": review_html.as_posix(),
+        "remix": (root / "remix.mp4").as_posix(),
+    }
+
+
 def _quality() -> dict:
     return {
         "full_tests": {"status": "pass", "passed": 403},
@@ -39,6 +64,7 @@ def test_release_gate_blocks_until_real_packs_and_outside_users_are_verified(tmp
                 "name": "one-clean-pack",
                 "review": _review(tmp_path / "pack-1" / "review.md", "pass"),
                 "manifest": _manifest(tmp_path / "pack-1" / "manifest.json", "sha-one"),
+                **_real_artifacts(tmp_path / "pack-1"),
                 "independent": True,
                 "opaque_filenames": True,
                 "human_judgment": "pass",
@@ -57,6 +83,34 @@ def test_release_gate_blocks_until_real_packs_and_outside_users_are_verified(tmp
     assert any("outside users" in item for item in result["blockers"])
 
 
+def test_release_gate_requires_rendered_real_pack_artifacts(tmp_path: Path):
+    evidence = {
+        "quality": _quality(),
+        "real_material_packs": [
+            {
+                "name": "missing-output-pack",
+                "review": _review(tmp_path / "pack" / "review.md", "pass"),
+                "manifest": _manifest(tmp_path / "pack" / "manifest.json", "sha-one"),
+                "independent": True,
+                "opaque_filenames": True,
+                "human_judgment": "pass",
+            }
+        ],
+        "dirty_material_packs": [],
+        "outside_users": [],
+        "known_false_passes": [],
+        "readme": "README.md",
+    }
+
+    result = evaluate_gate(evidence, repo_root=tmp_path)
+
+    assert result["checks"]["real_material_passes"] == 0
+    blocker_text = "\n".join(result["blockers"])
+    assert "review_html file is missing" in blocker_text
+    assert "remix file is missing" in blocker_text
+    assert "contact_sheet file is missing" in blocker_text
+
+
 def test_release_gate_passes_only_with_matching_review_and_human_evidence(tmp_path: Path):
     readme = tmp_path / "README.md"
     readme.write_text("Run the workflow. Review warning output in review.md.", encoding="utf-8")
@@ -67,6 +121,7 @@ def test_release_gate_passes_only_with_matching_review_and_human_evidence(tmp_pa
                 "name": f"clean-pack-{index}",
                 "review": _review(tmp_path / f"pack-{index}" / "review.md", "pass"),
                 "manifest": _manifest(tmp_path / f"pack-{index}" / "manifest.json", f"sha-{index}"),
+                **_real_artifacts(tmp_path / f"pack-{index}"),
                 "independent": True,
                 "opaque_filenames": index == 0,
                 "human_judgment": "pass",
@@ -89,6 +144,7 @@ def test_release_gate_passes_only_with_matching_review_and_human_evidence(tmp_pa
                 "name": "dirty-pack",
                 "review": _review(tmp_path / "dirty" / "review.md", "fail"),
                 "manifest": _manifest(tmp_path / "dirty" / "manifest.json", "sha-dirty"),
+                **_dirty_artifacts(tmp_path / "dirty"),
                 "human_judgment": "fail",
             }
         ],
@@ -112,6 +168,7 @@ def test_release_gate_blocks_when_review_status_disagrees_with_evidence(tmp_path
                 "name": "misreported-pack",
                 "review": _review(tmp_path / "pack" / "review.md", "warning"),
                 "manifest": _manifest(tmp_path / "pack" / "manifest.json", "sha-warning"),
+                **_real_artifacts(tmp_path / "pack", "warning"),
                 "independent": True,
                 "opaque_filenames": True,
                 "human_judgment": "pass",
@@ -157,6 +214,7 @@ def test_release_gate_does_not_count_one_review_as_multiple_independent_packs(tm
             "name": f"alias-{index}",
             "review": review,
             "manifest": _manifest(tmp_path / "one-pack" / "manifest.json", "sha-same"),
+            **_real_artifacts(tmp_path / "one-pack"),
             "independent": True,
             "opaque_filenames": index == 0,
             "human_judgment": "pass",
@@ -186,6 +244,7 @@ def test_release_gate_does_not_count_same_manifest_as_independent_packs(tmp_path
                 "name": f"same-material-{index}",
                 "review": _review(tmp_path / f"review-{index}.md", "pass"),
                 "manifest": _manifest(tmp_path / "shared-manifest.json", "sha-shared"),
+                **_real_artifacts(tmp_path / f"same-material-{index}"),
                 "independent": True,
                 "opaque_filenames": index == 0,
                 "human_judgment": "pass",

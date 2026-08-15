@@ -427,13 +427,14 @@ Latest regression checkpoint after visual-selection integrity hardening:
 Latest release-gate automation checkpoint:
 
 - `scripts/check_release_gate.py` now verifies review status, manifest
-  SHA-256 material identity, independent-pack count, dirty-pack failure,
-  README honesty, and outside-user evidence;
+  SHA-256 material identity, non-empty real output artifacts, independent-pack
+  count, dirty-pack absence of `remix.mp4`, README honesty, and outside-user
+  evidence;
 - the same manifest identity or review path cannot be counted as multiple
   independent packs;
 - the example ledger correctly returns `blocked` and writes both machine and
   human reports when evidence is absent;
-- `python -m pytest -q` -> `413 passed in 326.49s`;
+- `python -m pytest -q` -> `414 passed in 330.17s`;
 - smoke, P0, Skill validation, and `jianji-flow doctor` passed again.
 
 ## Launch Rule
