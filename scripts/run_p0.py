@@ -29,9 +29,11 @@ def _run(args: list[str]) -> tuple[int, str, str]:
 
 
 def _assert_no_remix(work_dir: Path) -> None:
-    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png", "review.html"):
+    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png"):
         if (work_dir / name).exists():
             raise AssertionError(f"blocking failure produced stale success artifact {name}: {work_dir}")
+    if not (work_dir / "review.html").exists():
+        raise AssertionError(f"blocking failure did not produce review.html: {work_dir}")
 
 
 def test_missing_reference(base: Path, fixture_root: Path) -> None:

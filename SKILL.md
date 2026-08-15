@@ -53,7 +53,7 @@ Detailed workflow:
 15. Write `candidate-review.html` and `candidate-frames/` so current weak-segment frames can be compared with visible repair candidates.
 16. When `--visual-selections`, `--fixes`, or `--apply-recommendation` is used, write the corresponding visual evidence or `Change report` and diagnostics.
 17. When the user requests more visible pacing, pass `--multi-shot` after visual selection. It detects only bounded structural scene changes inside selected windows, flattens safe ranges into the final timeline, writes `shot-plan.json` after voiceover retiming, and writes `shot-contact-sheet.png` with one labeled frame per final shot. Low-confidence matches stay as one source window until visual review confirms them. Keep the result review-required until the rendered pacing is inspected.
-18. Write `review.md` and `review.html` with pass, warning, fail status, `Story support`, a per-segment `Storyboard`, optional `Visual selection`, optional `Shot plan`, optional `Change report`, candidate-review link, and visual-similarity diagnostics when present.
+18. Write `review.md` and `review.html` with pass, warning, fail status, `Story support`, a per-segment `Storyboard`, optional `Visual selection`, optional `Shot plan`, optional `Change report`, candidate-review link, and visual-similarity diagnostics when present. Keep `review.html` available on blocking failures too; show missing media as not generated and embed source diagnostic frames when they exist.
 
 ## Hard Rules
 
@@ -176,7 +176,7 @@ On success or warning, report the paths for:
 - `review.md`
 - `review.html`
 
-On fail, report `review.md` and any diagnostic files that were written, including `source-diagnostics` or preserved `contact-sheet.png`.
+On fail, report `review.md`, `review.html`, and any diagnostic files that were written, including `source-diagnostics` or preserved `contact-sheet.png`. The HTML page is the first stop: it must say when no video was generated and show the source diagnostic frames when available.
 Never describe a failed or warning run as completed video output.
 
 ## Review Status Language

@@ -64,6 +64,18 @@ For every real-material run:
 
 ## Current Evidence
 
+Latest review-page checkpoint:
+
+- targeted review and summary tests pass;
+- a real home-product run at `out/real-quality-v54/review.html` was blocked
+  before voiceover/rendering by repeated source-frame residue, as intended;
+- the blocked run retains one browser-openable review page with `Do not use
+  yet`, missing-output explanations, artifact links, and 15 embedded source
+  diagnostic frames;
+- public launch remains blocked until the independent real-material packs,
+  dirty-pack failure, and outside-user trials in the release gate are real
+  evidence rather than local placeholders.
+
 Latest local checkpoint:
 
 - `python -m pytest -q` -> 237 passed;
@@ -418,7 +430,7 @@ Latest release-gate automation checkpoint:
   independent packs;
 - the example ledger correctly returns `blocked` and writes both machine and
   human reports when evidence is absent;
-- `python -m pytest -q` -> `411 passed in 368.70s`;
+- `python -m pytest -q` -> `413 passed in 406.51s`;
 - smoke, P0, Skill validation, and `jianji-flow doctor` passed again.
 
 ## Launch Rule

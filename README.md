@@ -198,6 +198,13 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 - `candidate-frames/`: images used by `candidate-review.html`.
 - `review.md`: review status and checklist.
 - `review.html`: local visual review page.
+
+`review.html` is the single first-stop page for both successful and failed
+runs. Start with its status and `Next action`, watch `remix.mp4` when it
+exists, then compare `Reference vs Remix` and the `Contact Sheet`. When a run
+is blocked before rendering, the page says that the video was not generated,
+links the machine-readable files, and embeds the source diagnostic frames that
+caused the block.
 - `fixes.template.json`: editable repair file for replacing weak or low-confidence segments on the next run.
 - `visual-similarity-diagnostics/`: sampled frames used to audit visually similar or unchecked repair recommendations.
 - `change-diagnostics/`: before/after sampled frames used by the `Change report` after a fix run.
@@ -324,7 +331,7 @@ release pass.
 
 Latest local result:
 
-- `python -m pytest -q` -> 411 passed in 368.70s
+- `python -m pytest -q` -> 413 passed in 406.51s
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 - `python -m jianji_flow --version` -> `jianji-flow 0.3.0.dev0`

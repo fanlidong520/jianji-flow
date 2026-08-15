@@ -84,6 +84,49 @@ def test_review_passes_when_all_segments_are_selected():
     assert review["warnings"] == []
 
 
+def test_review_html_explains_when_media_was_not_generated(tmp_path):
+    review = {
+        "status": "fail",
+        "failures": ["source frame failed preflight"],
+        "warnings": [],
+        "outputs": {
+            "review_md": (tmp_path / "review.md").as_posix(),
+            "source_diagnostics": (tmp_path / "source-diagnostics").as_posix(),
+        },
+    }
+    recipe = {"segments": []}
+    matches = {"matches": []}
+
+    output_path = tmp_path / "review.html"
+    write_review_html(review, recipe, matches, output_path)
+    html = output_path.read_text(encoding="utf-8")
+
+    assert "Do not use yet" in html
+    assert "Output video was not generated" in html
+    assert "Contact sheet was not generated" in html
+    assert 'href="review.md"' in html
+    assert 'src=""' not in html
+
+
+def test_review_html_embeds_source_diagnostic_frames(tmp_path):
+    diagnostics_dir = tmp_path / "source-diagnostics"
+    diagnostics_dir.mkdir()
+    Image.new("RGB", (12, 8), "red").save(diagnostics_dir / "seg-001-01.png")
+    review = {
+        "status": "fail",
+        "failures": ["source frame failed preflight"],
+        "warnings": [],
+        "outputs": {"source_diagnostics": diagnostics_dir.as_posix()},
+    }
+
+    output_path = tmp_path / "review.html"
+    write_review_html(review, {"segments": []}, {"matches": []}, output_path)
+    html = output_path.read_text(encoding="utf-8")
+
+    assert "Source diagnostics" in html
+    assert 'src="source-diagnostics/seg-001-01.png"' in html
+
+
 def test_review_warns_when_most_segments_come_from_same_source():
     recipe = {
         "segments": [

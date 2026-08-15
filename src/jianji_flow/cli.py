@@ -310,15 +310,20 @@ def _clear_run_state_artifacts(work_dir: Path) -> None:
 
 def _write_failure_review(work_dir: Path, failure: str) -> None:
     review_path = work_dir / "review.md"
+    review_html_path = work_dir / "review.html"
     review = {
         "status": "fail",
         "failures": [failure],
         "warnings": [],
         "missing_segments": [],
         "low_confidence_segments": [],
-        "outputs": {},
+        "outputs": {
+            "review_md": review_path.as_posix(),
+            "review_html": review_html_path.as_posix(),
+        },
     }
     write_review_markdown(review, review_path)
+    write_review_html(review, {"segments": []}, {"matches": []}, review_html_path)
 
 
 def _write_diagnosis(work_dir: Path, text: str) -> Path:
@@ -537,7 +542,10 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
                     "captions": captions_path.as_posix(),
                 },
             }
+            review["outputs"]["review_md"] = review_path.as_posix()
+            review["outputs"]["review_html"] = review_html_path.as_posix()
             write_review_markdown(review, review_path, recipe, matches)
+            write_review_html(review, recipe, matches, review_html_path)
             print(f"validation failed; review written to {review_path}", file=sys.stderr)
             return 1
 
@@ -572,7 +580,10 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
                     "source_diagnostics": source_preflight["diagnostics_dir"],
                 },
             }
+            review["outputs"]["review_md"] = review_path.as_posix()
+            review["outputs"]["review_html"] = review_html_path.as_posix()
             write_review_markdown(review, review_path, recipe, matches)
+            write_review_html(review, recipe, matches, review_html_path)
             print(f"source preflight failed; review written to {review_path}", file=sys.stderr)
             return 1
 
@@ -718,9 +729,13 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         if review["status"] == "fail":
             _clear_success_artifacts(work_dir, keep_diagnostics=True)
             _remove_success_outputs_from_review(review, keep_diagnostics=True)
+            review["outputs"]["review_md"] = review_path.as_posix()
+            review["outputs"]["review_html"] = review_html_path.as_posix()
             write_review_markdown(review, review_path, recipe, matches)
+            write_review_html(review, recipe, matches, review_html_path)
             print(f"jianji-flow failed review: {review_path}", file=sys.stderr)
             return 1
+        review["outputs"]["review_md"] = review_path.as_posix()
         write_review_markdown(review, review_path, recipe, matches)
         write_review_html(review, recipe, matches, review_html_path)
         if review["status"] == "warning":

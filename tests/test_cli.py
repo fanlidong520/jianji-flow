@@ -729,9 +729,10 @@ def test_failed_rerun_removes_stale_remix(tmp_path, monkeypatch):
         "shot-contact-sheet.png",
         "reference-comparison.png",
         "shot-plan.json",
-        "review.html",
     ):
         assert not (work_dir / name).exists(), name
+    assert (work_dir / "review.html").exists()
+    assert "Output video was not generated" in (work_dir / "review.html").read_text(encoding="utf-8")
 
 
 def test_failed_review_keeps_diagnostic_contact_sheet_without_success_artifacts(tmp_path, monkeypatch):
@@ -788,8 +789,9 @@ def test_failed_review_keeps_diagnostic_contact_sheet_without_success_artifacts(
     assert "candidate_frames" not in review
     assert (work_dir / "contact-sheet.png").exists()
     assert (work_dir / "contact-sheet.png").stat().st_size > 0
-    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "candidate-review.html", "review.html"):
+    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "candidate-review.html"):
         assert not (work_dir / name).exists(), name
+    assert (work_dir / "review.html").exists()
     assert not (work_dir / "candidate-frames").exists()
 
 
@@ -841,8 +843,12 @@ def test_source_preflight_failure_stops_before_voiceover_and_render(tmp_path, mo
     assert "source frame 1" in review
     assert "source_diagnostics" in review
     assert (work_dir / "source-diagnostics" / "seg-001-01.png").exists()
-    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png", "review.html"):
+    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png"):
         assert not (work_dir / name).exists(), name
+    assert (work_dir / "review.html").exists()
+    review_html = (work_dir / "review.html").read_text(encoding="utf-8")
+    assert "Output video was not generated" in review_html
+    assert "source frame 1" in review_html
 
 
 def test_source_preflight_warning_is_reported_in_final_review(tmp_path, monkeypatch, capsys):
@@ -1631,8 +1637,9 @@ def test_semantic_failure_removes_generated_success_artifacts(tmp_path, monkeypa
 
     assert code == 1
     assert "forced semantic failure" in (work_dir / "review.md").read_text(encoding="utf-8")
-    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png", "review.html"):
+    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png"):
         assert not (work_dir / name).exists(), name
+    assert (work_dir / "review.html").exists()
 
 
 def test_too_short_voiceover_removes_generated_success_artifacts(tmp_path, monkeypatch):
@@ -1669,5 +1676,6 @@ def test_too_short_voiceover_removes_generated_success_artifacts(tmp_path, monke
 
     assert code == 1
     assert "too short" in (work_dir / "review.md").read_text(encoding="utf-8")
-    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png", "review.html"):
+    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png"):
         assert not (work_dir / name).exists(), name
+    assert (work_dir / "review.html").exists()

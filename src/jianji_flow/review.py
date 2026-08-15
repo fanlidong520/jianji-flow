@@ -789,12 +789,52 @@ def _outputs_html(outputs: dict) -> str:
     for name, value in outputs.items():
         label = str(name).replace("_", " ").title()
         value_text = str(value)
-        if value_text.endswith(".html"):
+        if Path(value_text).suffix.casefold() in {
+            ".ass",
+            ".html",
+            ".json",
+            ".md",
+            ".mp4",
+            ".png",
+            ".srt",
+            ".wav",
+        }:
             value_html = f'<a href="{escape(value_text)}">{escape(value_text)}</a>'
         else:
             value_html = f"<code>{escape(value_text)}</code>"
         items.append(f"<li>{escape(label)}: {value_html}</li>")
     return "".join(items)
+
+
+def _review_media_section(
+    heading: str,
+    output_key: str,
+    outputs: dict,
+    tag: str,
+    alt: str,
+    missing_message: str,
+) -> str:
+    value = str(outputs.get(output_key, "") or "").strip()
+    if not value:
+        return f'<h2>{escape(heading)}</h2><p class="unavailable">{escape(missing_message)}</p>'
+    if tag == "video":
+        return f'<h2>{escape(heading)}</h2><video controls src="{escape(value)}"></video>'
+    return f'<h2>{escape(heading)}</h2><img alt="{escape(alt)}" src="{escape(value)}">'
+
+
+def _source_diagnostic_section_html(frames: list[str] | None) -> str:
+    if not frames:
+        return ""
+    figures = "".join(
+        f'<figure><img alt="source diagnostic frame" src="{escape(str(frame))}">'
+        f"<figcaption>{escape(Path(str(frame)).name)}</figcaption></figure>"
+        for frame in frames
+    )
+    return (
+        "<h2>Source diagnostics</h2>"
+        "<p>These frames triggered the source preflight warning or failure. Replace or crop the source clips before rerunning.</p>"
+        f'<section class="diagnostic-frames">{figures}</section>'
+    )
 
 
 def build_review_markdown(review: dict, recipe: dict | None = None, matches: dict | None = None) -> str:
@@ -882,6 +922,12 @@ def write_review_markdown(
 def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
     outputs = review.get("outputs", {})
     summary = review.get("summary", build_review_summary(review))
+    status = str(review.get("status", "unknown"))
+    status_label = {
+        "pass": "Ready for final human check",
+        "warning": "Needs human review before publishing",
+        "fail": "Do not use yet",
+    }.get(status, "Review status unknown")
     match_by_id = _match_by_id(matches)
     rows = []
     for segment in recipe.get("segments", []):
@@ -908,6 +954,11 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
             "<h2>Reference vs Remix</h2>"
             "<p>The same number of relative storyboard samples are shown for the reference and the remix.</p>"
             f'<img alt="reference versus remix comparison" src="{escape(str(outputs["reference_comparison"]))}">'
+        )
+    else:
+        comparison_section = (
+            '<h2>Reference vs Remix</h2>'
+            '<p class="unavailable">Reference comparison was not generated because this run stopped before rendering.</p>'
         )
     shot_contact_section = ""
     if outputs.get("shot_contact_sheet"):
@@ -943,21 +994,40 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
     .risk-none {{ border-left: 4px solid #2f855a; }}
     .visual-selection-frames {{ display: flex; gap: 8px; flex-wrap: wrap; }}
     .visual-selection-frames img {{ width: 120px; max-height: 240px; object-fit: contain; }}
+    .status {{ padding: 16px; border: 1px solid #d6dae0; background: #fff; }}
+    .status-pass {{ border-left: 6px solid #2f855a; }}
+    .status-warning {{ border-left: 6px solid #b45309; }}
+    .status-fail {{ border-left: 6px solid #b91c1c; }}
+    .status-label {{ font-size: 1.1rem; font-weight: 700; }}
+    .start-here {{ background: #fff; border: 1px solid #d6dae0; padding: 16px; }}
+    .unavailable {{ color: #7f1d1d; background: #fef2f2; padding: 10px; }}
+    .diagnostic-frames {{ display: flex; gap: 12px; flex-wrap: wrap; }}
+    .diagnostic-frames figure {{ width: 220px; }}
+    .diagnostic-frames img {{ width: 100%; max-height: 360px; object-fit: contain; }}
   </style>
 </head>
 <body>
 <main>
-  <h1>jianji-flow Review: {escape(str(review.get('status', 'unknown')))}</h1>
+  <section class="status status-{escape(status)}">
+    <h1>jianji-flow Review: {escape(status)}</h1>
+    <p class="status-label">{escape(status_label)}</p>
+  </section>
+  <section class="start-here">
+    <h2>Start here</h2>
+    <ol>
+      <li>Watch the output video below if it was generated.</li>
+      <li>Compare Reference vs Remix to confirm the picture actually changed.</li>
+      <li>Use the Next action and warnings before publishing.</li>
+    </ol>
+  </section>
   <section>
     <h2>Summary</h2>
     <p><strong>Decision:</strong> {escape(str(summary.get('decision', 'Unknown')))}</p>
     <p><strong>Reason:</strong> {escape(str(summary.get('reason', '')))}</p>
     <p><strong>Next action:</strong> {escape(str(summary.get('next_action', '')))}</p>
   </section>
-  <h2>Video</h2>
-  <video controls src="{escape(str(outputs.get('remix', '')))}"></video>
-  <h2>Contact Sheet</h2>
-  <img alt="contact sheet" src="{escape(str(outputs.get('contact_sheet', '')))}">
+  {_review_media_section('Video', 'remix', outputs, 'video', 'rendered remix', 'Output video was not generated because this run stopped before rendering.')}
+  {_review_media_section('Contact Sheet', 'contact_sheet', outputs, 'image', 'contact sheet', 'Contact sheet was not generated because this run stopped before rendering.')}
   {shot_contact_section}
   {comparison_section}
   <h2>Outputs</h2>
@@ -966,6 +1036,7 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
   <ul>{warnings}</ul>
   <h2>Failures</h2>
   <ul>{failures}</ul>
+  {_source_diagnostic_section_html(review.get('source_diagnostic_frames'))}
   <h2>Story support</h2>
   <ul>{story_support}</ul>
   <h2>Storyboard</h2>
@@ -1005,6 +1076,7 @@ def write_review_html(review: dict, recipe: dict, matches: dict, output_path: Pa
 def _html_review_paths(review: dict, base_dir: Path) -> dict:
     html_review = deepcopy(review)
     outputs = html_review.get("outputs", {})
+    source_diagnostics_value = outputs.get("source_diagnostics")
     for key, value in list(outputs.items()):
         if not isinstance(value, str) or not value:
             continue
@@ -1032,6 +1104,13 @@ def _html_review_paths(review: dict, base_dir: Path) -> dict:
                 final_frames = item.get("final_frames", [])
                 if isinstance(final_frames, list):
                     item["final_frames"] = [_relative_path(value, base_dir) for value in final_frames]
+    if isinstance(source_diagnostics_value, str) and source_diagnostics_value.strip():
+        diagnostics_dir = Path(source_diagnostics_value)
+        if diagnostics_dir.is_dir():
+            html_review["source_diagnostic_frames"] = [
+                _relative_path(path.as_posix(), base_dir)
+                for path in sorted(diagnostics_dir.glob("*.png"))
+            ]
     return html_review
 
 

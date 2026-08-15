@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Failed runs now keep a local `review.html` alongside `review.md`; the page
+  clearly marks missing media as not generated, links review artifacts, and
+  embeds source-preflight diagnostic frames when available.
 - Planned v0.3 usability layer: `doctor`, `demo`, `quick`, material diagnosis,
   source preflight, and plain-language review summary.
 - Added source preflight checks that stop before voiceover/render when selected
