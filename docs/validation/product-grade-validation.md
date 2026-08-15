@@ -361,9 +361,11 @@ Latest preflight false-positive recalibration and default-script checkpoint:
 
 - source preflight no longer escalates the same warning repeatedly when one
   source video is reused across multiple timeline segments;
+- manifest SHA-256 identities are reused by source preflight, so renamed
+  byte-identical copies do not become false independent-warning evidence;
 - the escalation rule still fails repeated sampled warnings within one source
   segment or the same warning family across independent source files;
-- the regression suite now passes `395/395`, with smoke and P0 passing again;
+- the regression suite now passes `396/396`, with smoke and P0 passing again;
 - the no-script quick path now produces a five-beat cleaning product script
   instead of placeholder labels: hook, pain, feature, demonstration, and
   closing line;

@@ -269,6 +269,7 @@ def diagnose_source_matches(
     diagnostics_dir: Path,
     *,
     samples_per_segment: int = 3,
+    source_identity: dict[str, str] | None = None,
 ) -> dict:
     failures: list[str] = []
     warnings: list[str] = []
@@ -319,7 +320,8 @@ def diagnose_source_matches(
             elif result.get("warnings"):
                 segment_issue_count += 1
                 warning_frame_counts[segment_id] = warning_frame_counts.get(segment_id, 0) + 1
-                source_key = source_path.resolve().as_posix().casefold()
+                source_path_key = source_path.resolve().as_posix().casefold()
+                source_key = (source_identity or {}).get(source_path_key, source_path_key)
                 for warning in result.get("warnings", []):
                     warning_key = str(warning).strip().casefold()
                     warning_source_paths.setdefault(warning_key, set()).add(source_key)

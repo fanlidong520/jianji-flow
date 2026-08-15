@@ -49,6 +49,9 @@
 - Source preflight no longer escalates one warning repeatedly when the same
   source video is reused across segments; it still escalates repeated samples
   within a segment or the same warning across independent source files.
+- Source preflight now uses manifest SHA-256 identities when deciding whether
+  repeated warnings come from independent files, so renamed byte-identical
+  copies are not counted as separate evidence.
 - The no-script `quick` path now uses a complete five-beat home-cleaning
   product script instead of placeholder labels, so the first preview has a
   real hook, pain, feature, demonstration, and closing line.

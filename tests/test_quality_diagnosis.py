@@ -297,6 +297,68 @@ def test_diagnose_source_matches_does_not_escalate_reused_source_warning(tmp_pat
     assert result["warnings"]
 
 
+def test_diagnose_source_matches_does_not_escalate_byte_duplicate_warning(tmp_path: Path, monkeypatch):
+    source_a = tmp_path / "source-a.mp4"
+    source_b = tmp_path / "renamed-copy.mp4"
+    source_a.write_bytes(b"same media; extraction is monkeypatched")
+    source_b.write_bytes(b"same media; extraction is monkeypatched")
+
+    def fake_extract_frame(video_path: Path, frame_path: Path, time_ms: int) -> None:
+        Image.new("RGB", (592, 1280), "#c8d8d0").save(frame_path)
+
+    monkeypatch.setattr("jianji_flow.quality_diagnosis._extract_frame", fake_extract_frame)
+    monkeypatch.setattr(
+        "jianji_flow.quality_diagnosis.diagnose_image",
+        lambda path: {
+            "severity": "warning",
+            "warnings": ["possible platform UI or original subtitles"],
+            "metrics": {},
+        },
+    )
+    recipe = {
+        "segments": [
+            {"id": "seg-001", "match_id": "match-001"},
+            {"id": "seg-002", "match_id": "match-002"},
+        ]
+    }
+    matches = {
+        "matches": [
+            {
+                "id": "match-001",
+                "segment_id": "seg-001",
+                "status": "selected",
+                "source_path": source_a.as_posix(),
+                "source_start_ms": 0,
+                "source_end_ms": 3000,
+            },
+            {
+                "id": "match-002",
+                "segment_id": "seg-002",
+                "status": "selected",
+                "source_path": source_b.as_posix(),
+                "source_start_ms": 0,
+                "source_end_ms": 3000,
+            },
+        ]
+    }
+    source_identity = {
+        source_a.resolve().as_posix().casefold(): "same-sha256",
+        source_b.resolve().as_posix().casefold(): "same-sha256",
+    }
+
+    result = diagnose_source_matches(
+        recipe,
+        matches,
+        tmp_path / "source-diagnostics",
+        samples_per_segment=1,
+        source_identity=source_identity,
+    )
+
+    assert result["status"] == "warning"
+    assert result["failures"] == []
+    assert result["warnings"]
+
+
 def test_diagnose_source_matches_keeps_one_warning_reviewable(tmp_path: Path, monkeypatch):
     source = tmp_path / "source.mp4"
     source.write_bytes(b"fake video; extraction is monkeypatched")

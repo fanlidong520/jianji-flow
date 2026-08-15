@@ -537,7 +537,18 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             print(f"validation failed; review written to {review_path}", file=sys.stderr)
             return 1
 
-        source_preflight = diagnose_source_matches(recipe, matches, source_diagnostics_dir)
+        source_identity = {}
+        for asset in manifest.get("assets", []):
+            path_text = str(asset.get("path", "")).strip()
+            sha256 = str(asset.get("sha256", "")).strip()
+            if path_text and sha256:
+                source_identity[Path(path_text).resolve().as_posix().casefold()] = sha256
+        source_preflight = diagnose_source_matches(
+            recipe,
+            matches,
+            source_diagnostics_dir,
+            source_identity=source_identity,
+        )
         matches = _apply_source_preflight_evidence(matches, source_preflight.get("clean_segment_ids", []))
         _write_json(matches_path, matches)
         _append_existing_diagnosis(work_dir, _source_preflight_diagnosis_text(source_preflight))
