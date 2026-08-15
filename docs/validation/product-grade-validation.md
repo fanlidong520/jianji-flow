@@ -409,6 +409,18 @@ Latest regression checkpoint after visual-selection integrity hardening:
 - the clean synthetic workflows still emit `review required` for review-only
   output instead of claiming a publish-ready result.
 
+Latest release-gate automation checkpoint:
+
+- `scripts/check_release_gate.py` now verifies review status, manifest
+  SHA-256 material identity, independent-pack count, dirty-pack failure,
+  README honesty, and outside-user evidence;
+- the same manifest identity or review path cannot be counted as multiple
+  independent packs;
+- the example ledger correctly returns `blocked` and writes both machine and
+  human reports when evidence is absent;
+- `python -m pytest -q` -> `411 passed in 368.70s`;
+- smoke, P0, Skill validation, and `jianji-flow doctor` passed again.
+
 ## Launch Rule
 
 Do not announce the project publicly until:

@@ -100,6 +100,10 @@
 - Bound visual selections to the candidate board's role and caption metadata;
   stale selections now fail before rendering, and a missing candidate sheet
   is treated as a blocking evidence error instead of producing a broken link.
+- Added `scripts/check_release_gate.py` and an evidence-ledger template that
+  keep automated test health separate from real-material, dirty-pack, and
+  outside-user release evidence; manifest SHA-256 identities prevent one
+  source pack from being counted multiple times.
 - Preserved visually confirmed source windows across voiceover retiming with a
   bounded `playback_rate`, and added final-source frame evidence so reviewed
   content is not silently trimmed before rendering.

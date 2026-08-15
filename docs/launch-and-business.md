@@ -77,6 +77,21 @@ measured delivery bottleneck.
 
 Every release decision should be tied to evidence, not enthusiasm:
 
+Use `scripts/check_release_gate.py` with a private copy of
+`docs/validation/release-evidence.example.json` to check the ledger. The
+script verifies the referenced review statuses and reports `blocked` when a
+required row is absent or inconsistent.
+
+Each real-material and dirty-material row must include its `review.md`,
+`manifest.json`, and a human judgment. Real packs also need an `independent`
+declaration. The gate derives a material identity from the manifest's asset
+SHA-256 values, so different report files cannot make one source pack count
+three times.
+
+Each outside-user row must include a stable `id`,
+`readme_quickstart: true`, completion time, and a visible-remix judgment; a
+row without explicit README use does not count toward the trial threshold.
+
 | Decision | Minimum evidence |
 | --- | --- |
 | Public beta | launch rule in `docs/validation/product-grade-validation.md` passes |

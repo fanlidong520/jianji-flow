@@ -309,9 +309,22 @@ python scripts/run_smoke.py
 python scripts/run_p0.py
 ```
 
+Before calling the project ready for public release, fill a local copy of
+[`docs/validation/release-evidence.example.json`](docs/validation/release-evidence.example.json)
+with real-material, dirty-pack, and outside-user evidence, then run:
+
+```powershell
+python scripts/check_release_gate.py --evidence path\to\release-evidence.json
+```
+
+The command writes `release-gate.md` and `release-gate.json`. Missing evidence
+or a mismatch between a ledger entry and the referenced `review.md` produces
+`blocked`; it cannot turn a warning run or an unverified user trial into a
+release pass.
+
 Latest local result:
 
-- `python -m pytest -q` -> 384 passed
+- `python -m pytest -q` -> 411 passed in 368.70s
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
 - `python -m jianji_flow --version` -> `jianji-flow 0.3.0.dev0`
