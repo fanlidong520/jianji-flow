@@ -341,6 +341,10 @@ The release and business gates are documented in
 order is quality evidence, public free core, paid manual delivery, and only
 then repeated paid product layers.
 
+For an independent ten-minute trial, follow
+[`docs/validation/outside-user-trial.md`](docs/validation/outside-user-trial.md)
+and record the result without uploading private media.
+
 ```powershell
 python -m pytest -q
 python scripts/run_smoke.py
