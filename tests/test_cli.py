@@ -686,6 +686,47 @@ def test_run_shortens_voiceover_timeline_instead_of_padding_silent_tail(tmp_path
     assert recipe["segments"][-1]["end_ms"] == recipe["duration_ms"]
 
 
+def test_run_accepts_external_wav_voiceover_without_local_tts(tmp_path, monkeypatch):
+    fixture_root = tmp_path / "fixtures"
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+    source_voiceover = tmp_path / "narration.wav"
+    _write_test_wav(source_voiceover, seconds=2.0)
+    work_dir = tmp_path / "work"
+
+    def forbidden_create_voiceover(*args, **kwargs):
+        raise AssertionError("local TTS should not run when --voiceover is supplied")
+
+    monkeypatch.setattr("jianji_flow.cli.create_voiceover", forbidden_create_voiceover)
+
+    code = main(
+        [
+            "run",
+            "--mode",
+            "product",
+            "--reference",
+            str(fixture_root / "scenario-a-product" / "reference.mp4"),
+            "--assets",
+            str(fixture_root / "scenario-a-product" / "assets"),
+            "--script",
+            str(fixture_root / "scenario-a-product" / "script.txt"),
+            "--voiceover",
+            str(source_voiceover),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    assert code == 0
+    assert (work_dir / "voiceover.wav").read_bytes() == source_voiceover.read_bytes()
+    assert (work_dir / "remix.mp4").exists()
+
+
 def test_failed_rerun_removes_stale_remix(tmp_path, monkeypatch):
     _patch_voiceover(monkeypatch)
     fixture_root = tmp_path / "fixtures"

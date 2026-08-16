@@ -31,6 +31,10 @@
 - Runs source preflight on the same cropped safe area that the renderer will expose, reducing warnings for platform chrome that is removed before export.
 - Generates `captions.srt` and `captions.ass`.
 - Generates `voiceover.wav` with a local Windows Chinese TTS voice when available.
+- Accepts `--voiceover path\to\narration.wav` on `run` and `quick` to use a
+  recorded or externally generated WAV narration when local Windows TTS is
+  unavailable; the copied audio still goes through decode, duration, and
+  non-silent validation.
 - Renders `remix.mp4` with burned-in captions and voiceover audio.
 - Uses crop and caption outline for visual cleanup without adding full-frame dark bands over the video.
 - Writes `contact-sheet.png` with one frame per timeline segment.
@@ -258,6 +262,14 @@ The selection is checked against the candidate manifest, asset fingerprint, sour
 
 `warning` 不是“基本通过”。它只说明工作流产出了可检查的粗剪，但仍有证据不足、素材风险或人工确认项。如果多个片段的源画面都出现平台 UI/旧字幕风险，预检会在配音和渲染前升级为 `fail`，避免先生成一条看似完成但不能发布的视频。
 
+如果 `doctor` 报告本机没有中文 SAPI 声音，可以准备一份 WAV 配音并传入：
+
+```powershell
+jianji-flow quick --reference path\reference.mp4 --assets path\assets --script path\script.txt --voiceover path\narration.wav --work-dir out\with-narration
+```
+
+`--voiceover` 只接受本地 WAV；它不会跳过素材预检、视觉选择、字幕烧录或最终复核。
+
 ## Story Support
 
 `review.md` and `review.html` include a `Story support` section.
@@ -338,14 +350,16 @@ unverified user trial into a release pass.
 
 Latest local result:
 
-- `python -m pytest -q` -> 416 passed in 320.14s
+- `python -m pytest -q` -> 417 passed in 324.28s
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
+- `python -m jianji_flow doctor --work-dir out\doctor-v60` -> `Ready to run quick draft`
+- Skill validation -> `Skill is valid!`
 - `python -m jianji_flow --version` -> `jianji-flow 0.3.0.dev0`
-- the latest real-material A/B run keeps low-confidence segments as one source
-  window; the better feature candidate removes the identical adjacent shot
-  sequence, but the run remains `warning` until dirty source frames are
-  replaced;
+- the latest real-material visual-selection run is
+  `out\real-material-visual-selected-v59`; its `Story support` is `pass`, but
+  the run remains `warning` because `seg-004` and `seg-005` reuse one source
+  video;
 
 ## Safety Rules
 
@@ -359,7 +373,8 @@ Latest local result:
 
 ## Known Limitations
 
-- 当前默认使用 Windows 本地中文 TTS；没有中文语音包的机器会失败。
+- 当前默认使用 Windows 本地中文 TTS；没有中文语音包时可通过
+  `--voiceover path\to\narration.wav` 使用真人或外部 TTS 配音。
 - 当前匹配主要依赖文件名、结构和可审计证据，不是完整多模态理解。
 - 视觉相似检查只比较采样帧；它能减少重复画面修复建议，但不能证明语义匹配。
 - 当前不会自动寻找素材、生成素材、发布视频或创建剪映草稿。

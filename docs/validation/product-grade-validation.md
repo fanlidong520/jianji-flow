@@ -434,11 +434,21 @@ Latest release-gate automation checkpoint:
   independent packs;
 - the example ledger correctly returns `blocked` and writes both machine and
   human reports when evidence is absent;
-- `python -m pytest -q` -> `416 passed in 320.14s`;
+- `python -m pytest -q` -> `417 passed in 324.28s`;
 - source preflight now ignores platform-bar heuristics outside the renderer's
-  safe crop while retaining lower-safe-area residue checks; the fresh real
-  home-product run remains `warning` because filename-only story evidence and
-  one source-residue warning still need review;
+  safe crop while retaining lower-safe-area residue checks; the earlier real
+  home-product baseline `v57` remains a `warning` because it used filename-only
+  story evidence and had a source-residue warning;
+- a fresh visual-review run on the real home-product material selected five
+  caption-supported windows and changed `Story support` from `weak` to `pass`;
+  the rendered result remains `warning` because the last two segments reuse one
+  source video, so this is evidence of a real visual remix, not publish-ready
+  evidence;
+- `quick` and `run` now accept a local WAV via `--voiceover`, which keeps the
+  workflow usable when the host has no Windows Chinese SAPI voice;
+- `out/clean-install-v60` built and installed the wheel with its declared
+  runtime dependencies; an isolated `-S` import ran `jianji-flow --version`,
+  parsed `--voiceover`, and found all five packaged schemas;
 - smoke, P0, Skill validation, and `jianji-flow doctor` passed again.
 
 ## Launch Rule

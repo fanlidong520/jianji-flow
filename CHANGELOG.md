@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `run` and `quick` now accept a local WAV through `--voiceover`, so a real
+  narration or external TTS can be used when Windows SAPI has no Chinese voice;
+  the audio is copied into the work directory and remains fully validated.
 - Failed runs now keep a local `review.html` alongside `review.md`; the page
   clearly marks missing media as not generated, links review artifacts, and
   embeds source-preflight diagnostic frames when available.
