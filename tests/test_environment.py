@@ -27,6 +27,7 @@ def test_check_environment_reports_missing_tts_without_crashing(tmp_path: Path, 
     )
     monkeypatch.setattr("jianji_flow.environment.platform.system", lambda: "Windows")
     monkeypatch.setattr("jianji_flow.environment.has_local_chinese_tts", lambda: False)
+    monkeypatch.setattr("jianji_flow.environment.has_edge_tts", lambda: False)
 
     report = check_environment(output_root=tmp_path)
 
@@ -34,6 +35,23 @@ def test_check_environment_reports_missing_tts_without_crashing(tmp_path: Path, 
     assert report["checks"]["local_tts"]["status"] == "fail"
     assert "Chinese TTS" in report["checks"]["local_tts"]["message"]
     assert "--voiceover" in format_environment_report(report)
+
+
+def test_check_environment_accepts_edge_tts_when_local_tts_is_missing(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(
+        "jianji_flow.environment.check_ffmpeg_available",
+        lambda: {"ffmpeg": "ffmpeg ok", "ffprobe": "ffprobe ok"},
+    )
+    monkeypatch.setattr("jianji_flow.environment.platform.system", lambda: "Windows")
+    monkeypatch.setattr("jianji_flow.environment.has_local_chinese_tts", lambda: False)
+    monkeypatch.setattr("jianji_flow.environment.has_edge_tts", lambda: True)
+
+    report = check_environment(output_root=tmp_path)
+
+    assert report["status"] == "pass"
+    assert report["checks"]["local_tts"]["status"] == "fail"
+    assert report["checks"]["edge_tts"]["status"] == "pass"
+    assert format_environment_report(report).strip().endswith("Ready to run quick draft")
 
 
 def test_check_environment_reports_missing_ffmpeg_tools(tmp_path: Path, monkeypatch):

@@ -43,7 +43,14 @@ from jianji_flow.visual_candidates import (
     write_final_visual_selection_frames,
     write_visual_candidate_artifacts,
 )
-from jianji_flow.voiceover import create_voiceover, probe_voiceover, validate_voiceover
+from jianji_flow.voiceover import (
+    create_edge_voiceover,
+    create_voiceover,
+    has_edge_tts,
+    has_local_chinese_tts,
+    probe_voiceover,
+    validate_voiceover,
+)
 from jianji_flow.window_scoring import score_source_window
 
 
@@ -62,6 +69,7 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--apply-recommendation", help="apply a clean recommended fix from --fixes for one segment id")
     run.add_argument("--visual-selections", help="optional Codex visual selection JSON file")
     run.add_argument("--voiceover", help="optional local WAV narration; bypasses Windows local TTS")
+    run.add_argument("--tts-provider", choices=("auto", "windows", "edge"), default="auto")
     run.add_argument("--multi-shot", action="store_true", help="split selected windows at detected scene boundaries")
     run.add_argument("--confidence-threshold", type=float)
     run.add_argument("--target-width", type=int)
@@ -85,6 +93,7 @@ def _build_parser() -> argparse.ArgumentParser:
     quick.add_argument("--apply-recommendation", help="apply a clean recommended fix from --fixes for one segment id")
     quick.add_argument("--visual-selections", help="optional Codex visual selection JSON file")
     quick.add_argument("--voiceover", help="optional local WAV narration; bypasses Windows local TTS")
+    quick.add_argument("--tts-provider", choices=("auto", "windows", "edge"), default="auto")
     quick.add_argument("--multi-shot", action="store_true", help="split selected windows at detected scene boundaries")
     quick.add_argument("--work-dir")
     quick.add_argument("--mode", choices=("product", "talking-head"), default="product")
@@ -425,7 +434,13 @@ def _build_window_scorer(work_dir: Path):
     return scorer
 
 
-def _create_or_copy_voiceover(recipe: dict, output_path: Path, source_path: str | None) -> Path:
+def _create_or_copy_voiceover(
+    recipe: dict,
+    output_path: Path,
+    source_path: str | None,
+    *,
+    tts_provider: str = "auto",
+) -> Path:
     if source_path:
         source = resolve_existing_file(source_path)
         if source.suffix.casefold() not in {".wav", ".wave"}:
@@ -433,6 +448,14 @@ def _create_or_copy_voiceover(recipe: dict, output_path: Path, source_path: str 
         output_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, output_path)
         return output_path
+    if tts_provider == "windows":
+        return create_voiceover(recipe, output_path)
+    if tts_provider == "edge":
+        return create_edge_voiceover(recipe, output_path)
+    if has_local_chinese_tts():
+        return create_voiceover(recipe, output_path)
+    if has_edge_tts():
+        return create_edge_voiceover(recipe, output_path)
     return create_voiceover(recipe, output_path)
 
 
@@ -613,7 +636,12 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
             print(f"source preflight failed; open review.html: {review_html_path}", file=sys.stderr)
             return 1
 
-        _create_or_copy_voiceover(recipe, voiceover_path, getattr(args, "voiceover", None))
+        _create_or_copy_voiceover(
+            recipe,
+            voiceover_path,
+            getattr(args, "voiceover", None),
+            tts_provider=getattr(args, "tts_provider", "auto"),
+        )
         validate_voiceover(voiceover_path)
         voiceover_duration_ms = probe_voiceover(voiceover_path).duration_ms
         minimum_voiceover_ms = _minimum_viable_voiceover_duration_ms(len(recipe.get("segments", [])))

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import shutil
 import subprocess
 import wave
 from dataclasses import dataclass
@@ -152,6 +153,95 @@ try {
     except (OSError, subprocess.TimeoutExpired):
         return False
     return result.returncode == 0
+
+
+def _edge_tts_executable() -> str | None:
+    return shutil.which("edge-tts") or shutil.which("edge-tts.exe")
+
+
+def has_edge_tts(timeout_s: int = 10) -> bool:
+    executable = _edge_tts_executable()
+    if not executable:
+        return False
+    try:
+        result = subprocess.run(
+            [executable, "--version"],
+            check=False,
+            timeout=timeout_s,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0
+
+
+def create_edge_voiceover(
+    recipe: dict,
+    output_path: Path,
+    *,
+    voice: str = "zh-CN-XiaoxiaoNeural",
+    timeout_s: int = 60,
+) -> Path:
+    text = build_voiceover_text(recipe)
+    executable = _edge_tts_executable()
+    if not executable:
+        raise RuntimeError("edge-tts is not installed; install the optional edge-tts dependency or provide --voiceover")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    text_path = output_path.with_name(f".{output_path.stem}.edge-tts.txt")
+    media_path = output_path.with_name(f".{output_path.stem}.edge-tts.mp3")
+    text_path.write_text(text, encoding="utf-8")
+    try:
+        tts_result = subprocess.run(
+            [executable, "--voice", voice, "--file", str(text_path), "--write-media", str(media_path)],
+            check=False,
+            timeout=timeout_s,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if tts_result.returncode != 0:
+            detail = tts_result.stderr.strip() or tts_result.stdout.strip() or "edge TTS failed"
+            raise RuntimeError(detail)
+
+        conversion_result = subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-v",
+                "error",
+                "-i",
+                str(media_path),
+                "-ac",
+                "1",
+                "-ar",
+                "22050",
+                str(output_path),
+            ],
+            check=False,
+            timeout=timeout_s,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if conversion_result.returncode != 0:
+            detail = conversion_result.stderr.strip() or conversion_result.stdout.strip() or "edge TTS audio conversion failed"
+            raise RuntimeError(detail)
+        validate_voiceover(output_path)
+        return output_path
+    except Exception:
+        if output_path.exists():
+            output_path.unlink()
+        raise
+    finally:
+        for temporary_path in (text_path, media_path):
+            if temporary_path.exists():
+                temporary_path.unlink()
 
 
 def create_voiceover(recipe: dict, output_path: Path, *, rate: int = 0) -> Path:

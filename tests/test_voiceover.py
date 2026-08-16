@@ -10,6 +10,8 @@ import pytest
 from jianji_flow.voiceover import (
     build_voiceover_text,
     create_voiceover,
+    create_edge_voiceover,
+    has_edge_tts,
     has_local_chinese_tts,
     probe_voiceover,
     validate_voiceover,
@@ -172,6 +174,65 @@ def test_has_local_chinese_tts_checks_voice_selection(monkeypatch):
 
     assert has_local_chinese_tts() is True
     assert "$s.SelectVoice($voice.VoiceInfo.Name)" in captured["script"]
+
+
+def test_has_edge_tts_checks_executable_version(monkeypatch):
+    calls = []
+
+    class Result:
+        returncode = 0
+
+    monkeypatch.setattr("jianji_flow.voiceover.shutil.which", lambda name: "edge-tts.exe")
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        return Result()
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fake_run)
+
+    assert has_edge_tts() is True
+    assert calls == [["edge-tts.exe", "--version"]]
+
+
+def test_create_edge_voiceover_converts_generated_media_to_wav(tmp_path: Path, monkeypatch):
+    output = tmp_path / "voiceover.wav"
+    real_run = subprocess.run
+    commands = []
+
+    monkeypatch.setattr("jianji_flow.voiceover.shutil.which", lambda name: "edge-tts.exe")
+
+    def fake_run(command, **kwargs):
+        commands.append(command)
+        if command[0] == "edge-tts.exe":
+            media_path = Path(command[command.index("--write-media") + 1])
+            _write_tone_wav(media_path)
+
+            class Result:
+                returncode = 0
+                stderr = ""
+                stdout = ""
+
+            return Result()
+        if command[0] == "ffmpeg":
+            _write_tone_wav(Path(command[-1]))
+
+            class Result:
+                returncode = 0
+                stderr = ""
+                stdout = ""
+
+            return Result()
+        return real_run(command, **kwargs)
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fake_run)
+
+    result = create_edge_voiceover({"segments": [{"caption": "家居清洁"}]}, output)
+
+    assert result == output
+    assert output.exists()
+    assert commands[0][:2] == ["edge-tts.exe", "--voice"]
+    assert commands[1][0] == "ffmpeg"
+    assert probe_voiceover(output).duration_ms > 0
 
 
 def test_create_voiceover_invokes_local_tts_and_validates_output(tmp_path: Path, monkeypatch):

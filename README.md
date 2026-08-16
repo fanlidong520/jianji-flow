@@ -30,7 +30,10 @@
 - Runs source preflight checks on selected source frames before voiceover and rendering.
 - Runs source preflight on the same cropped safe area that the renderer will expose, reducing warnings for platform chrome that is removed before export.
 - Generates `captions.srt` and `captions.ass`.
-- Generates `voiceover.wav` with a local Windows Chinese TTS voice when available.
+- Generates `voiceover.wav` with the local Windows Chinese TTS voice when available;
+  `--tts-provider auto` falls back to the optional online `edge-tts` backend.
+- Supports `--tts-provider windows|edge|auto` so the narration source is explicit
+  and reproducible in a run.
 - Accepts `--voiceover path\to\narration.wav` on `run` and `quick` to use a
   recorded or externally generated WAV narration when local Windows TTS is
   unavailable; the copied audio still goes through decode, duration, and
@@ -72,12 +75,18 @@
 
 - Python 3.10+
 - FFmpeg and ffprobe
-- Windows local TTS for default Chinese voiceover generation
+- Windows local TTS or the optional `edge-tts` backend for default Chinese voiceover generation
 
 Clone 仓库后，在项目目录里安装：
 
 ```powershell
 python -m pip install -e ".[dev]"
+```
+
+如果本机没有中文 Windows TTS，建议安装在线配音兜底：
+
+```powershell
+python -m pip install edge-tts
 ```
 
 如果当前 `python` 没有 pip，但 Windows Python Launcher 可用，可以改用：
@@ -145,8 +154,9 @@ jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets
 winget install Gyan.FFmpeg
 ```
 
-如果显示中文 TTS 不可用，可以在 Windows 里安装或启用本地中文语音，修好后重新运行
-`jianji-flow doctor`；也可以直接准备一份 WAV 配音并传入 `--voiceover`，不依赖本地 TTS。
+如果显示中文 TTS 不可用，但 `edge_tts` 显示 `OK`，`--tts-provider auto` 会使用在线
+配音，运行时需要网络；也可以用 `--tts-provider windows` 强制只用本地语音，或准备
+一份 WAV 配音并传入 `--voiceover`，完全不依赖 TTS。
 
 ## 素材怎么准备
 
@@ -264,13 +274,16 @@ The selection is checked against the candidate manifest, asset fingerprint, sour
 
 `warning` 不是“基本通过”。它只说明工作流产出了可检查的粗剪，但仍有证据不足、素材风险或人工确认项。如果多个片段的源画面都出现平台 UI/旧字幕风险，预检会在配音和渲染前升级为 `fail`，避免先生成一条看似完成但不能发布的视频。
 
-如果 `doctor` 报告本机没有中文 SAPI 声音，可以准备一份 WAV 配音并传入：
+如果 `doctor` 报告本机没有中文 SAPI 声音，默认 `auto` 会尝试已安装的 `edge-tts`。
+需要离线或固定真人声音时，可以准备一份 WAV 配音并传入：
 
 ```powershell
 jianji-flow quick --reference path\reference.mp4 --assets path\assets --script path\script.txt --voiceover path\narration.wav --work-dir out\with-narration
 ```
 
 `--voiceover` 只接受本地 WAV；它不会跳过素材预检、视觉选择、字幕烧录或最终复核。
+`edge-tts` 是在线服务，文案会发送到其服务端；对隐私敏感或需要完全离线时请使用
+`--tts-provider windows` 或 `--voiceover`。
 
 ## Story Support
 
@@ -352,11 +365,18 @@ unverified user trial into a release pass.
 
 Latest local result:
 
-- `python -m pytest -q` -> 418 passed in 328.46s
+- `python -m pytest -q` -> 423 passed in 349.74s
+- the Edge TTS backend's focused tests and the end-to-end auto-TTS run also pass.
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
-- `python -m jianji_flow doctor --work-dir out\doctor-v62` -> 当前环境准确报告
-  `local_tts: FAIL` / `Not ready`，并提示 `--voiceover` WAV 兜底；这不会阻止外部 WAV 运行。
+- `python -m jianji_flow doctor --work-dir out\doctor-v63` -> `local_tts: FAIL`,
+  `edge_tts: OK`, `Ready to run quick draft`.
+- `out\edge-auto-v63-run` -> `quick --tts-provider auto` generated a valid
+  voiceover, MP4 with video/audio, captions, and review artifacts; status remains
+  `warning` because the synthetic filename-role run still needs visual selection.
+- `out\opaque-trial-v63-run` -> auto Edge TTS plus Codex visual selections on
+  opaque filenames produced a `pass` review with all five story roles supported;
+  this is synthetic usability evidence, not a real-material release pass.
 - Skill validation -> `Skill is valid!`
 - `python -m jianji_flow --version` -> `jianji-flow 0.3.0.dev0`
 - the latest real-material visual-selection run is
@@ -378,6 +398,8 @@ Latest local result:
 
 - 当前默认使用 Windows 本地中文 TTS；没有中文语音包时可通过
   `--voiceover path\to\narration.wav` 使用真人或外部 TTS 配音。
+- `--tts-provider auto` can use the optional online `edge-tts` fallback; it needs
+  network access and is not suitable for sensitive narration.
 - 当前匹配主要依赖文件名、结构和可审计证据，不是完整多模态理解。
 - 视觉相似检查只比较采样帧；它能减少重复画面修复建议，但不能证明语义匹配。
 - 当前不会自动寻找素材、生成素材、发布视频或创建剪映草稿。

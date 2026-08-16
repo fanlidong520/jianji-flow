@@ -6,7 +6,7 @@ description: Create auditable preview videos from a reference video, a local ass
 # jianji-flow
 
 Use this skill when the user wants an automatic local preview-video workflow.
-Current versions create inspectable intermediate files, machine voiceover, burned-in captions, a playable MP4 preview, and a local review page.
+Current versions create inspectable intermediate files, machine voiceover, burned-in captions, a playable MP4 preview, and a local review page. Narration uses Windows Chinese SAPI when available, or the optional online `edge-tts` backend in `auto` mode.
 It does not create Jianying, CapCut, or other editor draft projects.
 Treat it as a local auditable rough-cut workflow, not as a full editor or a true viral-reference decomposition engine.
 Treat `warning` as review-required output, not as publish-ready success.
@@ -21,6 +21,7 @@ Ask for any missing input before running:
 - Work/output directory path.
 - Optional script or transcript path.
 - Optional local WAV narration path when the machine has no usable Chinese TTS voice.
+- Optional TTS provider: `auto` (default), `windows`, or `edge`.
 
 ## Workflow
 
@@ -47,8 +48,9 @@ Detailed workflow:
 8. Stop before rendering if validation has any blocking failure.
 9. Run source preflight on selected source frames; append warnings/failures to product quick `diagnosis.md` when present, and stop before voiceover/render if severe residue or repeated independent evidence is detected. Do not count the same sampled risk again merely because one source video is reused across timeline segments.
 10. Write `captions.srt` and `captions.ass`.
-11. Generate `voiceover.wav` with local machine TTS, or copy and validate the
-    user-provided WAV from `--voiceover`.
+11. Generate `voiceover.wav` with the selected TTS provider, or copy and validate
+    the user-provided WAV from `--voiceover`. `auto` prefers local Windows SAPI
+    and falls back to `edge-tts` only when it is installed.
 12. Render `remix.mp4` only from validated manifest assets, burned-in captions, and generated voiceover.
 13. Write `contact-sheet.png` with one frame per segment and `reference-comparison.png` with the same number of relative storyboard samples from the reference and remix.
 14. Write `fixes.template.json` for weak or low-confidence segments, including same-role visual-similarity checks for repair recommendations.
@@ -63,6 +65,8 @@ Detailed workflow:
 - Do not accept URL, protocol, protocol-relative, or network paths.
 - Do not write outputs outside the requested work directory.
 - `--voiceover` accepts only a local WAV file and does not bypass any other validation.
+- `--tts-provider edge` requires the optional `edge-tts` executable and network
+  access; do not use it for sensitive narration without user consent.
 - Do not render a segment whose match is missing or rejected.
 - Do not hide low-confidence matches; report them in `review.md`.
 - Do not leave stale success artifacts after a failed rerun.

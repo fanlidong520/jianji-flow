@@ -434,7 +434,7 @@ Latest release-gate automation checkpoint:
   independent packs;
 - the example ledger correctly returns `blocked` and writes both machine and
   human reports when evidence is absent;
-- `python -m pytest -q` -> `418 passed in 328.46s`;
+- `python -m pytest -q` -> `423 passed in 349.74s`;
 - source preflight now ignores platform-bar heuristics outside the renderer's
   safe crop while retaining lower-safe-area residue checks; the earlier real
   home-product baseline `v57` remains a `warning` because it used filename-only
@@ -453,6 +453,13 @@ Latest release-gate automation checkpoint:
 - `jianji-flow doctor --work-dir out\doctor-v62` accurately reports that this
   host has no selectable Chinese SAPI voice and points to `--voiceover` as the
   external WAV fallback;
+- after adding the optional `edge-tts` backend, `jianji-flow doctor
+  --work-dir out\doctor-v63` reports `local_tts: FAIL`, `edge_tts: OK`, and
+  `Ready to run quick draft`; an end-to-end `quick --tts-provider auto` run
+  generated a decodable voiceover and video/audio remix;
+- `out\opaque-trial-v63-run` combines auto Edge TTS with Codex visual selection
+  on opaque filenames and passes review with all five story roles supported;
+  it remains synthetic evidence and is not counted as a real-material pass.
 - the synthetic opaque-filename trial at
   `out\opaque-trial-v61\run-short-wav-v2` passed with `Story support: pass`,
   no filename-only roles, no warnings, and a visibly different five-role

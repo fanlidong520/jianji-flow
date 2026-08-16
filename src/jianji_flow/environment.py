@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 
 from jianji_flow.media_probe import check_ffmpeg_available
-from jianji_flow.voiceover import has_local_chinese_tts
+from jianji_flow.voiceover import has_edge_tts, has_local_chinese_tts
 
 
 def _check(status: str, message: str) -> dict:
@@ -41,6 +41,7 @@ def check_environment(output_root: Path | None = None) -> dict:
     tools = check_ffmpeg_available()
     system = platform.system()
     has_tts = has_local_chinese_tts() if system == "Windows" else False
+    has_edge = has_edge_tts() if system == "Windows" else False
     tts_message = (
         "Windows local Chinese TTS is available"
         if has_tts
@@ -50,14 +51,21 @@ def check_environment(output_root: Path | None = None) -> dict:
             else "Windows local Chinese TTS is not available"
         )
     )
+    edge_tts_message = (
+        "edge-tts executable is available; online access is required when generating audio"
+        if has_edge
+        else "edge-tts executable is not available"
+    )
     checks = {
         "python": _check("pass", f"Python {sys.version.split()[0]} on {system}"),
         "ffmpeg": _tool_check(tools, "ffmpeg"),
         "ffprobe": _tool_check(tools, "ffprobe"),
         "local_tts": _check("pass" if has_tts else "fail", tts_message),
+        "edge_tts": _check("pass" if has_edge else "fail", edge_tts_message),
         "writable_output": _writable_output_check(output_root),
     }
-    status = "pass" if all(item["status"] == "pass" for item in checks.values()) else "fail"
+    non_tts_checks = [check for name, check in checks.items() if name not in {"local_tts", "edge_tts"}]
+    status = "pass" if all(item["status"] == "pass" for item in non_tts_checks) and (has_tts or has_edge) else "fail"
     return {"status": status, "checks": checks}
 
 
@@ -75,6 +83,9 @@ def format_environment_report(report: dict) -> str:
             lines.append("- Install FFmpeg and ffprobe, for example: winget install Gyan.FFmpeg")
         if checks.get("local_tts", {}).get("status") == "fail":
             lines.append("- On Windows, install or enable a local zh-CN text-to-speech voice.")
+        if checks.get("edge_tts", {}).get("status") == "fail":
+            lines.append("- Or install the optional online fallback with: python -m pip install edge-tts")
+        if checks.get("local_tts", {}).get("status") == "fail":
             lines.append("- Or pass a local WAV narration with --voiceover to skip local TTS.")
         if checks.get("writable_output", {}).get("status") == "fail":
             lines.append("- Choose a writable output folder with --work-dir.")

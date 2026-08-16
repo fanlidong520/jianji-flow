@@ -9,7 +9,7 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageStat
 
-from jianji_flow.cli import main
+from jianji_flow.cli import _build_parser, _create_or_copy_voiceover, main
 from jianji_flow.contracts import validate_fixes
 from jianji_flow.media_probe import run_ffprobe
 from jianji_flow.voiceover import probe_voiceover
@@ -41,6 +41,7 @@ def _patch_voiceover(monkeypatch):
         return output_path
 
     monkeypatch.setattr("jianji_flow.cli.create_voiceover", fake_create_voiceover, raising=False)
+    monkeypatch.setattr("jianji_flow.cli.has_local_chinese_tts", lambda: True)
 
 
 def _contact_sheet_tile(path: Path, index: int, *, tile_width: int = 220, padding: int = 8) -> Image.Image:
@@ -59,6 +60,46 @@ def test_cli_version(capsys):
     output = capsys.readouterr()
     assert code == 0
     assert "jianji-flow 0.3.0.dev0" in output.out
+
+
+def test_parser_accepts_tts_provider():
+    args = _build_parser().parse_args(
+        [
+            "quick",
+            "--reference",
+            "reference.mp4",
+            "--assets",
+            "assets",
+            "--tts-provider",
+            "edge",
+        ]
+    )
+
+    assert args.tts_provider == "edge"
+
+
+def test_auto_tts_provider_uses_edge_when_windows_tts_is_missing(tmp_path, monkeypatch):
+    output = tmp_path / "voiceover.wav"
+    called = {}
+
+    def fake_edge_voiceover(recipe, output_path):
+        called["recipe"] = recipe
+        _write_test_wav(output_path, seconds=1.0)
+        return output_path
+
+    monkeypatch.setattr("jianji_flow.cli.has_local_chinese_tts", lambda: False)
+    monkeypatch.setattr("jianji_flow.cli.has_edge_tts", lambda: True)
+    monkeypatch.setattr("jianji_flow.cli.create_edge_voiceover", fake_edge_voiceover)
+
+    result = _create_or_copy_voiceover(
+        {"segments": [{"caption": "家居清洁"}]},
+        output,
+        None,
+        tts_provider="auto",
+    )
+
+    assert result == output
+    assert called["recipe"]["segments"][0]["caption"] == "家居清洁"
 
 
 def test_cli_help_no_args(capsys):
@@ -650,6 +691,7 @@ def test_run_shortens_voiceover_timeline_instead_of_padding_silent_tail(tmp_path
         return output_path
 
     monkeypatch.setattr("jianji_flow.cli.create_voiceover", fake_create_voiceover)
+    monkeypatch.setattr("jianji_flow.cli.has_local_chinese_tts", lambda: True)
     fixture_root = tmp_path / "fixtures"
     subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
     work_dir = tmp_path / "work"
@@ -1695,6 +1737,7 @@ def test_too_short_voiceover_removes_generated_success_artifacts(tmp_path, monke
         return output_path
 
     monkeypatch.setattr("jianji_flow.cli.create_voiceover", fake_create_voiceover)
+    monkeypatch.setattr("jianji_flow.cli.has_local_chinese_tts", lambda: True)
     fixture_root = tmp_path / "fixtures"
     subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
     work_dir = tmp_path / "work"

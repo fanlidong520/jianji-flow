@@ -22,6 +22,9 @@ vision = [
   "numpy>=2.0.0",
   "opencv-python>=4.10.0.84"
 ]
+edge-tts = [
+  "edge-tts>=7.2.0"
+]
 
 [project.scripts]
 jianji-flow = "jianji_flow.cli:main"
