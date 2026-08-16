@@ -133,6 +133,7 @@ $s = New-Object System.Speech.Synthesis.SpeechSynthesizer
 try {
     $voice = $s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -eq 'zh-CN' } | Select-Object -First 1
     if ($null -eq $voice) { exit 1 }
+    $s.SelectVoice($voice.VoiceInfo.Name)
     exit 0
 } finally {
     $s.Dispose()

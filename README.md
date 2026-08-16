@@ -104,7 +104,8 @@ python scripts/check_env.py
 jianji-flow doctor
 ```
 
-健康输出会以 `Ready to run quick draft` 结尾。
+环境完整可用时输出会以 `Ready to run quick draft` 结尾；如果本机没有可用的中文 TTS，
+会显示 `Not ready` 并给出安装语音或使用 `--voiceover` WAV 配音的下一步。
 首次安装建议先确认版本和内置 demo 都能运行：
 
 ```powershell
@@ -144,7 +145,8 @@ jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets
 winget install Gyan.FFmpeg
 ```
 
-如果显示中文 TTS 不可用，需要在 Windows 里安装或启用本地中文语音。修好后重新运行 `jianji-flow doctor`。
+如果显示中文 TTS 不可用，可以在 Windows 里安装或启用本地中文语音，修好后重新运行
+`jianji-flow doctor`；也可以直接准备一份 WAV 配音并传入 `--voiceover`，不依赖本地 TTS。
 
 ## 素材怎么准备
 
@@ -350,10 +352,11 @@ unverified user trial into a release pass.
 
 Latest local result:
 
-- `python -m pytest -q` -> 417 passed in 324.28s
+- `python -m pytest -q` -> 418 passed in 328.46s
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
-- `python -m jianji_flow doctor --work-dir out\doctor-v60` -> `Ready to run quick draft`
+- `python -m jianji_flow doctor --work-dir out\doctor-v62` -> 当前环境准确报告
+  `local_tts: FAIL` / `Not ready`，并提示 `--voiceover` WAV 兜底；这不会阻止外部 WAV 运行。
 - Skill validation -> `Skill is valid!`
 - `python -m jianji_flow --version` -> `jianji-flow 0.3.0.dev0`
 - the latest real-material visual-selection run is

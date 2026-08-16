@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import shutil
 import os
+import math
+import struct
+import wave
 from pathlib import Path
 
 from jianji_flow.cli import main as cli_main
@@ -36,7 +39,28 @@ def _assert_outputs(work_dir: Path) -> None:
         raise AssertionError(f"smoke remix has no audio: {work_dir / 'remix.mp4'}")
 
 
-def _run_case(mode: str, scenario: str, script_name: str, fixture_root: Path, run_root: Path) -> None:
+def _write_test_wav(path: Path, *, seconds: float = 5.0) -> None:
+    sample_rate = 8000
+    frame_count = int(sample_rate * seconds)
+    frames = bytearray()
+    for index in range(frame_count):
+        value = int(math.sin(index / sample_rate * 440 * math.tau) * 8000)
+        frames.extend(struct.pack("<h", value))
+    with wave.open(str(path), "wb") as handle:
+        handle.setnchannels(1)
+        handle.setsampwidth(2)
+        handle.setframerate(sample_rate)
+        handle.writeframes(frames)
+
+
+def _run_case(
+    mode: str,
+    scenario: str,
+    script_name: str,
+    fixture_root: Path,
+    run_root: Path,
+    voiceover: Path,
+) -> None:
     work_dir = run_root / scenario
     code = cli_main(
         [
@@ -51,6 +75,8 @@ def _run_case(mode: str, scenario: str, script_name: str, fixture_root: Path, ru
             str(fixture_root / scenario / script_name),
             "--work-dir",
             str(work_dir),
+            "--voiceover",
+            str(voiceover),
             "--target-width",
             "320",
             "--target-height",
@@ -71,9 +97,11 @@ def main() -> int:
     smoke_root.mkdir(parents=True, exist_ok=True)
     fixture_root = smoke_root / "fixtures"
     generate_fixtures(fixture_root)
+    voiceover = smoke_root / "test-voiceover.wav"
+    _write_test_wav(voiceover)
 
-    _run_case("product", "scenario-a-product", "script.txt", fixture_root, smoke_root)
-    _run_case("talking-head", "scenario-b-talking", "transcript.txt", fixture_root, smoke_root)
+    _run_case("product", "scenario-a-product", "script.txt", fixture_root, smoke_root, voiceover)
+    _run_case("talking-head", "scenario-b-talking", "transcript.txt", fixture_root, smoke_root, voiceover)
     print("smoke passed")
     return 0
 

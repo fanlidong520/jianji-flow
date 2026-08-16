@@ -434,7 +434,7 @@ Latest release-gate automation checkpoint:
   independent packs;
 - the example ledger correctly returns `blocked` and writes both machine and
   human reports when evidence is absent;
-- `python -m pytest -q` -> `417 passed in 324.28s`;
+- `python -m pytest -q` -> `418 passed in 328.46s`;
 - source preflight now ignores platform-bar heuristics outside the renderer's
   safe crop while retaining lower-safe-area residue checks; the earlier real
   home-product baseline `v57` remains a `warning` because it used filename-only
@@ -449,7 +449,15 @@ Latest release-gate automation checkpoint:
 - `out/clean-install-v60` built and installed the wheel with its declared
   runtime dependencies; an isolated `-S` import ran `jianji-flow --version`,
   parsed `--voiceover`, and found all five packaged schemas;
-- smoke, P0, Skill validation, and `jianji-flow doctor` passed again.
+- smoke, P0, and Skill validation passed again;
+- `jianji-flow doctor --work-dir out\doctor-v62` accurately reports that this
+  host has no selectable Chinese SAPI voice and points to `--voiceover` as the
+  external WAV fallback;
+- the synthetic opaque-filename trial at
+  `out\opaque-trial-v61\run-short-wav-v2` passed with `Story support: pass`,
+  no filename-only roles, no warnings, and a visibly different five-role
+  remix; it is usability evidence only, not an independent real-material
+  release-gate pass.
 
 ## Launch Rule
 

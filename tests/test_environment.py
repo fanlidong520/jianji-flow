@@ -33,6 +33,7 @@ def test_check_environment_reports_missing_tts_without_crashing(tmp_path: Path, 
     assert report["status"] == "fail"
     assert report["checks"]["local_tts"]["status"] == "fail"
     assert "Chinese TTS" in report["checks"]["local_tts"]["message"]
+    assert "--voiceover" in format_environment_report(report)
 
 
 def test_check_environment_reports_missing_ffmpeg_tools(tmp_path: Path, monkeypatch):

@@ -1,3 +1,4 @@
+import base64
 import math
 import subprocess
 import struct
@@ -155,6 +156,22 @@ def test_has_local_chinese_tts_returns_true_when_local_voice_exists(monkeypatch)
     monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", lambda *args, **kwargs: Result())
 
     assert has_local_chinese_tts() is True
+
+
+def test_has_local_chinese_tts_checks_voice_selection(monkeypatch):
+    captured = {}
+
+    class Result:
+        returncode = 0
+
+    def fake_run(command, **kwargs):
+        captured["script"] = base64.b64decode(command[-1]).decode("utf-16le")
+        return Result()
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fake_run)
+
+    assert has_local_chinese_tts() is True
+    assert "$s.SelectVoice($voice.VoiceInfo.Name)" in captured["script"]
 
 
 def test_create_voiceover_invokes_local_tts_and_validates_output(tmp_path: Path, monkeypatch):
