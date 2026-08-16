@@ -81,6 +81,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     demo = commands.add_parser("demo", help="run a local generated product demo")
     demo.add_argument("--work-dir")
+    demo.add_argument("--tts-provider", choices=("auto", "windows", "edge"), default="auto")
     demo.add_argument("--target-width", type=int)
     demo.add_argument("--target-height", type=int)
     demo.add_argument("--target-fps", type=float)
@@ -821,6 +822,7 @@ def _run_demo_command(args: argparse.Namespace) -> int:
             fixes=None,
             apply_recommendation=None,
             visual_selections=None,
+            tts_provider=args.tts_provider,
             confidence_threshold=None,
             target_width=args.target_width,
             target_height=args.target_height,

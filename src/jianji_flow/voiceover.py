@@ -178,6 +178,13 @@ def has_edge_tts(timeout_s: int = 10) -> bool:
     return result.returncode == 0
 
 
+def _compact_process_error(result: subprocess.CompletedProcess[str], fallback: str) -> str:
+    raw = result.stderr.strip() or result.stdout.strip()
+    lines = [line.strip() for line in raw.splitlines() if line.strip()]
+    detail = lines[-1] if lines else fallback
+    return detail[-500:]
+
+
 def create_edge_voiceover(
     recipe: dict,
     output_path: Path,
@@ -205,7 +212,7 @@ def create_edge_voiceover(
             errors="replace",
         )
         if tts_result.returncode != 0:
-            detail = tts_result.stderr.strip() or tts_result.stdout.strip() or "edge TTS failed"
+            detail = _compact_process_error(tts_result, "edge TTS failed")
             raise RuntimeError(detail)
 
         conversion_result = subprocess.run(
@@ -230,7 +237,7 @@ def create_edge_voiceover(
             errors="replace",
         )
         if conversion_result.returncode != 0:
-            detail = conversion_result.stderr.strip() or conversion_result.stdout.strip() or "edge TTS audio conversion failed"
+            detail = _compact_process_error(conversion_result, "edge TTS audio conversion failed")
             raise RuntimeError(detail)
         validate_voiceover(output_path)
         return output_path

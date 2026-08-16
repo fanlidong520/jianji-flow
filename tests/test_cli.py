@@ -78,6 +78,12 @@ def test_parser_accepts_tts_provider():
     assert args.tts_provider == "edge"
 
 
+def test_demo_parser_accepts_tts_provider():
+    args = _build_parser().parse_args(["demo", "--tts-provider", "edge"])
+
+    assert args.tts_provider == "edge"
+
+
 def test_auto_tts_provider_uses_edge_when_windows_tts_is_missing(tmp_path, monkeypatch):
     output = tmp_path / "voiceover.wav"
     called = {}

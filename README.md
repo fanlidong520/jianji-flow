@@ -369,7 +369,7 @@ unverified user trial into a release pass.
 
 Latest local result:
 
-- `python -m pytest -q` -> 423 passed in 349.74s
+- `python -m pytest -q` -> 425 passed in 341.66s
 - the Edge TTS backend's focused tests and the end-to-end auto-TTS run also pass.
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed

@@ -11,6 +11,8 @@
 - Added an optional `edge-tts` narration backend. `auto` prefers a working local
   Windows voice and falls back to Edge TTS when installed; `windows` and `edge`
   can be selected explicitly, while `--voiceover` remains the offline override.
+- Online TTS failures now keep the review artifacts and report a compact
+  actionable error instead of leaking the provider's full traceback.
 - Failed runs now keep a local `review.html` alongside `review.md`; the page
   clearly marks missing media as not generated, links review artifacts, and
   embeds source-preflight diagnostic frames when available.

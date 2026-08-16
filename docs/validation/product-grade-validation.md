@@ -434,7 +434,7 @@ Latest release-gate automation checkpoint:
   independent packs;
 - the example ledger correctly returns `blocked` and writes both machine and
   human reports when evidence is absent;
-- `python -m pytest -q` -> `423 passed in 349.74s`;
+- `python -m pytest -q` -> `425 passed in 341.66s`;
 - source preflight now ignores platform-bar heuristics outside the renderer's
   safe crop while retaining lower-safe-area residue checks; the earlier real
   home-product baseline `v57` remains a `warning` because it used filename-only

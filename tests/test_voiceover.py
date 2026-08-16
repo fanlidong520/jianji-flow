@@ -235,6 +235,24 @@ def test_create_edge_voiceover_converts_generated_media_to_wav(tmp_path: Path, m
     assert probe_voiceover(output).duration_ms > 0
 
 
+def test_create_edge_voiceover_reports_network_failure_without_traceback(tmp_path: Path, monkeypatch):
+    output = tmp_path / "voiceover.wav"
+    monkeypatch.setattr("jianji_flow.voiceover.shutil.which", lambda name: "edge-tts.exe")
+
+    class Result:
+        returncode = 1
+        stderr = "Traceback (most recent call last):\n...\naiohttp.client_exceptions.ClientConnectorError: Cannot connect"
+        stdout = ""
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", lambda *args, **kwargs: Result())
+
+    with pytest.raises(RuntimeError) as error:
+        create_edge_voiceover({"segments": [{"caption": "家居清洁"}]}, output)
+
+    assert "Traceback" not in str(error.value)
+    assert "Cannot connect" in str(error.value)
+
+
 def test_create_voiceover_invokes_local_tts_and_validates_output(tmp_path: Path, monkeypatch):
     output = tmp_path / "voiceover.wav"
     real_run = subprocess.run
