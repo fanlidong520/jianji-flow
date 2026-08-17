@@ -12,6 +12,9 @@
 - Added `jianji-flow evidence-pack` to turn a completed run directory into a
   local validation pack with a release-gate entry draft and a human judgment
   template. It keeps `human_judgment` at `pending` by default.
+- Added `jianji-flow material-audit` to audit a local material root by media
+  hashes before validation, so renamed copies are not counted as independent
+  real-material packs.
 - `run` and `quick` now accept local WAV, MP3, and M4A audio through
   `--voiceover`, so a real narration or external TTS can be used when Windows
   SAPI has no Chinese voice; non-WAV input is normalized to the work directory

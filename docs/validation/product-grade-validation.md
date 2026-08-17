@@ -510,7 +510,7 @@ Do not announce the project publicly until:
   `python scripts/run_smoke.py` -> `smoke passed`;
   `python scripts/run_p0.py` -> `p0 passed`.
 - Release gate still blocks correctly:
-  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v75`
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v77`
   -> `blocked` because real-material passes, opaque real-material evidence, and
   outside-user trials are still missing.
 - Real rendered verification:
@@ -564,5 +564,26 @@ Do not announce the project publicly until:
   wrote all three pack files; `observed_review_status` is `warning`, and
   `release-evidence.entry.json` keeps `human_judgment: pending`.
 - Latest release gate rerun:
-  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v75`
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v77`
   -> `blocked`; no release evidence was upgraded by packaging alone.
+
+## 2026-08-17 Material Audit Checkpoint
+
+- Added `jianji-flow material-audit` to audit local material roots before
+  running or packaging validation evidence.
+- The audit groups child pack folders by sorted media SHA-256 identities and
+  reports duplicate pack groups, so renamed copies cannot be counted as
+  independent real-material packs.
+- TDD verification:
+  `python -m pytest tests/test_material_audit.py -q -p no:cacheprovider`
+  -> `4 passed`.
+- Combined focused verification:
+  `python -m pytest tests/test_material_audit.py tests/test_validation_pack.py tests/test_cli.py::test_cli_help_no_args tests/test_cli.py::test_cli_version -q -p no:cacheprovider`
+  -> `9 passed`.
+- Local material audit:
+  `python -m jianji_flow material-audit --root E:\jianji-sucai --output-dir out\material-audit-v76-jianji-sucai`
+  -> `warning`, `independent packs: 1 of 2`.
+- Current conclusion: `E:\jianji-sucai\home-cleaning-kit-v1` and
+  `E:\jianji-sucai\home-cleaning-kit-v2` are renamed copies for release-gate
+  purposes. They can support usability testing, but only one independent
+  real-material pack can be counted from that root.

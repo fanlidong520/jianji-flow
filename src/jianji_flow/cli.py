@@ -22,6 +22,7 @@ from jianji_flow.environment import check_environment, format_environment_report
 from jianji_flow.fixtures import generate_fixtures
 from jianji_flow.fixes import build_fixes_template, build_recommended_fixes
 from jianji_flow.matcher import apply_match_overrides, build_recipe, match_segments, retime_recipe_and_matches
+from jianji_flow.material_audit import audit_material_root, write_material_audit
 from jianji_flow.media_probe import run_ffprobe
 from jianji_flow.media_scan import scan_assets, write_manifest
 from jianji_flow.paths import make_output_dir, resolve_existing_dir, resolve_existing_file
@@ -119,6 +120,10 @@ def _build_parser() -> argparse.ArgumentParser:
     evidence_pack.add_argument("--output-dir", required=True)
     evidence_pack.add_argument("--independent", action="store_true")
     evidence_pack.add_argument("--opaque-filenames", action="store_true")
+
+    material_audit = commands.add_parser("material-audit", help="audit local material pack independence by media hashes")
+    material_audit.add_argument("--root", required=True)
+    material_audit.add_argument("--output-dir", required=True)
     return parser
 
 
@@ -1033,6 +1038,20 @@ def _run_evidence_pack_command(args: argparse.Namespace) -> int:
         return 1
 
 
+def _run_material_audit_command(args: argparse.Namespace) -> int:
+    try:
+        audit = audit_material_root(Path(args.root))
+        outputs = write_material_audit(audit, Path(args.output_dir))
+        print(f"material audit: {audit['status']}")
+        print(f"independent packs: {audit['independent_pack_count']} of {audit['pack_count']}")
+        print(f"material audit report: {outputs['markdown']}")
+        print(f"material audit json: {outputs['json']}")
+        return 0
+    except Exception as exc:
+        print(f"jianji-flow failed: {exc}", file=sys.stderr)
+        return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args_list = sys.argv[1:] if argv is None else argv
@@ -1057,6 +1076,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_quick_command(args)
     if args.command == "evidence-pack":
         return _run_evidence_pack_command(args)
+    if args.command == "material-audit":
+        return _run_material_audit_command(args)
     if args.command == "run":
         return _run_pipeline(args)
     return 0

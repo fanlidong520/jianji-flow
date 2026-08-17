@@ -362,6 +362,16 @@ with real-material, dirty-pack, and outside-user evidence, then run:
 python scripts/check_release_gate.py --evidence path\to\release-evidence.json
 ```
 
+Before packaging real-material runs, audit the local material root:
+
+```powershell
+python -m jianji_flow material-audit --root E:\jianji-sucai --output-dir out\material-audit
+```
+
+The audit groups child folders by media SHA-256 identity. If two folders contain
+the same files under different names, they are not independent release-gate
+packs.
+
 To package a completed run for that local ledger, use:
 
 ```powershell
@@ -394,7 +404,7 @@ Latest local result:
   now shows the nontechnical `能不能用 / 先看哪里 / 主要风险` verdict at the top of
   `review.html`; it correctly says the filename-based output is only a rough
   cut for review.
-- `out\release-gate-current-v75` confirms the release gate is still blocked:
+- `out\release-gate-current-v77` confirms the release gate is still blocked:
   real independent material passes, one opaque real-material pass, and outside
   user trials are not yet present.
 - `out\pytest-source-diversity-review` verifies that visually similar or
@@ -403,6 +413,9 @@ Latest local result:
 - `out\evidence-pack-v73-real-v59` packages the latest real-material warning run
   into a validation pack; the generated release-gate entry correctly keeps
   `human_judgment: pending`.
+- `out\material-audit-v76-jianji-sucai` audits `E:\jianji-sucai` and shows that
+  `home-cleaning-kit-v1` and `home-cleaning-kit-v2` share the same media
+  identity, so they count as only 1 independent material pack.
 - the Edge TTS backend's focused tests and the end-to-end auto-TTS run also pass.
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
