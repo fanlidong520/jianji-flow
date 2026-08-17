@@ -183,6 +183,17 @@ winget install Gyan.FFmpeg
 python scripts/generate_fixtures.py --output fixtures
 ```
 
+要准备新的真实素材包时，可以先生成一个空模板：
+
+```powershell
+python -m jianji_flow material-pack --root E:\jianji-sucai --name home-storage-real-02 --kind home-storage
+```
+
+它只会创建 `assets/`、`script.txt`、`README.md`、`capture-checklist.md`
+和 `material-pack.json`。这不是素材验证，也不会生成 `remix.mp4`、
+`review.html` 或 release evidence；把真实视频放进 `assets/` 后，仍然要继续跑
+`material-audit`、`quick` 和人工复核。
+
 ## 快速运行
 
 跑产品带货样例：
@@ -376,6 +387,15 @@ The audit groups child folders by media SHA-256 identity. If two folders contain
 the same files under different names, they are not independent release-gate
 packs.
 
+If a new pack folder does not exist yet, scaffold the checklist first:
+
+```powershell
+python -m jianji_flow material-pack --root E:\jianji-sucai --name home-storage-real-02 --kind home-storage
+```
+
+The scaffold is intentionally `not_evidence`; an empty generated pack should
+make `material-audit` report no countable media until real videos are added.
+
 To package a completed run for that local ledger, use:
 
 ```powershell
@@ -408,7 +428,7 @@ Latest local result:
   now shows the nontechnical `能不能用 / 先看哪里 / 主要风险` verdict at the top of
   `review.html`; it correctly says the filename-based output is only a rough
   cut for review.
-- `out\release-gate-current-v79` confirms the release gate is still blocked:
+- `out\release-gate-current-v80` confirms the release gate is still blocked:
   real independent material passes, one opaque real-material pass, and outside
   user trials are not yet present.
 - `out\pytest-source-diversity-review` verifies that visually similar or
@@ -420,6 +440,10 @@ Latest local result:
 - `out\material-audit-v76-jianji-sucai` audits `E:\jianji-sucai` and shows that
   `home-cleaning-kit-v1` and `home-cleaning-kit-v2` share the same media
   identity, so they count as only 1 independent material pack.
+- `out\material-pack-v80-root` shows the new `material-pack` scaffold path. A
+  follow-up audit at `out\material-audit-v80-empty-scaffold` correctly reports
+  `fail`, `independent packs: 0 of 0`, proving the empty template is not counted
+  as real-material evidence.
 - `out\outside-trial-v78-template` shows the outside-user trial template
   command keeps `readme_quickstart: false` and `visible_remix: null` until a
   real tester completes the README path.

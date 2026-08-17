@@ -606,3 +606,44 @@ Do not announce the project publicly until:
   `python -m jianji_flow outside-trial --id tester-template-01 --output-dir out\outside-trial-v78-template`
   wrote `outside-user-trial.md`, `outside-user.entry.json`, and
   `outside-trial.json`; the entry remains unverified.
+
+## 2026-08-17 Material Pack Scaffold Checkpoint
+
+- Added `jianji-flow material-pack` so a new real-material pack can start from a
+  clear folder and capture checklist instead of guesswork.
+- The generated scaffold creates `assets/`, `script.txt`, `README.md`,
+  `capture-checklist.md`, and `material-pack.json`.
+- Safety boundary: the scaffold is marked `release_gate_status: not_evidence`.
+  It does not create fake media, `remix.mp4`, `review.html`, or release-gate
+  evidence, and it cannot count as real-material validation until real assets,
+  `quick`, and human review exist.
+- TDD red checks:
+  `python -m pytest tests/test_material_pack.py -q -p no:cacheprovider`
+  first failed because `jianji_flow.material_pack` and the `material-pack`
+  command did not exist.
+- Green verification:
+  `python -m pytest tests/test_material_pack.py -q -p no:cacheprovider`
+  -> `3 passed`.
+- Real scaffold command:
+  `python -m jianji_flow material-pack --root out\material-pack-v80-root --name home-storage-real-02 --kind home-storage`
+  wrote the scaffold and printed `release gate status: not evidence until real
+  assets, quick output, and human review exist`.
+- Repeat-run safety:
+  rerunning the same command returned exit 1 with
+  `material pack already exists`, so it does not overwrite a pack folder
+  silently.
+- Empty-scaffold audit:
+  `python -m jianji_flow material-audit --root out\material-pack-v80-root --output-dir out\material-audit-v80-empty-scaffold`
+  -> `fail`, `independent packs: 0 of 0`, proving a template is not counted as
+  independent real-material evidence.
+- Full-suite attempt:
+  `python -m pytest -q -p no:cacheprovider` and
+  `python -m pytest -q -p no:cacheprovider --basetemp out\pytest-basetemp-v80`
+  both stopped on Windows `PermissionError` while pytest tried to access its
+  temp base directory; no material-pack assertion failure was observed before
+  the session cleanup error. Focused tests, smoke, and P0 are the valid
+  verification evidence for this checkpoint.
+- Current release gate after this scaffold change:
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v80`
+  -> `blocked`; the remaining blockers are still real-material pass evidence,
+  one opaque real-material pass, and outside-user trial evidence.

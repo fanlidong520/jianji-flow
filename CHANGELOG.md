@@ -15,6 +15,9 @@
 - Added `jianji-flow material-audit` to audit a local material root by media
   hashes before validation, so renamed copies are not counted as independent
   real-material packs.
+- Added `jianji-flow material-pack` to scaffold a new real-material pack
+  checklist and folder structure. The generated pack is explicitly marked
+  `not_evidence` and does not count toward release-gate validation.
 - Added `jianji-flow outside-trial` to create a private outside-user trial
   record template with release-gate fields kept unverified by default.
 - `run` and `quick` now accept local WAV, MP3, and M4A audio through

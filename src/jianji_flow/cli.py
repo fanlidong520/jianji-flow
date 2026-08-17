@@ -23,6 +23,7 @@ from jianji_flow.fixtures import generate_fixtures
 from jianji_flow.fixes import build_fixes_template, build_recommended_fixes
 from jianji_flow.matcher import apply_match_overrides, build_recipe, match_segments, retime_recipe_and_matches
 from jianji_flow.material_audit import audit_material_root, write_material_audit
+from jianji_flow.material_pack import build_material_pack_scaffold, write_material_pack_scaffold
 from jianji_flow.media_probe import run_ffprobe
 from jianji_flow.media_scan import scan_assets, write_manifest
 from jianji_flow.outside_trial import build_outside_trial, write_outside_trial
@@ -125,6 +126,11 @@ def _build_parser() -> argparse.ArgumentParser:
     material_audit = commands.add_parser("material-audit", help="audit local material pack independence by media hashes")
     material_audit.add_argument("--root", required=True)
     material_audit.add_argument("--output-dir", required=True)
+
+    material_pack = commands.add_parser("material-pack", help="scaffold a new real-material pack checklist")
+    material_pack.add_argument("--root", required=True)
+    material_pack.add_argument("--name", required=True)
+    material_pack.add_argument("--kind", choices=("home-cleaning", "home-storage", "talking-head"), required=True)
 
     outside_trial = commands.add_parser("outside-trial", help="write an outside-user trial evidence template")
     outside_trial.add_argument("--id", required=True)
@@ -1057,6 +1063,20 @@ def _run_material_audit_command(args: argparse.Namespace) -> int:
         return 1
 
 
+def _run_material_pack_command(args: argparse.Namespace) -> int:
+    try:
+        scaffold = build_material_pack_scaffold(Path(args.root), name=str(args.name), kind=str(args.kind))
+        outputs = write_material_pack_scaffold(scaffold)
+        print(f"material pack scaffold: {outputs['pack_dir']}")
+        print(f"assets folder: {outputs['assets_dir']}")
+        print(f"capture checklist: {outputs['capture_checklist']}")
+        print("release gate status: not evidence until real assets, quick output, and human review exist")
+        return 0
+    except Exception as exc:
+        print(f"jianji-flow failed: {exc}", file=sys.stderr)
+        return 1
+
+
 def _run_outside_trial_command(args: argparse.Namespace) -> int:
     try:
         trial = build_outside_trial(str(args.id))
@@ -1096,6 +1116,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_evidence_pack_command(args)
     if args.command == "material-audit":
         return _run_material_audit_command(args)
+    if args.command == "material-pack":
+        return _run_material_pack_command(args)
     if args.command == "outside-trial":
         return _run_outside_trial_command(args)
     if args.command == "run":
