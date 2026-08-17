@@ -48,6 +48,7 @@ from jianji_flow.voiceover import (
     create_voiceover,
     has_edge_tts,
     has_local_chinese_tts,
+    prepare_voiceover,
     probe_voiceover,
     validate_voiceover,
 )
@@ -68,7 +69,7 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--fixes", help="optional JSON file that pins selected segments or roles to replacement assets")
     run.add_argument("--apply-recommendation", help="apply a clean recommended fix from --fixes for one segment id")
     run.add_argument("--visual-selections", help="optional Codex visual selection JSON file")
-    run.add_argument("--voiceover", help="optional local WAV narration; bypasses Windows local TTS")
+    run.add_argument("--voiceover", help="optional local WAV/MP3/M4A narration; bypasses TTS")
     run.add_argument("--tts-provider", choices=("auto", "windows", "edge"), default="auto")
     run.add_argument("--multi-shot", action="store_true", help="split selected windows at detected scene boundaries")
     run.add_argument("--confidence-threshold", type=float)
@@ -93,7 +94,7 @@ def _build_parser() -> argparse.ArgumentParser:
     quick.add_argument("--fixes", help="optional JSON file that pins selected segments or roles to replacement assets")
     quick.add_argument("--apply-recommendation", help="apply a clean recommended fix from --fixes for one segment id")
     quick.add_argument("--visual-selections", help="optional Codex visual selection JSON file")
-    quick.add_argument("--voiceover", help="optional local WAV narration; bypasses Windows local TTS")
+    quick.add_argument("--voiceover", help="optional local WAV/MP3/M4A narration; bypasses TTS")
     quick.add_argument("--tts-provider", choices=("auto", "windows", "edge"), default="auto")
     quick.add_argument("--multi-shot", action="store_true", help="split selected windows at detected scene boundaries")
     quick.add_argument("--work-dir")
@@ -444,11 +445,7 @@ def _create_or_copy_voiceover(
 ) -> Path:
     if source_path:
         source = resolve_existing_file(source_path)
-        if source.suffix.casefold() not in {".wav", ".wave"}:
-            raise ValueError("--voiceover currently requires a local WAV file")
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, output_path)
-        return output_path
+        return prepare_voiceover(source, output_path)
     if tts_provider == "windows":
         return create_voiceover(recipe, output_path)
     if tts_provider == "edge":

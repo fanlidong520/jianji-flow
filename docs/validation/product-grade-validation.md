@@ -477,3 +477,22 @@ Do not announce the project publicly until:
 - no known false pass remains;
 - installation and quickstart are verified from a clean environment;
 - README shows honest examples, including a warning case.
+
+## 2026-08-17 Input Usability Checkpoint
+
+- `--voiceover` now accepts local WAV, MP3, and M4A input. Non-WAV audio is
+  normalized to the work directory's `voiceover.wav` before the existing decode,
+  duration, and non-silent checks.
+- Targeted voiceover and CLI regression: `20 passed`.
+- P0 rerun: `p0 passed`; the previously affected render probe rerun: `1 passed`;
+  Smoke rerun: `smoke passed`; Skill metadata tests: `12 passed`.
+- Real FFmpeg conversion produced a 2,000ms probeable non-silent WAV from the
+  generated MP3 at `out/voiceover-format-real`.
+- A full five-asset `quick` run using that MP3 generated `remix.mp4`, normalized
+  narration, captions, contact sheet, and review artifacts at
+  `out/mp3-voiceover-e2e-v65b`; its `warning` status is correct because the run
+  uses filename-based matching without visual selection.
+- One complete suite run collected 428 tests: 425 passed and 3 failed with
+  Windows `WinError 1455` while creating FFmpeg processes after page-file
+  exhaustion. The failures passed in isolation, so this is recorded as a
+  resource-limited verification, not a fully green suite.

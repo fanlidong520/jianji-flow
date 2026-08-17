@@ -108,6 +108,30 @@ def test_auto_tts_provider_uses_edge_when_windows_tts_is_missing(tmp_path, monke
     assert called["recipe"]["segments"][0]["caption"] == "家居清洁"
 
 
+def test_external_voiceover_uses_local_audio_normalizer(tmp_path, monkeypatch):
+    source = tmp_path / "phone-recording.m4a"
+    source.write_bytes(b"encoded audio")
+    output = tmp_path / "voiceover.wav"
+    called = {}
+
+    def fake_prepare(source_path, output_path):
+        called["source"] = source_path
+        _write_test_wav(output_path, seconds=1.0)
+        return output_path
+
+    monkeypatch.setattr("jianji_flow.cli.prepare_voiceover", fake_prepare)
+
+    result = _create_or_copy_voiceover(
+        {"segments": [{"caption": "家居清洁"}]},
+        output,
+        str(source),
+    )
+
+    assert result == output
+    assert called["source"] == source
+    assert output.exists()
+
+
 def test_cli_help_no_args(capsys):
     code = main([])
     output = capsys.readouterr()

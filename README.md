@@ -34,10 +34,11 @@
   `--tts-provider auto` falls back to the optional online `edge-tts` backend.
 - Supports `--tts-provider windows|edge|auto` so the narration source is explicit
   and reproducible in a run.
-- Accepts `--voiceover path\to\narration.wav` on `run` and `quick` to use a
-  recorded or externally generated WAV narration when local Windows TTS is
-  unavailable; the copied audio still goes through decode, duration, and
-  non-silent validation.
+- Accepts `--voiceover path\to\narration.wav|mp3|m4a` on `run` and `quick` to
+  use a recorded or externally generated narration when local Windows TTS is
+  unavailable; common audio input is normalized to the work directory's
+  `voiceover.wav` and still goes through decode, duration, and non-silent
+  validation.
 - Renders `remix.mp4` with burned-in captions and voiceover audio.
 - Uses crop and caption outline for visual cleanup without adding full-frame dark bands over the video.
 - Writes `contact-sheet.png` with one frame per timeline segment.
@@ -114,7 +115,7 @@ jianji-flow doctor
 ```
 
 环境完整可用时输出会以 `Ready to run quick draft` 结尾；如果本机没有可用的中文 TTS，
-会显示 `Not ready` 并给出安装语音或使用 `--voiceover` WAV 配音的下一步。
+会显示 `Not ready` 并给出安装语音或使用 `--voiceover` 本地音频配音的下一步。
 首次安装建议先确认版本和内置 demo 都能运行：
 
 ```powershell
@@ -156,7 +157,7 @@ winget install Gyan.FFmpeg
 
 如果显示中文 TTS 不可用，但 `edge_tts` 显示 `OK`，`--tts-provider auto` 会使用在线
 配音，运行时需要网络；也可以用 `--tts-provider windows` 强制只用本地语音，或准备
-一份 WAV 配音并传入 `--voiceover`，完全不依赖 TTS。
+一份 WAV、MP3 或 M4A 配音并传入 `--voiceover`，完全不依赖 TTS。
 
 ## 素材怎么准备
 
@@ -275,13 +276,14 @@ The selection is checked against the candidate manifest, asset fingerprint, sour
 `warning` 不是“基本通过”。它只说明工作流产出了可检查的粗剪，但仍有证据不足、素材风险或人工确认项。如果多个片段的源画面都出现平台 UI/旧字幕风险，预检会在配音和渲染前升级为 `fail`，避免先生成一条看似完成但不能发布的视频。
 
 如果 `doctor` 报告本机没有中文 SAPI 声音，默认 `auto` 会尝试已安装的 `edge-tts`。
-需要离线或固定真人声音时，可以准备一份 WAV 配音并传入：
+需要离线或固定真人声音时，可以准备一份 WAV、MP3 或 M4A 配音并传入：
 
 ```powershell
-jianji-flow quick --reference path\reference.mp4 --assets path\assets --script path\script.txt --voiceover path\narration.wav --work-dir out\with-narration
+jianji-flow quick --reference path\reference.mp4 --assets path\assets --script path\script.txt --voiceover path\narration.mp3 --work-dir out\with-narration
 ```
 
-`--voiceover` 只接受本地 WAV；它不会跳过素材预检、视觉选择、字幕烧录或最终复核。
+`--voiceover` 接受本地 WAV、MP3、M4A 等 FFmpeg 可解码音频，并在工作目录中
+归一化为 `voiceover.wav`；它不会跳过素材预检、视觉选择、字幕烧录或最终复核。
 `edge-tts` 是在线服务，文案会发送到其服务端；对隐私敏感或需要完全离线时请使用
 `--tts-provider windows` 或 `--voiceover`。
 
@@ -369,7 +371,17 @@ unverified user trial into a release pass.
 
 Latest local result:
 
-- `python -m pytest -q` -> 425 passed in 341.66s
+- `python -m pytest -q` -> 428 tests collected; 425 passed, with 3
+  environment-level `WinError 1455` failures while creating FFmpeg processes
+  after the suite exhausted the Windows page file. The three affected checks
+  passed when rerun in isolation (`p0 passed`, render `1 passed`, and the new
+  voiceover/CLI set `20 passed`). This is not recorded as a fully green suite.
+- A real FFmpeg run converted `out\voiceover-format-real\narration.mp3` to a
+  2,000ms, probeable, non-silent `voiceover.wav`.
+- `out\mp3-voiceover-e2e-v65b` completed a full `quick` run with that MP3:
+  `remix.mp4`, normalized `voiceover.wav`, captions, contact sheet, and review
+  artifacts were generated; status correctly remains `warning` because this
+  filename-based run was not visually selected.
 - the Edge TTS backend's focused tests and the end-to-end auto-TTS run also pass.
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
@@ -381,7 +393,7 @@ Latest local result:
 - `out\opaque-trial-v63-run` -> auto Edge TTS plus Codex visual selections on
   opaque filenames produced a `pass` review with all five story roles supported;
   this is synthetic usability evidence, not a real-material release pass.
-- Skill validation -> `Skill is valid!`
+- `python -m pytest tests/test_skill_metadata.py -q` -> 12 passed
 - `python -m jianji_flow --version` -> `jianji-flow 0.3.0.dev0`
 - the latest real-material visual-selection run is
   `out\real-material-visual-selected-v59`; its `Story support` is `pass`, but
@@ -401,7 +413,7 @@ Latest local result:
 ## Known Limitations
 
 - 当前默认使用 Windows 本地中文 TTS；没有中文语音包时可通过
-  `--voiceover path\to\narration.wav` 使用真人或外部 TTS 配音。
+  `--voiceover` 传入 WAV、MP3 或 M4A 真人/外部 TTS 配音。
 - `--tts-provider auto` can use the optional online `edge-tts` fallback; it needs
   network access and is not suitable for sensitive narration.
 - 当前匹配主要依赖文件名、结构和可审计证据，不是完整多模态理解。

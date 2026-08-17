@@ -118,6 +118,69 @@ def validate_voiceover(path: Path, *, expected_duration_ms: int | None = None, m
             )
 
 
+def prepare_voiceover(source_path: Path, output_path: Path, *, timeout_s: int = 60) -> Path:
+    """Copy or normalize a local narration file into the pipeline WAV path."""
+    source_path = Path(source_path)
+    output_path = Path(output_path)
+    if not source_path.exists():
+        raise FileNotFoundError(source_path)
+    if source_path.stat().st_size <= 0:
+        raise ValueError(f"voiceover file is empty: {source_path}")
+
+    same_file = source_path.resolve() == output_path.resolve()
+    if same_file:
+        validate_voiceover(source_path)
+        return output_path
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if output_path.exists():
+        output_path.unlink()
+
+    try:
+        if source_path.suffix.casefold() in {".wav", ".wave"}:
+            shutil.copy2(source_path, output_path)
+        else:
+            try:
+                result = subprocess.run(
+                    [
+                        "ffmpeg",
+                        "-y",
+                        "-v",
+                        "error",
+                        "-i",
+                        str(source_path),
+                        "-vn",
+                        "-ac",
+                        "1",
+                        "-ar",
+                        "22050",
+                        "-c:a",
+                        "pcm_s16le",
+                        str(output_path),
+                    ],
+                    check=False,
+                    shell=False,
+                    timeout=timeout_s,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                )
+            except FileNotFoundError as exc:
+                raise ValueError("FFmpeg is required to convert non-WAV --voiceover audio") from exc
+            except subprocess.TimeoutExpired as exc:
+                raise ValueError("FFmpeg audio conversion timed out") from exc
+            if result.returncode != 0:
+                detail = _compact_process_error(result, "voiceover audio conversion failed")
+                raise ValueError(f"voiceover audio conversion failed: {detail}")
+        validate_voiceover(output_path)
+        return output_path
+    except Exception:
+        if output_path.exists():
+            output_path.unlink()
+        raise
+
+
 def _powershell_single_quoted(text: str) -> str:
     return "'" + text.replace("'", "''") + "'"
 

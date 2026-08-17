@@ -13,6 +13,7 @@ from jianji_flow.voiceover import (
     create_edge_voiceover,
     has_edge_tts,
     has_local_chinese_tts,
+    prepare_voiceover,
     probe_voiceover,
     validate_voiceover,
 )
@@ -122,6 +123,73 @@ def test_probe_voiceover_reports_duration_for_decodable_wav(tmp_path: Path):
     info = probe_voiceover(output)
 
     assert 450 <= info.duration_ms <= 550
+
+
+def test_prepare_voiceover_converts_common_audio_input_to_normalized_wav(tmp_path: Path, monkeypatch):
+    source = tmp_path / "phone-recording.m4a"
+    source.write_bytes(b"encoded audio")
+    output = tmp_path / "voiceover.wav"
+    commands = []
+    real_run = subprocess.run
+
+    def fake_run(command, **kwargs):
+        if command[0] == "ffprobe":
+            return real_run(command, **kwargs)
+        commands.append(command)
+        _write_tone_wav(Path(command[-1]), seconds=0.5)
+
+        class Result:
+            returncode = 0
+            stderr = ""
+            stdout = ""
+
+        return Result()
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fake_run)
+
+    result = prepare_voiceover(source, output)
+
+    assert result == output
+    assert output.exists()
+    assert commands[0][0] == "ffmpeg"
+    assert "-i" in commands[0]
+    assert str(source) in commands[0]
+    assert "-ac" in commands[0]
+    assert "-ar" in commands[0]
+    assert output.read_bytes()[:4] == b"RIFF"
+
+
+def test_prepare_voiceover_copies_wav_without_reencoding(tmp_path: Path, monkeypatch):
+    source = tmp_path / "narration.wav"
+    _write_tone_wav(source, seconds=0.5)
+    output = tmp_path / "voiceover.wav"
+    real_run = subprocess.run
+
+    def fail_if_called(command, **kwargs):
+        if command[0] == "ffprobe":
+            return real_run(command, **kwargs)
+        raise AssertionError("WAV input should not be re-encoded")
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fail_if_called)
+
+    result = prepare_voiceover(source, output)
+
+    assert result == output
+    assert output.read_bytes()[:4] == b"RIFF"
+
+
+def test_prepare_voiceover_reports_missing_ffmpeg_for_non_wav_input(tmp_path: Path, monkeypatch):
+    source = tmp_path / "phone-recording.mp3"
+    source.write_bytes(b"encoded audio")
+    output = tmp_path / "voiceover.wav"
+
+    def missing_ffmpeg(*args, **kwargs):
+        raise FileNotFoundError("ffmpeg")
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", missing_ffmpeg)
+
+    with pytest.raises(ValueError, match="FFmpeg.*non-WAV"):
+        prepare_voiceover(source, output)
 
 
 def test_has_local_chinese_tts_returns_false_when_powershell_is_missing(monkeypatch):

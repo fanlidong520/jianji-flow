@@ -2,12 +2,13 @@
 
 ## Unreleased
 
-- `run` and `quick` now accept a local WAV through `--voiceover`, so a real
-  narration or external TTS can be used when Windows SAPI has no Chinese voice;
-  the audio is copied into the work directory and remains fully validated.
+- `run` and `quick` now accept local WAV, MP3, and M4A audio through
+  `--voiceover`, so a real narration or external TTS can be used when Windows
+  SAPI has no Chinese voice; non-WAV input is normalized to the work directory
+  and remains fully validated.
 - `doctor` now verifies that Windows SAPI can select the detected Chinese voice,
   so it no longer reports readiness when the later TTS step would fail; its
-  failure output points to the `--voiceover` WAV fallback.
+  failure output points to the local `--voiceover` audio fallback.
 - Added an optional `edge-tts` narration backend. `auto` prefers a working local
   Windows voice and falls back to Edge TTS when installed; `windows` and `edge`
   can be selected explicitly, while `--voiceover` remains the offline override.
