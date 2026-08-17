@@ -50,8 +50,31 @@ usable narration provider, pass a local WAV with `--voiceover` instead.
 
 ## Feedback Record
 
-Copy this template into a private evidence ledger or issue, using a stable
-pseudonymous id and no personal media:
+Generate a private trial template before the tester starts:
+
+```powershell
+jianji-flow outside-trial --id tester-01 --output-dir out\outside-trial-tester-01
+```
+
+This writes `outside-user-trial.md`, `outside-user.entry.json`, and
+`outside-trial.json`. The generated entry is intentionally not counted by the
+release gate yet:
+
+```json
+{
+  "id": "tester-01",
+  "readme_quickstart": false,
+  "completed_in_minutes": null,
+  "visible_remix": null,
+  "review_status": "",
+  "blocked_step": "",
+  "notes": ""
+}
+```
+
+After the tester actually uses the README path, copy the completed entry into a
+private evidence ledger or issue, using a stable pseudonymous id and no personal
+media. A completed passing-looking record has this shape:
 
 ```json
 {

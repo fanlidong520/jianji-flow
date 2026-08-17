@@ -25,6 +25,7 @@ from jianji_flow.matcher import apply_match_overrides, build_recipe, match_segme
 from jianji_flow.material_audit import audit_material_root, write_material_audit
 from jianji_flow.media_probe import run_ffprobe
 from jianji_flow.media_scan import scan_assets, write_manifest
+from jianji_flow.outside_trial import build_outside_trial, write_outside_trial
 from jianji_flow.paths import make_output_dir, resolve_existing_dir, resolve_existing_file
 from jianji_flow.planner import build_segment_plan
 from jianji_flow.quality_diagnosis import diagnose_source_matches
@@ -124,6 +125,10 @@ def _build_parser() -> argparse.ArgumentParser:
     material_audit = commands.add_parser("material-audit", help="audit local material pack independence by media hashes")
     material_audit.add_argument("--root", required=True)
     material_audit.add_argument("--output-dir", required=True)
+
+    outside_trial = commands.add_parser("outside-trial", help="write an outside-user trial evidence template")
+    outside_trial.add_argument("--id", required=True)
+    outside_trial.add_argument("--output-dir", required=True)
     return parser
 
 
@@ -1052,6 +1057,19 @@ def _run_material_audit_command(args: argparse.Namespace) -> int:
         return 1
 
 
+def _run_outside_trial_command(args: argparse.Namespace) -> int:
+    try:
+        trial = build_outside_trial(str(args.id))
+        outputs = write_outside_trial(trial, Path(args.output_dir))
+        print(f"outside trial template: {outputs['trial_markdown']}")
+        print(f"outside user entry: {outputs['outside_user_entry']}")
+        print("release gate entry remains unverified until the tester actually runs the README path")
+        return 0
+    except Exception as exc:
+        print(f"jianji-flow failed: {exc}", file=sys.stderr)
+        return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args_list = sys.argv[1:] if argv is None else argv
@@ -1078,6 +1096,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_evidence_pack_command(args)
     if args.command == "material-audit":
         return _run_material_audit_command(args)
+    if args.command == "outside-trial":
+        return _run_outside_trial_command(args)
     if args.command == "run":
         return _run_pipeline(args)
     return 0

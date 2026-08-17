@@ -510,7 +510,7 @@ Do not announce the project publicly until:
   `python scripts/run_smoke.py` -> `smoke passed`;
   `python scripts/run_p0.py` -> `p0 passed`.
 - Release gate still blocks correctly:
-  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v77`
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v79`
   -> `blocked` because real-material passes, opaque real-material evidence, and
   outside-user trials are still missing.
 - Real rendered verification:
@@ -564,7 +564,7 @@ Do not announce the project publicly until:
   wrote all three pack files; `observed_review_status` is `warning`, and
   `release-evidence.entry.json` keeps `human_judgment: pending`.
 - Latest release gate rerun:
-  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v77`
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v79`
   -> `blocked`; no release evidence was upgraded by packaging alone.
 
 ## 2026-08-17 Material Audit Checkpoint
@@ -587,3 +587,22 @@ Do not announce the project publicly until:
   `E:\jianji-sucai\home-cleaning-kit-v2` are renamed copies for release-gate
   purposes. They can support usability testing, but only one independent
   real-material pack can be counted from that root.
+
+## 2026-08-17 Outside Trial Template Checkpoint
+
+- Added `jianji-flow outside-trial` so outside-user trials start from a private,
+  structured evidence template instead of ad hoc notes.
+- The generated `outside-user.entry.json` keeps `readme_quickstart: false`,
+  `completed_in_minutes: null`, and `visible_remix: null` by default, so it
+  cannot count toward release-gate user evidence until a real tester completes
+  the README path.
+- TDD verification:
+  `python -m pytest tests/test_outside_trial.py -q -p no:cacheprovider`
+  -> `3 passed`.
+- Combined focused verification:
+  `python -m pytest tests/test_outside_trial.py tests/test_material_audit.py tests/test_validation_pack.py tests/test_cli.py::test_cli_help_no_args tests/test_cli.py::test_cli_version -q -p no:cacheprovider`
+  -> `12 passed`.
+- Evidence output:
+  `python -m jianji_flow outside-trial --id tester-template-01 --output-dir out\outside-trial-v78-template`
+  wrote `outside-user-trial.md`, `outside-user.entry.json`, and
+  `outside-trial.json`; the entry remains unverified.

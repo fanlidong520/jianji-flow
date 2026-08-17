@@ -15,6 +15,8 @@
 - Added `jianji-flow material-audit` to audit a local material root by media
   hashes before validation, so renamed copies are not counted as independent
   real-material packs.
+- Added `jianji-flow outside-trial` to create a private outside-user trial
+  record template with release-gate fields kept unverified by default.
 - `run` and `quick` now accept local WAV, MP3, and M4A audio through
   `--voiceover`, so a real narration or external TTS can be used when Windows
   SAPI has no Chinese voice; non-WAV input is normalized to the work directory

@@ -349,6 +349,10 @@ For an independent ten-minute trial, follow
 and record the result without uploading private media.
 
 ```powershell
+python -m jianji_flow outside-trial --id tester-01 --output-dir out\outside-trial-tester-01
+```
+
+```powershell
 python -m pytest -q
 python scripts/run_smoke.py
 python scripts/run_p0.py
@@ -404,7 +408,7 @@ Latest local result:
   now shows the nontechnical `能不能用 / 先看哪里 / 主要风险` verdict at the top of
   `review.html`; it correctly says the filename-based output is only a rough
   cut for review.
-- `out\release-gate-current-v77` confirms the release gate is still blocked:
+- `out\release-gate-current-v79` confirms the release gate is still blocked:
   real independent material passes, one opaque real-material pass, and outside
   user trials are not yet present.
 - `out\pytest-source-diversity-review` verifies that visually similar or
@@ -416,6 +420,9 @@ Latest local result:
 - `out\material-audit-v76-jianji-sucai` audits `E:\jianji-sucai` and shows that
   `home-cleaning-kit-v1` and `home-cleaning-kit-v2` share the same media
   identity, so they count as only 1 independent material pack.
+- `out\outside-trial-v78-template` shows the outside-user trial template
+  command keeps `readme_quickstart: false` and `visible_remix: null` until a
+  real tester completes the README path.
 - the Edge TTS backend's focused tests and the end-to-end auto-TTS run also pass.
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
