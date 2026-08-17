@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from collections import Counter
 from html import escape
 from pathlib import Path
 
 from PIL import Image, UnidentifiedImageError
 from PIL import ImageStat
 
+from jianji_flow.edit_diversity import diagnose_edit_diversity
 from jianji_flow.media_probe import run_ffprobe
 from jianji_flow.quality_diagnosis import diagnose_contact_sheet_segments
 from jianji_flow.review_summary import build_review_summary
@@ -65,7 +65,8 @@ def build_review(
             warnings.append(f"{segment_id} low confidence: {confidence}")
             low_confidence_segments.append(str(segment_id))
 
-    warnings.extend(_source_diversity_warnings(recipe, matches))
+    edit_diversity = diagnose_edit_diversity(recipe, matches)
+    warnings.extend(str(item) for item in edit_diversity.get("warnings", []))
     warnings.extend(_adjacent_source_warnings(recipe, matches))
     warnings.extend(_match_evidence_warnings(recipe, matches))
     story_support = _story_support(recipe, matches)
@@ -103,6 +104,7 @@ def build_review(
             "captions": _path_text(captions_path),
         },
         "story_support": story_support,
+        "edit_diversity": edit_diversity,
     }
     if visual_selection:
         review["visual_selection"] = visual_selection
@@ -118,30 +120,6 @@ def build_review(
         reference_comparison=reference_comparison_path,
         review_html=review_html_path,
     )
-
-
-def _source_diversity_warnings(recipe: dict, matches: dict) -> list[str]:
-    by_id = _match_by_id(matches)
-    sources: list[str] = []
-    for segment in recipe.get("segments", []):
-        match = by_id.get(segment.get("match_id"))
-        if not match or match.get("status") not in {"selected", "low_confidence"}:
-            continue
-        source_path = match.get("source_path")
-        if isinstance(source_path, str) and source_path.strip():
-            sources.append(Path(source_path).as_posix().casefold())
-
-    if len(sources) < 3:
-        return []
-    source, count = Counter(sources).most_common(1)[0]
-    threshold = max(3, round(len(sources) * 0.67))
-    if count < threshold:
-        return []
-    return [
-        f"{count} of {len(sources)} segments come from the same source video; "
-        "the result may look like a voiceover shell instead of a true remix. "
-        "Compare it with the original before using."
-    ]
 
 
 def _adjacent_source_warnings(recipe: dict, matches: dict) -> list[str]:
@@ -408,6 +386,43 @@ def _story_support_html(story_support: dict | None) -> str:
         items.append(f"<li>{escape(key)}: <code>{escape(values)}</code></li>")
     if story_support.get("next_action"):
         items.append(f"<li>next_action: {escape(str(story_support['next_action']))}</li>")
+    return "".join(items)
+
+
+def _edit_diversity_section(edit_diversity: dict | None) -> list[str]:
+    lines = ["## Edit diversity"]
+    if not edit_diversity:
+        lines.append("- none")
+        return lines
+    for key in (
+        "status",
+        "selected_segment_count",
+        "distinct_source_video_count",
+        "distinct_source_window_count",
+        "most_reused_source",
+        "most_reused_source_count",
+    ):
+        lines.append(f"- {key}: {edit_diversity.get(key, '')}")
+    warnings = [str(item) for item in edit_diversity.get("warnings", [])]
+    lines.append(f"- warnings: {', '.join(warnings) if warnings else 'none'}")
+    return lines
+
+
+def _edit_diversity_html(edit_diversity: dict | None) -> str:
+    if not edit_diversity:
+        return "<li>none</li>"
+    items = []
+    for key in (
+        "status",
+        "selected_segment_count",
+        "distinct_source_video_count",
+        "distinct_source_window_count",
+        "most_reused_source",
+        "most_reused_source_count",
+    ):
+        items.append(f"<li>{escape(key)}: <code>{escape(str(edit_diversity.get(key, '')))}</code></li>")
+    warnings = ", ".join(str(item) for item in edit_diversity.get("warnings", [])) or "none"
+    items.append(f"<li>warnings: {escape(warnings)}</li>")
     return "".join(items)
 
 
@@ -968,6 +983,8 @@ def build_review_markdown(review: dict, recipe: dict | None = None, matches: dic
     lines.append("")
     lines.extend(_story_support_section(review.get("story_support")))
     lines.append("")
+    lines.extend(_edit_diversity_section(review.get("edit_diversity")))
+    lines.append("")
     lines.extend(_storyboard_markdown_section(recipe, matches, review))
     if review.get("visual_selection"):
         lines.append("")
@@ -1030,6 +1047,7 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
     warnings = "".join(f"<li>{escape(str(item))}</li>" for item in review.get("warnings", [])) or "<li>none</li>"
     failures = "".join(f"<li>{escape(str(item))}</li>" for item in review.get("failures", [])) or "<li>none</li>"
     story_support = _story_support_html(review.get("story_support"))
+    edit_diversity = _edit_diversity_html(review.get("edit_diversity"))
     outputs_list = _outputs_html(outputs)
     comparison_section = ""
     if outputs.get("reference_comparison"):
@@ -1127,6 +1145,8 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
   {_source_diagnostic_section_html(review.get('source_diagnostic_frames'))}
   <h2>Story support</h2>
   <ul>{story_support}</ul>
+  <h2>Edit diversity</h2>
+  <ul>{edit_diversity}</ul>
   <h2>Storyboard</h2>
   <section class="storyboard">{_storyboard_html(recipe, matches, review)}</section>
   {_visual_selection_section_html(review.get('visual_selection'))}

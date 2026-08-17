@@ -647,3 +647,35 @@ Do not announce the project publicly until:
   `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v80`
   -> `blocked`; the remaining blockers are still real-material pass evidence,
   one opaque real-material pass, and outside-user trial evidence.
+
+## 2026-08-18 Edit Diversity Review Checkpoint
+
+- Added a first-class `Edit diversity` diagnosis to make the "is this actually
+  edited, or mostly the same source with a new voiceover?" question visible in
+  the main review artifacts.
+- The diagnosis records selected segment count, distinct source video count,
+  distinct source window count, most reused source, and warning text when most
+  segments reuse one source video.
+- TDD red check:
+  `python -m pytest tests/test_edit_diversity.py tests/test_review.py::test_review_exposes_edit_diversity_in_review_outputs -q -p no:cacheprovider`
+  first failed because `jianji_flow.edit_diversity` did not exist.
+- Green verification:
+  `python -m pytest tests/test_edit_diversity.py tests/test_review.py::test_review_warns_when_most_segments_come_from_same_source tests/test_review.py::test_review_exposes_edit_diversity_in_review_outputs tests/test_review.py::test_build_review_html_contains_nontechnical_verdict_panel_for_warning tests/test_review_summary.py -q -p no:cacheprovider`
+  -> `18 passed`.
+- Combined focused verification:
+  `python -m pytest tests/test_edit_diversity.py tests/test_review_summary.py tests/test_review.py::test_review_warns_when_most_segments_come_from_same_source tests/test_review.py::test_review_exposes_edit_diversity_in_review_outputs tests/test_review.py::test_build_review_html_contains_nontechnical_verdict_panel_for_warning tests/test_cli.py::test_cli_help_no_args tests/test_cli.py::test_cli_version -q -p no:cacheprovider`
+  -> `20 passed`.
+- Smoke and P0:
+  `python scripts/run_smoke.py` -> `smoke passed`;
+  `python scripts/run_p0.py` -> `p0 passed`.
+- Real smoke artifact check:
+  `out\smoke-36168\scenario-a-product\review.md` and `review.html` both include
+  `Edit diversity`; the synthetic sample reports `distinct_source_video_count:
+  5` and `warnings: none`.
+- Current release gate after this review change:
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v81`
+  -> `blocked`; the remaining blockers are still real-material pass evidence,
+  one opaque real-material pass, and outside-user trial evidence.
+- User-facing effect: warning runs that mostly reuse one source now show
+  `Edit diversity` in `review.md` and `review.html`, and the first-screen
+  verdict points the user to `Reference vs Remix` before trusting the video.

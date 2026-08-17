@@ -51,6 +51,9 @@
 - Binds visual selections to the candidate board's role and caption metadata; changed scripts require a fresh board, and a missing candidate sheet stops the run before rendering.
 - Writes `review.md` and `review.html` for manual inspection, including a change report after fixes are applied.
 - Records selected visual candidates, frame evidence, and asset fingerprints in `review.md`, `review.html`, and `matches.json`.
+- Adds an `Edit diversity` section to `review.md` and `review.html`, counting
+  distinct source videos and source windows so a rough cut that mostly reuses
+  one source is called out as a possible voiceover shell.
 - Shows `CANDIDATE` in `diagnosis.md` for filename/duration-ready clips, because that is not visual proof.
 - Marks filename-only matching as `warning` because it does not prove visual understanding.
 - Adds a `Story support` review section that warns when most story roles have no non-filename visual evidence.
@@ -343,6 +346,9 @@ Visual similarity checking samples three frames from the actual selected source 
 - `remix.mp4` 有声音，字幕可读，画面没有明显黑屏、卡帧或严重拉伸。
 - `matches.json` 里的素材路径确实来自你的 `assets/` 文件夹。
 - 如果报告出现 `filename-only`，说明系统只是按文件名角色组装，必须看 `contact-sheet.png` 确认画面是否真的对上文案。
+- 如果 `Edit diversity` 显示大多数片段来自同一个 source video，先看
+  `Reference vs Remix` 和 `contact-sheet.png`；这条视频可能只是换了配音，
+  还没有足够可见剪辑变化。
 - 如果报告出现 `visual_similarity_diagnostics`，说明有推荐被视觉相似或无法确认降级，先看诊断图再决定是否手动替换。
 - 如果 `Story support` 是 `weak`，说明这条视频可能只是按角色拼接，还没有足够证据证明产品故事成立。先看 `next_action` 里点名的角色，替换或人工确认对应素材，再确认开头、痛点、卖点、证据、行动提醒是否都被画面支撑。
 - 如果报告出现 `source_diagnostics` 或 `source-diagnostics`，说明源素材预检发现问题，优先替换对应素材；同一源视频在多个片段中复用不会被重复计数，但同一片多个采样点持续报警仍会拦截渲染。
@@ -428,9 +434,12 @@ Latest local result:
   now shows the nontechnical `能不能用 / 先看哪里 / 主要风险` verdict at the top of
   `review.html`; it correctly says the filename-based output is only a rough
   cut for review.
-- `out\release-gate-current-v80` confirms the release gate is still blocked:
+- `out\release-gate-current-v81` confirms the release gate is still blocked:
   real independent material passes, one opaque real-material pass, and outside
   user trials are not yet present.
+- `out\smoke-36168\scenario-a-product\review.md` and `review.html` include the
+  new `Edit diversity` section; the synthetic sample correctly reports 5
+  distinct source videos and no voiceover-shell warning.
 - `out\pytest-source-diversity-review` verifies that visually similar or
   duplicate source-material warnings now appear in the final `review.md` and
   the first-screen `review.html` verdict, not only in `diagnosis.md`.

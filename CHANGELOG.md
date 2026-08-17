@@ -18,6 +18,9 @@
 - Added `jianji-flow material-pack` to scaffold a new real-material pack
   checklist and folder structure. The generated pack is explicitly marked
   `not_evidence` and does not count toward release-gate validation.
+- Added an explicit `Edit diversity` review section that counts distinct source
+  videos and source windows, making "this may only be a voiceover shell" visible
+  in `review.md`, `review.html`, and the first-screen verdict.
 - Added `jianji-flow outside-trial` to create a private outside-user trial
   record template with release-gate fields kept unverified by default.
 - `run` and `quick` now accept local WAV, MP3, and M4A audio through

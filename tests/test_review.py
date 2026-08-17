@@ -155,6 +155,50 @@ def test_review_warns_when_most_segments_come_from_same_source():
     assert any("same source video" in warning for warning in review["warnings"])
 
 
+def test_review_exposes_edit_diversity_in_review_outputs():
+    recipe = {
+        "segments": [
+            {"id": "seg-001", "match_id": "match-001", "caption": "Hook"},
+            {"id": "seg-002", "match_id": "match-002", "caption": "Pain"},
+            {"id": "seg-003", "match_id": "match-003", "caption": "Feature"},
+            {"id": "seg-004", "match_id": "match-004", "caption": "Proof"},
+        ]
+    }
+    matches = {
+        "matches": [
+            {
+                "id": f"match-{index:03d}",
+                "segment_id": f"seg-{index:03d}",
+                "status": "selected",
+                "asset_id": f"asset-{index:03d}",
+                "source_path": "assets/mother.mp4",
+                "source_start_ms": (index - 1) * 1000,
+                "source_end_ms": index * 1000,
+                "confidence": 0.9,
+                "evidence": ["visual-frame:matches-caption"],
+            }
+            for index in range(1, 5)
+        ]
+    }
+
+    review = build_review(
+        recipe,
+        matches,
+        remix_path=Path("work/remix.mp4"),
+        captions_path=Path("work/captions.srt"),
+        check_artifacts=False,
+    )
+    markdown = build_review_markdown(review, recipe, matches)
+    html = build_review_html(review, recipe, matches)
+
+    assert review["edit_diversity"]["status"] == "warning"
+    assert review["edit_diversity"]["distinct_source_video_count"] == 1
+    assert "## Edit diversity" in markdown
+    assert "- distinct_source_video_count: 1" in markdown
+    assert "Edit diversity" in html
+    assert "voiceover shell" in html
+
+
 def test_review_warns_when_selected_segments_are_filename_only_matches():
     recipe = {
         "segments": [
