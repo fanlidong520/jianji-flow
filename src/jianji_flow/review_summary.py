@@ -15,6 +15,12 @@ def build_review_summary(review: dict) -> dict:
         reason = _primary_warning(warnings)
         if "preflight skipped" in reason:
             next_action = "Fix source preflight or inspect source diagnostics before using; automated source-frame checks did not complete."
+        elif (
+            "limited material diversity" in reason
+            or "Similar source material detected" in reason
+            or "Duplicate source material detected" in reason
+        ):
+            next_action = "Add independent footage or inspect source-diversity diagnostics and the contact sheet before using; different filenames are not enough."
         elif "same source video" in reason or "voiceover shell" in reason:
             next_action = "Open remix.mp4 and compare it with the original before using; add more distinct assets if it still feels unchanged."
         elif "Story support is weak" in reason:
@@ -49,6 +55,7 @@ def _primary_warning(warnings: list[str]) -> str:
         return "Some segments need manual review."
     priorities = (
         ("platform UI", "original subtitles", "source frame", "preflight skipped"),
+        ("limited material diversity", "Similar source material detected", "Duplicate source material detected"),
         ("same source video", "voiceover shell"),
         ("Story support is weak",),
         ("filename only",),

@@ -325,6 +325,51 @@ def test_quick_adds_visual_source_diversity_audit_to_diagnosis(tmp_path, monkeyp
     assert "1.5" in diagnosis
 
 
+def test_quick_carries_source_diversity_warning_into_final_review(monkeypatch):
+    _patch_voiceover(monkeypatch)
+    fixture_root = PROJECT_ROOT / "out" / "pytest-source-diversity-review-fixtures"
+    work_dir = PROJECT_ROOT / "out" / "pytest-source-diversity-review"
+    shutil.rmtree(fixture_root, ignore_errors=True)
+    shutil.rmtree(work_dir, ignore_errors=True)
+    subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
+
+    monkeypatch.setattr(
+        "jianji_flow.cli.diagnose_source_diversity",
+        lambda assets, diagnostics_dir: {
+            "status": "warning",
+            "similar_groups": [{"paths": ["assets/a.mp4", "assets/b.mp4"], "score": 1.5}],
+            "warnings": [],
+            "diagnostics_dir": diagnostics_dir.as_posix(),
+        },
+    )
+
+    code = main(
+        [
+            "quick",
+            "--reference",
+            str(fixture_root / "scenario-a-product" / "reference.mp4"),
+            "--assets",
+            str(fixture_root / "scenario-a-product" / "assets"),
+            "--work-dir",
+            str(work_dir),
+            "--target-width",
+            "320",
+            "--target-height",
+            "180",
+            "--target-fps",
+            "12",
+        ]
+    )
+
+    review = (work_dir / "review.md").read_text(encoding="utf-8")
+    review_html = (work_dir / "review.html").read_text(encoding="utf-8")
+    assert code == 0
+    assert "Similar source material detected" in review
+    assert "limited material diversity" in review
+    assert "a.mp4, b.mp4" in review
+    assert "素材多样性有限" in review_html
+
+
 def test_quick_writes_material_diagnosis_even_when_assets_are_ready(tmp_path, monkeypatch):
     _patch_voiceover(monkeypatch)
     fixture_root = tmp_path / "fixtures"

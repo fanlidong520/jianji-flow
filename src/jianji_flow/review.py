@@ -857,6 +857,12 @@ def _nontechnical_first_check(review: dict, summary: dict) -> str:
     reason = str(summary.get("reason", ""))
     if "same source video" in reason or "voiceover shell" in reason:
         return "先看 Reference vs Remix，再播放 remix.mp4，确认画面不是只换了配音。"
+    if (
+        "limited material diversity" in reason
+        or "Similar source material detected" in reason
+        or "Duplicate source material detected" in reason
+    ):
+        return "先看 Contact Sheet 和 Source diversity diagnostics，确认素材不是同一母片换名或裁剪。"
     if "Story support is weak" in reason:
         return "先看 Story support 点名的角色，再看 Contact Sheet 对照每段文案。"
     if "filename only" in reason:
@@ -876,6 +882,12 @@ def _nontechnical_risks(review: dict, summary: dict) -> list[str]:
     all_reasons = " ".join([str(summary.get("reason", "")), *warnings, *failures])
     if "same source video" in all_reasons or "voiceover shell" in all_reasons:
         risks.append("可能只是换配音或同源复用：必须确认 Reference vs Remix 有明显画面重组。")
+    if (
+        "limited material diversity" in all_reasons
+        or "Similar source material detected" in all_reasons
+        or "Duplicate source material detected" in all_reasons
+    ):
+        risks.append("素材多样性有限：多个文件可能是同一母片的改名、重编码、裁剪或重叠片段。")
     if "Story support is weak" in all_reasons or story_support.get("status") == "weak":
         weak_roles = ", ".join(str(item) for item in story_support.get("weak_evidence_roles", []))
         detail = f"缺少视觉证据的角色：{weak_roles}。" if weak_roles else "有角色缺少视觉证据。"

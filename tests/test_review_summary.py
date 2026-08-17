@@ -145,6 +145,24 @@ def test_review_summary_prioritizes_same_source_risk_over_story_support_warning(
     assert "original" in summary["next_action"]
 
 
+def test_review_summary_prioritizes_limited_material_diversity_over_story_support_warning():
+    summary = build_review_summary(
+        {
+            "status": "warning",
+            "warnings": [
+                "Story support is weak: 5 of 5 story roles do not have visual evidence.",
+                "Similar source material detected: a.mp4, b.mp4 have visual difference score 1.5; "
+                "they may be re-encoded, cropped, or overlapping copies. Treat this as limited material diversity until manually checked.",
+            ],
+            "failures": [],
+        }
+    )
+
+    assert summary["decision"] == "Needs review"
+    assert "Similar source material detected" in summary["reason"]
+    assert "independent footage" in summary["next_action"]
+
+
 def test_review_summary_prioritizes_preflight_skipped_over_story_support_warning():
     summary = build_review_summary(
         {

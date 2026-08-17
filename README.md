@@ -383,9 +383,12 @@ Latest local result:
   now shows the nontechnical `能不能用 / 先看哪里 / 主要风险` verdict at the top of
   `review.html`; it correctly says the filename-based output is only a rough
   cut for review.
-- `out\release-gate-current-v71` confirms the release gate is still blocked:
+- `out\release-gate-current-v72` confirms the release gate is still blocked:
   real independent material passes, one opaque real-material pass, and outside
   user trials are not yet present.
+- `out\pytest-source-diversity-review` verifies that visually similar or
+  duplicate source-material warnings now appear in the final `review.md` and
+  the first-screen `review.html` verdict, not only in `diagnosis.md`.
 - the Edge TTS backend's focused tests and the end-to-end auto-TTS run also pass.
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed

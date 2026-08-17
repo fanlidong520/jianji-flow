@@ -510,7 +510,7 @@ Do not announce the project publicly until:
   `python scripts/run_smoke.py` -> `smoke passed`;
   `python scripts/run_p0.py` -> `p0 passed`.
 - Release gate still blocks correctly:
-  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v71`
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v72`
   -> `blocked` because real-material passes, opaque real-material evidence, and
   outside-user trials are still missing.
 - Real rendered verification:
@@ -522,3 +522,26 @@ Do not announce the project publicly until:
   changed behavior was validated with non-`tmp_path` review tests plus smoke,
   P0, and an end-to-end rendered run. The previous full-suite baseline remains
   `429 passed`.
+
+## 2026-08-17 Source Diversity Review Carry-Through Checkpoint
+
+- Product `quick` now carries material source-diversity findings into the final
+  review, not only `diagnosis.md`.
+- This protects against "fake many materials": duplicate files, re-encodes,
+  crops, or overlapping clips can no longer be hidden from the first-stop
+  `review.md` / `review.html` judgment.
+- TDD red checks:
+  `tests/test_cli.py::test_quick_carries_source_diversity_warning_into_final_review`
+  first failed because final `review.md` omitted the warning;
+  `tests/test_review_summary.py::test_review_summary_prioritizes_limited_material_diversity_over_story_support_warning`
+  first failed because summary still prioritized weak story support.
+- Green verification:
+  `python -m pytest tests/test_review_summary.py tests/test_cli.py::test_quick_carries_source_diversity_warning_into_final_review tests/test_review.py::test_build_review_html_contains_nontechnical_verdict_panel_for_warning -q -p no:cacheprovider`
+  -> `15 passed`.
+- Smoke and P0 still pass:
+  `python scripts/run_smoke.py` -> `smoke passed`;
+  `python scripts/run_p0.py` -> `p0 passed`.
+- Evidence output:
+  `out\pytest-source-diversity-review\review.md` records
+  `Similar source material detected`; `review.html` first screen says
+  `素材多样性有限`.

@@ -388,6 +388,60 @@ def _append_existing_diagnosis(work_dir: Path, text: str) -> Path | None:
     return path
 
 
+def _material_diagnosis_review_warnings(report: dict | None) -> list[str]:
+    if not isinstance(report, dict):
+        return []
+    warnings: list[str] = []
+    for group in report.get("duplicate_groups", []):
+        paths = ", ".join(Path(path).name for path in group.get("paths", []))
+        if paths:
+            warnings.append(
+                f"Duplicate source material detected: {paths} are byte-identical; "
+                "treat this as limited material diversity, not independent footage."
+            )
+    source_diversity = report.get("source_diversity", {})
+    if isinstance(source_diversity, dict):
+        for group in source_diversity.get("similar_groups", []):
+            paths = ", ".join(Path(path).name for path in group.get("paths", []))
+            if not paths:
+                continue
+            score = group.get("score", "unknown")
+            coverage = group.get("coverage")
+            coverage_note = f" with overlap coverage {coverage}" if coverage is not None else ""
+            warnings.append(
+                f"Similar source material detected: {paths} have visual difference score {score}{coverage_note}; "
+                "they may be re-encoded, cropped, or overlapping copies. "
+                "Treat this as limited material diversity until manually checked."
+            )
+        for warning in source_diversity.get("warnings", []):
+            warnings.append(f"Source diversity check incomplete: {warning}")
+    return warnings
+
+
+def _apply_material_diagnosis_review(
+    review: dict,
+    material_diagnosis: dict | None,
+    diagnosis_path: Path | None,
+) -> None:
+    if diagnosis_path is not None:
+        review.setdefault("outputs", {})["diagnosis"] = diagnosis_path.as_posix()
+    if isinstance(material_diagnosis, dict):
+        source_diversity = material_diagnosis.get("source_diversity", {})
+        if isinstance(source_diversity, dict) and source_diversity.get("diagnostics_dir"):
+            review.setdefault("outputs", {})["source_diversity_diagnostics"] = str(
+                source_diversity["diagnostics_dir"]
+            )
+    warnings = _material_diagnosis_review_warnings(material_diagnosis)
+    if not warnings:
+        return
+    review_warnings = review.setdefault("warnings", [])
+    existing = {str(item) for item in review_warnings}
+    review_warnings.extend(warning for warning in warnings if warning not in existing)
+    if not review.get("failures"):
+        review["status"] = "warning"
+    review["summary"] = build_review_summary(review)
+
+
 def _apply_source_preflight_evidence(matches: dict, clean_segment_ids: list[str]) -> dict:
     clean_ids = {str(segment_id) for segment_id in clean_segment_ids}
     if not clean_ids:
@@ -479,7 +533,13 @@ def _build_visual_similarity_checker(work_dir: Path):
     return checker
 
 
-def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None = None) -> int:
+def _run_pipeline(
+    args: argparse.Namespace,
+    *,
+    script_text_override: str | None = None,
+    material_diagnosis: dict | None = None,
+    material_diagnosis_path: Path | None = None,
+) -> int:
     work_dir: Path | None = None
     try:
         visual_selection_input = _read_visual_selection_input(getattr(args, "visual_selections", None))
@@ -751,6 +811,7 @@ def _run_pipeline(args: argparse.Namespace, *, script_text_override: str | None 
         if shot_plan is not None:
             review["outputs"]["shot_plan"] = shot_plan_path.as_posix()
             review["outputs"]["shot_contact_sheet"] = shot_contact_sheet_path.as_posix()
+        _apply_material_diagnosis_review(review, material_diagnosis, material_diagnosis_path)
         fixes_template = build_fixes_template(
             recipe,
             matches,
@@ -905,7 +966,12 @@ def _run_quick_command(args: argparse.Namespace) -> int:
                 board_outputs = _write_visual_board(segments, records, work_dir)
                 _append_existing_diagnosis(work_dir, _visual_board_diagnosis_text(board_outputs))
                 if visual_selection_supplied:
-                    return _run_pipeline(args, script_text_override=script_override)
+                    return _run_pipeline(
+                        args,
+                        script_text_override=script_override,
+                        material_diagnosis=report,
+                        material_diagnosis_path=diagnosis_path,
+                    )
                 _clear_run_state_artifacts(work_dir)
                 failure_details = "; ".join(str(item) for item in report.get("actions", []))
                 _write_failure_review(
@@ -920,6 +986,12 @@ def _run_quick_command(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
                 return 1
+            return _run_pipeline(
+                args,
+                script_text_override=script_override,
+                material_diagnosis=report,
+                material_diagnosis_path=diagnosis_path,
+            )
         return _run_pipeline(args, script_text_override=script_override)
     except Exception as exc:
         if work_dir is None:
