@@ -371,11 +371,7 @@ unverified user trial into a release pass.
 
 Latest local result:
 
-- `python -m pytest -q` -> 428 tests collected; 425 passed, with 3
-  environment-level `WinError 1455` failures while creating FFmpeg processes
-  after the suite exhausted the Windows page file. The three affected checks
-  passed when rerun in isolation (`p0 passed`, render `1 passed`, and the new
-  voiceover/CLI set `20 passed`). This is not recorded as a fully green suite.
+- `python -m pytest -q` -> 429 passed in 328.64s
 - A real FFmpeg run converted `out\voiceover-format-real\narration.mp3` to a
   2,000ms, probeable, non-silent `voiceover.wav`.
 - `out\mp3-voiceover-e2e-v65b` completed a full `quick` run with that MP3:

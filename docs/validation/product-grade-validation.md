@@ -492,7 +492,5 @@ Do not announce the project publicly until:
   narration, captions, contact sheet, and review artifacts at
   `out/mp3-voiceover-e2e-v65b`; its `warning` status is correct because the run
   uses filename-based matching without visual selection.
-- One complete suite run collected 428 tests: 425 passed and 3 failed with
-  Windows `WinError 1455` while creating FFmpeg processes after page-file
-  exhaustion. The failures passed in isolation, so this is recorded as a
-  resource-limited verification, not a fully green suite.
+- Final complete suite after the input and error-path changes: `429 passed in
+  328.64s`.
