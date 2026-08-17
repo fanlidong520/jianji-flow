@@ -362,6 +362,17 @@ with real-material, dirty-pack, and outside-user evidence, then run:
 python scripts/check_release_gate.py --evidence path\to\release-evidence.json
 ```
 
+To package a completed run for that local ledger, use:
+
+```powershell
+python -m jianji_flow evidence-pack --run-dir out\trial-real --name home-cleaning-real-01 --kind real --output-dir out\evidence-home-cleaning-real-01 --independent
+```
+
+The command writes `validation-pack.json`, `release-evidence.entry.json`, and
+`human-judgment.md`. The entry keeps `human_judgment` as `pending`; only change
+it after a person opens `review.html`, watches the output, and records a real
+manual judgment. Dirty-material failures use `--kind dirty`.
+
 The command writes `release-gate.md` and `release-gate.json`. Missing evidence
 or a mismatch between a ledger entry and the referenced `review.md` produces
 `blocked`; it also requires real packs to reference non-empty `review.html`,
@@ -383,12 +394,15 @@ Latest local result:
   now shows the nontechnical `能不能用 / 先看哪里 / 主要风险` verdict at the top of
   `review.html`; it correctly says the filename-based output is only a rough
   cut for review.
-- `out\release-gate-current-v72` confirms the release gate is still blocked:
+- `out\release-gate-current-v75` confirms the release gate is still blocked:
   real independent material passes, one opaque real-material pass, and outside
   user trials are not yet present.
 - `out\pytest-source-diversity-review` verifies that visually similar or
   duplicate source-material warnings now appear in the final `review.md` and
   the first-screen `review.html` verdict, not only in `diagnosis.md`.
+- `out\evidence-pack-v73-real-v59` packages the latest real-material warning run
+  into a validation pack; the generated release-gate entry correctly keeps
+  `human_judgment: pending`.
 - the Edge TTS backend's focused tests and the end-to-end auto-TTS run also pass.
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed

@@ -9,6 +9,9 @@
   diagnosis into the final `review.md` and `review.html`, so "many files from
   one mother clip" is visible in the first-stop review page, not only in
   `diagnosis.md`.
+- Added `jianji-flow evidence-pack` to turn a completed run directory into a
+  local validation pack with a release-gate entry draft and a human judgment
+  template. It keeps `human_judgment` at `pending` by default.
 - `run` and `quick` now accept local WAV, MP3, and M4A audio through
   `--voiceover`, so a real narration or external TTS can be used when Windows
   SAPI has no Chinese voice; non-WAV input is normalized to the work directory

@@ -510,7 +510,7 @@ Do not announce the project publicly until:
   `python scripts/run_smoke.py` -> `smoke passed`;
   `python scripts/run_p0.py` -> `p0 passed`.
 - Release gate still blocks correctly:
-  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v72`
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v75`
   -> `blocked` because real-material passes, opaque real-material evidence, and
   outside-user trials are still missing.
 - Real rendered verification:
@@ -545,3 +545,24 @@ Do not announce the project publicly until:
   `out\pytest-source-diversity-review\review.md` records
   `Similar source material detected`; `review.html` first screen says
   `素材多样性有限`.
+
+## 2026-08-17 Evidence Pack Usability Checkpoint
+
+- Added `jianji-flow evidence-pack` so each completed run can be converted into
+  a local validation pack before it is considered for release evidence.
+- The command writes:
+  `validation-pack.json`, `release-evidence.entry.json`, and
+  `human-judgment.md`.
+- Safe default: generated entries keep `human_judgment` as `pending`, even when
+  `--independent` or `--opaque-filenames` is provided. A human must open
+  `review.html`, inspect the output, and edit the private ledger separately.
+- TDD verification:
+  `python -m pytest tests/test_validation_pack.py -q -p no:cacheprovider`
+  -> `3 passed`.
+- Real warning-run packaging evidence:
+  `python -m jianji_flow evidence-pack --run-dir out\real-material-visual-selected-v59 --name real-home-product-visual-selection-v59 --kind real --output-dir out\evidence-pack-v73-real-v59 --independent`
+  wrote all three pack files; `observed_review_status` is `warning`, and
+  `release-evidence.entry.json` keeps `human_judgment: pending`.
+- Latest release gate rerun:
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v75`
+  -> `blocked`; no release evidence was upgraded by packaging alone.

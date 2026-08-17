@@ -35,6 +35,7 @@ from jianji_flow.semantics import validate_semantics
 from jianji_flow.shot_detection import build_multi_shot_matches, synchronize_shot_plan
 from jianji_flow.source_diversity import diagnose_source_diversity
 from jianji_flow.subtitles import write_ass, write_srt
+from jianji_flow.validation_pack import build_validation_pack, write_validation_pack
 from jianji_flow.visual_similarity import is_visually_similar
 from jianji_flow.visual_candidates import (
     apply_visual_selections,
@@ -110,6 +111,14 @@ def _build_parser() -> argparse.ArgumentParser:
     visual_review.add_argument("--work-dir", required=True)
     visual_review.add_argument("--script")
     visual_review.add_argument("--mode", choices=("product", "talking-head"), default="product")
+
+    evidence_pack = commands.add_parser("evidence-pack", help="package a run for release-gate evidence review")
+    evidence_pack.add_argument("--run-dir", required=True)
+    evidence_pack.add_argument("--name", required=True)
+    evidence_pack.add_argument("--kind", choices=("real", "dirty"), required=True)
+    evidence_pack.add_argument("--output-dir", required=True)
+    evidence_pack.add_argument("--independent", action="store_true")
+    evidence_pack.add_argument("--opaque-filenames", action="store_true")
     return parser
 
 
@@ -1002,6 +1011,28 @@ def _run_quick_command(args: argparse.Namespace) -> int:
         return 1
 
 
+def _run_evidence_pack_command(args: argparse.Namespace) -> int:
+    try:
+        pack = build_validation_pack(
+            Path(args.run_dir),
+            name=args.name,
+            kind=args.kind,
+            independent=bool(getattr(args, "independent", False)),
+            opaque_filenames=bool(getattr(args, "opaque_filenames", False)),
+        )
+        outputs = write_validation_pack(pack, Path(args.output_dir))
+        print(f"validation pack: {outputs['validation_pack']}")
+        print(f"release evidence entry: {outputs['release_evidence_entry']}")
+        print(f"human judgment template: {outputs['human_judgment']}")
+        if pack.get("missing_artifacts"):
+            print("missing artifacts: " + ", ".join(str(item) for item in pack["missing_artifacts"]))
+        print("human_judgment remains pending until manual review")
+        return 0
+    except Exception as exc:
+        print(f"jianji-flow failed: {exc}", file=sys.stderr)
+        return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args_list = sys.argv[1:] if argv is None else argv
@@ -1024,6 +1055,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_visual_review_command(args)
     if args.command == "quick":
         return _run_quick_command(args)
+    if args.command == "evidence-pack":
+        return _run_evidence_pack_command(args)
     if args.command == "run":
         return _run_pipeline(args)
     return 0
