@@ -217,11 +217,12 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 - `review.html`: local visual review page.
 
 `review.html` is the single first-stop page for both successful and failed
-runs. Start with its status and `Next action`, watch `remix.mp4` when it
-exists, then compare `Reference vs Remix` and the `Contact Sheet`. When a run
-is blocked before rendering, the page says that the video was not generated,
-links the machine-readable files, and embeds the source diagnostic frames that
-caused the block.
+runs. Its first screen now answers `能不能用`, `先看哪里`, and `主要风险`, so a
+warning run is not mistaken for a publishable video. Start with that verdict and
+`Next action`, watch `remix.mp4` when it exists, then compare `Reference vs
+Remix` and the `Contact Sheet`. When a run is blocked before rendering, the
+page says that the video was not generated, links the machine-readable files,
+and embeds the source diagnostic frames that caused the block.
 
 When `quick` stops during material diagnosis, it also writes `review.html`.
 Open that page to see the missing or weak roles, `diagnosis.md`, and the
@@ -378,6 +379,13 @@ Latest local result:
   `remix.mp4`, normalized `voiceover.wav`, captions, contact sheet, and review
   artifacts were generated; status correctly remains `warning` because this
   filename-based run was not visually selected.
+- `out\review-verdict-v68` completed a full `quick` run with the same MP3 and
+  now shows the nontechnical `能不能用 / 先看哪里 / 主要风险` verdict at the top of
+  `review.html`; it correctly says the filename-based output is only a rough
+  cut for review.
+- `out\release-gate-current-v71` confirms the release gate is still blocked:
+  real independent material passes, one opaque real-material pass, and outside
+  user trials are not yet present.
 - the Edge TTS backend's focused tests and the end-to-end auto-TTS run also pass.
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed

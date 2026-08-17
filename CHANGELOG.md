@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `review.html` now opens with a nontechnical verdict panel answering
+  `能不能用`, `先看哪里`, and `主要风险`, so warning runs that may be filename-only
+  or visually weak are harder to mistake for publishable videos.
 - `run` and `quick` now accept local WAV, MP3, and M4A audio through
   `--voiceover`, so a real narration or external TTS can be used when Windows
   SAPI has no Chinese voice; non-WAV input is normalized to the work directory

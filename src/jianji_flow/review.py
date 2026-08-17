@@ -822,6 +822,77 @@ def _review_media_section(
     return f'<h2>{escape(heading)}</h2><img alt="{escape(alt)}" src="{escape(value)}">'
 
 
+def _nontechnical_verdict_html(review: dict, summary: dict) -> str:
+    status = str(review.get("status", "unknown"))
+    label = {
+        "pass": "可以进入人工终审",
+        "warning": "只能当待确认粗剪",
+        "fail": "不要使用这条视频",
+    }.get(status, "需要人工判断")
+    why = {
+        "pass": "自动检查没有发现阻断项，但发布前仍要人工确认画面、字幕和商品信息。",
+        "warning": "已经生成了可检查的粗剪，但自动证据还不够，不能直接当成可发布成片。",
+        "fail": "这次没有通过材料、预检或产物检查，应先修复问题再重跑。",
+    }.get(status, "当前状态无法自动判断。")
+    first_check = _nontechnical_first_check(review, summary)
+    risks = _nontechnical_risks(review, summary)
+    risk_items = "".join(f"<li>{escape(risk)}</li>" for risk in risks) or "<li>未发现明确自动风险。</li>"
+    return (
+        '<section class="quick-verdict">'
+        "<h2>能不能用</h2>"
+        f"<p class=\"verdict-label\">{escape(label)}</p>"
+        f"<p>{escape(why)}</p>"
+        "<h3>先看哪里</h3>"
+        f"<p>{escape(first_check)}</p>"
+        "<h3>主要风险</h3>"
+        f"<ul>{risk_items}</ul>"
+        "</section>"
+    )
+
+
+def _nontechnical_first_check(review: dict, summary: dict) -> str:
+    outputs = review.get("outputs", {})
+    if review.get("status") == "fail":
+        return "先看 Failures 和 Source diagnostics；没有生成视频时不要找 remix.mp4。"
+    reason = str(summary.get("reason", ""))
+    if "same source video" in reason or "voiceover shell" in reason:
+        return "先看 Reference vs Remix，再播放 remix.mp4，确认画面不是只换了配音。"
+    if "Story support is weak" in reason:
+        return "先看 Story support 点名的角色，再看 Contact Sheet 对照每段文案。"
+    if "filename only" in reason:
+        return "先看 Contact Sheet，确认每个按文件名选中的素材真的对上文案。"
+    if "platform UI" in reason or "original subtitles" in reason or "source frame" in reason:
+        return "先看 Warnings 和 Source diagnostics，确认旧字幕或平台界面有没有残留。"
+    if outputs.get("remix"):
+        return "先播放 remix.mp4，再看 Contact Sheet 和 Reference vs Remix。"
+    return str(summary.get("next_action", "")) or "先看 Summary 和 Warnings。"
+
+
+def _nontechnical_risks(review: dict, summary: dict) -> list[str]:
+    risks: list[str] = []
+    warnings = [str(item) for item in review.get("warnings", [])]
+    failures = [str(item) for item in review.get("failures", [])]
+    story_support = review.get("story_support") if isinstance(review.get("story_support"), dict) else {}
+    all_reasons = " ".join([str(summary.get("reason", "")), *warnings, *failures])
+    if "same source video" in all_reasons or "voiceover shell" in all_reasons:
+        risks.append("可能只是换配音或同源复用：必须确认 Reference vs Remix 有明显画面重组。")
+    if "Story support is weak" in all_reasons or story_support.get("status") == "weak":
+        weak_roles = ", ".join(str(item) for item in story_support.get("weak_evidence_roles", []))
+        detail = f"缺少视觉证据的角色：{weak_roles}。" if weak_roles else "有角色缺少视觉证据。"
+        risks.append(f"{detail}不要只看视频能播放，要确认画面支撑文案。")
+    if "filename only" in all_reasons:
+        risks.append("素材可能只是按文件名组装：文件名不是视觉理解证据。")
+    if "platform UI" in all_reasons or "original subtitles" in all_reasons or "source frame" in all_reasons:
+        risks.append("素材可能有旧字幕、平台界面或源画面残留：发布前要替换或裁掉。")
+    if "low confidence" in all_reasons:
+        risks.append("存在低置信片段：先看 Storyboard 和 Contact Sheet 再决定是否保留。")
+    if failures and not risks:
+        risks.append(failures[0])
+    if warnings and not risks:
+        risks.append(warnings[0])
+    return risks
+
+
 def _source_diagnostic_section_html(frames: list[str] | None) -> str:
     if not frames:
         return ""
@@ -999,6 +1070,10 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
     .status-warning {{ border-left: 6px solid #b45309; }}
     .status-fail {{ border-left: 6px solid #b91c1c; }}
     .status-label {{ font-size: 1.1rem; font-weight: 700; }}
+    .quick-verdict {{ margin-top: 16px; background: #fff; border: 1px solid #d6dae0; padding: 16px; }}
+    .quick-verdict h2, .quick-verdict h3 {{ margin-bottom: 6px; }}
+    .quick-verdict h3 {{ margin-top: 14px; }}
+    .verdict-label {{ font-size: 1.15rem; font-weight: 700; margin: 0 0 8px; }}
     .start-here {{ background: #fff; border: 1px solid #d6dae0; padding: 16px; }}
     .unavailable {{ color: #7f1d1d; background: #fef2f2; padding: 10px; }}
     .diagnostic-frames {{ display: flex; gap: 12px; flex-wrap: wrap; }}
@@ -1012,6 +1087,7 @@ def build_review_html(review: dict, recipe: dict, matches: dict) -> str:
     <h1>jianji-flow Review: {escape(status)}</h1>
     <p class="status-label">{escape(status_label)}</p>
   </section>
+  {_nontechnical_verdict_html(review, summary)}
   <section class="start-here">
     <h2>Start here</h2>
     <ol>

@@ -494,3 +494,31 @@ Do not announce the project publicly until:
   uses filename-based matching without visual selection.
 - Final complete suite after the input and error-path changes: `429 passed in
   328.64s`.
+
+## 2026-08-17 Review Verdict Usability Checkpoint
+
+- Added a first-screen verdict panel to `review.html` with `能不能用`,
+  `先看哪里`, and `主要风险`, aimed at preventing warning rough cuts from being
+  mistaken for publishable videos.
+- Added a focused regression test that first failed without the verdict panel,
+  then passed after implementation:
+  `tests/test_review.py::test_build_review_html_contains_nontechnical_verdict_panel_for_warning`.
+- Focused verification:
+  `python -m pytest tests/test_review.py::test_build_review_html_contains_nontechnical_verdict_panel_for_warning tests/test_review_summary.py -q -p no:cacheprovider`
+  -> `13 passed`.
+- Smoke and P0 still pass after the page change:
+  `python scripts/run_smoke.py` -> `smoke passed`;
+  `python scripts/run_p0.py` -> `p0 passed`.
+- Release gate still blocks correctly:
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v71`
+  -> `blocked` because real-material passes, opaque real-material evidence, and
+  outside-user trials are still missing.
+- Real rendered verification:
+  `out/review-verdict-v68` completed `quick` with a local MP3 voiceover and
+  generated `remix.mp4`, `contact-sheet.png`, and `review.html`; the run remains
+  `warning` because it is filename-based and has weak story support.
+- Windows temp note: the full review pytest file currently hits a host-specific
+  `Path.mkdir(mode=0o700)` permission issue for tests using `tmp_path`; the
+  changed behavior was validated with non-`tmp_path` review tests plus smoke,
+  P0, and an end-to-end rendered run. The previous full-suite baseline remains
+  `429 passed`.

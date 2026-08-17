@@ -1324,6 +1324,40 @@ def test_build_review_html_contains_plain_language_summary():
     assert "Needs review" in html
 
 
+def test_build_review_html_contains_nontechnical_verdict_panel_for_warning():
+    html = build_review_html(
+        {
+            "status": "warning",
+            "outputs": {
+                "remix": "remix.mp4",
+                "contact_sheet": "contact-sheet.png",
+                "reference_comparison": "reference-comparison.png",
+            },
+            "warnings": [
+                "5 of 5 segments come from the same source video; "
+                "the result may look like a voiceover shell instead of a true remix."
+            ],
+            "failures": [],
+            "story_support": {
+                "status": "weak",
+                "roles": ["hook", "pain", "feature", "evidence", "cta"],
+                "filename_only_roles": [],
+                "visual_evidence_roles": ["hook"],
+                "weak_evidence_roles": ["pain", "feature", "evidence", "cta"],
+                "next_action": "Replace or manually verify pain, feature, evidence, cta clips.",
+            },
+        },
+        {"segments": []},
+        {"matches": []},
+    )
+
+    assert "能不能用" in html
+    assert "只能当待确认粗剪" in html
+    assert "先看哪里" in html
+    assert "先看 Reference vs Remix" in html
+    assert "可能只是换配音或同源复用" in html
+
+
 def test_write_review_html_creates_file(tmp_path: Path):
     output = tmp_path / "review.html"
 
