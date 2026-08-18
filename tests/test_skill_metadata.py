@@ -74,6 +74,24 @@ def test_readme_documents_v0_3_usability_commands():
     assert "Ready to run quick draft" in text
 
 
+def test_readme_has_linear_first_time_path():
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    markers = [
+        "## 第一次使用：从这里开始",
+        "### 1. 安装",
+        "### 2. 检查环境",
+        "### 3. 没有素材：跑 demo",
+        "### 4. 有自己的素材：跑 quick",
+        "### 5. 看结果",
+    ]
+
+    positions = [text.index(marker) for marker in markers]
+
+    assert positions == sorted(positions)
+    assert "先跑 demo 看完整流程，再换成自己的素材。" in text
+    assert "如果 `quick` 停住，先打开 `review.html`，再看 `diagnosis.md`。" in text
+
+
 def test_skill_documents_quick_start_commands():
     text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
     assert "doctor" in text

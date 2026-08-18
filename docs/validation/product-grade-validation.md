@@ -795,3 +795,31 @@ Do not announce the project publicly until:
   evidence are still missing.
 - This improves first-run material failure clarity. It does not add real
   material pass evidence or change the release gate.
+
+## 2026-08-18 README First-Time Path Checkpoint
+
+- README now has one linear first-time path:
+  install -> `jianji-flow doctor` -> `jianji-flow demo` when there is no
+  material -> `jianji-flow quick` when the user has a reference and assets ->
+  first review through `review.html`, `diagnosis.md`, `contact-sheet.png`, and
+  `reference-comparison.png`.
+- The previous install and v0.3 quickstart sections were merged to reduce
+  duplicated guidance and make the first ten minutes easier to follow.
+- TDD red check:
+  `python -m pytest tests/test_skill_metadata.py::test_readme_has_linear_first_time_path -q -p no:cacheprovider`
+  first failed because the README did not have the new ordered
+  `## 第一次使用：从这里开始` path.
+- Green verification:
+  `python -m pytest tests/test_skill_metadata.py -q -p no:cacheprovider`
+  -> `13 passed`.
+- Smoke and P0 still pass:
+  `python scripts/run_smoke.py` -> `smoke passed`;
+  `python scripts/run_p0.py` -> `p0 passed`.
+- Full suite:
+  `python -m pytest -q -p no:cacheprovider` -> `457 passed in 434.15s`.
+- Release gate remains blocked:
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v86`
+  -> `blocked` because independent real-material passes and outside-user
+  evidence are still missing.
+- This is a documentation usability change only. It does not add real-material
+  evidence or change the release gate.

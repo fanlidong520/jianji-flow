@@ -73,7 +73,11 @@
 - It does not guarantee semantic matching beyond the current auditable matching evidence.
 - It does not treat file names as visual proof. Role-labeled files help assembly, but the picture still needs review.
 
-## 安装
+## 第一次使用：从这里开始
+
+先跑 demo 看完整流程，再换成自己的素材。第一次不要从真实素材直接开始；先确认本机环境、配音、字幕、渲染和复核页都能工作。
+
+### 1. 安装
 
 环境要求：
 
@@ -105,53 +109,13 @@ py -m pip install -e ".[dev]"
 python -m pip install -e .[dev]
 ```
 
-检查本机环境：
-
-```powershell
-python scripts/check_env.py
-```
-
-安装后也可以使用更短的命令：
+### 2. 检查环境
 
 ```powershell
 jianji-flow doctor
 ```
 
-环境完整可用时输出会以 `Ready to run quick draft` 结尾；如果本机没有可用的中文 TTS，
-会显示 `Not ready` 并给出安装语音或使用 `--voiceover` 本地音频配音的下一步。
-如果 `doctor` 已经通过，先跑 `jianji-flow demo` 看一遍完整流程；如果你已经有自己的参考视频和素材文件夹，就直接跑 `jianji-flow quick`。
-首次安装建议先确认版本和内置 demo 都能运行：
-
-```powershell
-python -m jianji_flow --version
-jianji-flow demo
-```
-
-`demo` 会在本地生成合成素材和可检查的 `remix.mp4`；它不需要你的真实素材，也不会联网寻找素材。
-
-## v0.3 Quick Start
-
-第一次使用建议按三步走：
-
-```powershell
-jianji-flow doctor
-```
-
-没有素材时，先跑一个本地合成示例：
-
-```powershell
-jianji-flow demo
-```
-
-有自己的家居带货素材后，用最短命令跑一条粗剪：
-
-```powershell
-jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets
-```
-
-上面这条命令需要先运行 `python scripts/generate_fixtures.py --output fixtures`，或者把路径换成你自己的参考视频和素材文件夹。
-
-`quick` 在没有传 `--script` 时会使用一组家居清洁带货样例文案，包含开头、痛点、分工、演示和收尾五段。默认文案只适合清洁类家居样例；如果是收纳、厨房、床品、灯具等其他产品，请传入自己的 `--script`。产品模式每次都会写出 `diagnosis.md`，先说明素材只是通过文件名和时长初筛；素材明显不够时，它会先停下，不会硬剪出一条误导性的坏视频。
+环境完整可用时输出会以 `Ready to run quick draft` 结尾。它也会告诉你下一步先跑 `jianji-flow demo`，还是直接用自己的参考视频和素材跑 `jianji-flow quick`。
 
 如果 `doctor` 显示 FFmpeg 或 ffprobe 缺失，Windows 上可以先尝试：
 
@@ -159,9 +123,36 @@ jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets
 winget install Gyan.FFmpeg
 ```
 
-如果显示中文 TTS 不可用，但 `edge_tts` 显示 `OK`，`--tts-provider auto` 会使用在线
-配音，运行时需要网络；也可以用 `--tts-provider windows` 强制只用本地语音，或准备
-一份 WAV、MP3 或 M4A 配音并传入 `--voiceover`，完全不依赖 TTS。
+如果显示中文 TTS 不可用，但 `edge_tts` 显示 `OK`，`--tts-provider auto` 会使用在线配音，运行时需要网络；也可以用 `--tts-provider windows` 强制只用本地语音，或准备一份 WAV、MP3 或 M4A 配音并传入 `--voiceover`，完全不依赖 TTS。
+
+### 3. 没有素材：跑 demo
+
+```powershell
+python -m jianji_flow --version
+jianji-flow demo
+```
+
+`demo` 会在本地生成合成素材和可检查的 `remix.mp4`；它不需要你的真实素材，也不会联网寻找素材。跑完后先打开 `review.html`，再看 `remix.mp4` 和 `contact-sheet.png`。
+
+### 4. 有自己的素材：跑 quick
+
+用最短命令跑一条家居带货粗剪：
+
+```powershell
+jianji-flow quick --reference fixtures\scenario-a-product\reference.mp4 --assets fixtures\scenario-a-product\assets
+```
+
+这条示例命令需要先运行 `python scripts/generate_fixtures.py --output fixtures`，或者把路径换成你自己的参考视频和素材文件夹。
+
+`quick` 在没有传 `--script` 时会使用一组家居清洁带货样例文案，包含开头、痛点、分工、演示和收尾五段。默认文案只适合清洁类家居样例；如果是收纳、厨房、床品、灯具等其他产品，请传入自己的 `--script`。
+
+### 5. 看结果
+
+每次运行后先看 `review.html`。它会告诉你能不能用、先看哪里、主要风险是什么。
+
+如果 `quick` 停住，先打开 `review.html`，再看 `diagnosis.md`。`diagnosis.md` 会在顶部写 `能不能剪` 和 `为什么`；素材明显不够时，它会停下，不会硬剪出一条误导性的坏视频。
+
+如果生成了 `remix.mp4`，也不要直接发布。先看 `contact-sheet.png` 和 `reference-comparison.png`，确认画面不是只换配音，也没有旧字幕、平台 UI 或重复素材风险。
 
 ## 素材怎么准备
 
@@ -435,7 +426,7 @@ unverified user trial into a release pass.
 
 Latest local result:
 
-- `python -m pytest -q -p no:cacheprovider` -> 456 passed in 418.10s. The test
+- `python -m pytest -q -p no:cacheprovider` -> 457 passed in 434.15s. The test
   suite uses repo-local temporary directories under `out\pytest-tmp`, so it
   does not depend on the host Windows temp directory being writable.
 - A real FFmpeg run converted `out\voiceover-format-real\narration.mp3` to a

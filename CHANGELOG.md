@@ -48,6 +48,9 @@
 - `doctor` now prints pass-state next steps, pointing first-time users to
   `jianji-flow demo` or their own `jianji-flow quick` run instead of ending at
   environment readiness.
+- README now has a single first-time path from install to `doctor`, `demo` or
+  `quick`, and the first review step, reducing duplicated install/quickstart
+  guidance.
 - Online TTS failures now keep the review artifacts and report a compact
   actionable error instead of leaking the provider's full traceback.
 - Failed runs now keep a local `review.html` alongside `review.md`; the page
