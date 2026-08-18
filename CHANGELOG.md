@@ -21,6 +21,11 @@
 - Added an explicit `Edit diversity` review section that counts distinct source
   videos and source windows, making "this may only be a voiceover shell" visible
   in `review.md`, `review.html`, and the first-screen verdict.
+- Pytest now uses a repo-local `tmp_path` fixture under `out\pytest-tmp`, making
+  the full suite repeatable on Windows hosts where the default system temp
+  directory is permission-blocked.
+- Missing input paths now report stable `missing file` / `missing directory`
+  messages instead of leaking localized Windows errors.
 - Added `jianji-flow outside-trial` to create a private outside-user trial
   record template with release-gate fields kept unverified by default.
 - `run` and `quick` now accept local WAV, MP3, and M4A audio through

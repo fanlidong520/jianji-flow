@@ -423,7 +423,9 @@ unverified user trial into a release pass.
 
 Latest local result:
 
-- `python -m pytest -q` -> 429 passed in 328.64s
+- `python -m pytest -q -p no:cacheprovider` -> 450 passed in 413.55s. The test
+  suite now uses repo-local temporary directories under `out\pytest-tmp`, so it
+  does not depend on the host Windows temp directory being writable.
 - A real FFmpeg run converted `out\voiceover-format-real\narration.mp3` to a
   2,000ms, probeable, non-silent `voiceover.wav`.
 - `out\mp3-voiceover-e2e-v65b` completed a full `quick` run with that MP3:
@@ -434,7 +436,7 @@ Latest local result:
   now shows the nontechnical `能不能用 / 先看哪里 / 主要风险` verdict at the top of
   `review.html`; it correctly says the filename-based output is only a rough
   cut for review.
-- `out\release-gate-current-v81` confirms the release gate is still blocked:
+- `out\release-gate-current-v82` confirms the release gate is still blocked:
   real independent material passes, one opaque real-material pass, and outside
   user trials are not yet present.
 - `out\smoke-36168\scenario-a-product\review.md` and `review.html` include the

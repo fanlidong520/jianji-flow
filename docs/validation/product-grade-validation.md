@@ -517,11 +517,11 @@ Do not announce the project publicly until:
   `out/review-verdict-v68` completed `quick` with a local MP3 voiceover and
   generated `remix.mp4`, `contact-sheet.png`, and `review.html`; the run remains
   `warning` because it is filename-based and has weak story support.
-- Windows temp note: the full review pytest file currently hits a host-specific
-  `Path.mkdir(mode=0o700)` permission issue for tests using `tmp_path`; the
-  changed behavior was validated with non-`tmp_path` review tests plus smoke,
-  P0, and an end-to-end rendered run. The previous full-suite baseline remains
-  `429 passed`.
+- Windows temp note from this checkpoint: the full review pytest file hit a
+  host-specific `Path.mkdir(mode=0o700)` permission issue for tests using
+  `tmp_path`; the changed behavior was validated with non-`tmp_path` review
+  tests plus smoke, P0, and an end-to-end rendered run. This was later addressed
+  by the 2026-08-18 Test Temp And Missing Path Reliability checkpoint.
 
 ## 2026-08-17 Source Diversity Review Carry-Through Checkpoint
 
@@ -679,3 +679,34 @@ Do not announce the project publicly until:
 - User-facing effect: warning runs that mostly reuse one source now show
   `Edit diversity` in `review.md` and `review.html`, and the first-screen
   verdict points the user to `Reference vs Remix` before trusting the video.
+
+## 2026-08-18 Test Temp And Missing Path Reliability Checkpoint
+
+- Added a repo-local pytest `tmp_path` fixture under `out\pytest-tmp` so the
+  full suite no longer depends on the host Windows system temp directory.
+- Added stable missing-path messages in `resolve_existing_file` and
+  `resolve_existing_dir`: missing inputs now say `missing file` or
+  `missing directory` instead of leaking localized Windows `WinError` text.
+- TDD red checks:
+  `python -m pytest tests/test_repo_tmp_path.py -q -p no:cacheprovider`
+  first failed because no repo-local temp helper existed; after the first helper
+  attempt, candidate-review tests exposed that `tempfile.mkdtemp` created
+  directories that could not accept child writes on this Windows host.
+- Path-error red checks:
+  `python -m pytest tests/test_paths.py tests/test_cli.py::test_run_reports_missing_paths -q -p no:cacheprovider`
+  first failed because missing paths printed localized Windows text without
+  `missing` or `not found`.
+- Green verification:
+  `python -m pytest tests/test_repo_tmp_path.py tests/test_candidate_review.py::test_write_candidate_review_shows_current_and_recommended_candidate_frames -q -p no:cacheprovider`
+  -> `2 passed`;
+  `python -m pytest tests/test_paths.py tests/test_cli.py::test_run_reports_missing_paths -q -p no:cacheprovider`
+  -> `9 passed`.
+- Full suite:
+  `python -m pytest -q -p no:cacheprovider` -> `450 passed in 413.55s`.
+- Smoke and P0:
+  `python scripts/run_smoke.py` -> `smoke passed`;
+  `python scripts/run_p0.py` -> `p0 passed`.
+- Current release gate:
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v82`
+  -> `blocked`; the remaining blockers are still real-material pass evidence,
+  one opaque real-material pass, and outside-user trial evidence.
