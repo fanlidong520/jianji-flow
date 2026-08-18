@@ -188,10 +188,51 @@ def _append_source_diversity_lines(lines: list[str], report: dict) -> None:
             lines.append(f"- Source diversity diagnostics: {diagnostics_dir}")
 
 
+def _role_labels_by_status(report: dict, status: str) -> list[str]:
+    return [
+        ROLE_LABELS.get(role, role)
+        for role, item in report.get("roles", {}).items()
+        if item.get("status") == status
+    ]
+
+
+def _plain_cut_summary(report: dict, *, visual_selection_supplied: bool = False) -> tuple[str, str]:
+    if visual_selection_supplied:
+        return (
+            "能不能剪: 可以继续视觉复核",
+            "为什么: 已提供视觉选择，文件名筛选不再作为最终角色判断；仍要检查画面、旧字幕和平台 UI 风险。",
+        )
+
+    status = report.get("status")
+    missing_labels = _role_labels_by_status(report, "missing")
+    weak_labels = _role_labels_by_status(report, "weak")
+    if status == "fail":
+        if missing_labels:
+            return ("能不能剪: 不能剪", f"为什么: 缺少{'、'.join(missing_labels)}素材。")
+        actions = " ".join(str(item) for item in report.get("actions", []))
+        if "No decodable video assets" in actions:
+            return ("能不能剪: 不能剪", "为什么: 素材文件夹里没有可解码的视频素材。")
+        if "Segment plan is incomplete" in actions:
+            return ("能不能剪: 不能剪", "为什么: 分段计划不完整，需要先重建剪辑结构。")
+        return ("能不能剪: 不能剪", "为什么: 素材或分段计划还不满足自动粗剪要求。")
+    if status == "warning":
+        if weak_labels:
+            return ("能不能剪: 可以试剪，但不能直接用", f"为什么: {'、'.join(weak_labels)}素材太短或证据不足。")
+        if report.get("duplicate_groups") or report.get("source_diversity", {}).get("warnings"):
+            return ("能不能剪: 可以试剪，但不能直接用", "为什么: 素材可能来自重复或相似来源，需要先看诊断图确认。")
+        return ("能不能剪: 可以试剪，但不能直接用", "为什么: 有素材风险或证据不足，需要人工复核。")
+    if status == "pass":
+        return ("能不能剪: 可以先生成粗剪", "为什么: 文件名和时长通过初筛，但这还不是画面语义证明。")
+    return ("能不能剪: 先不要剪", "为什么: 素材诊断状态未知，需要先检查诊断明细。")
+
+
 def format_asset_diagnosis(report: dict, *, visual_selection_supplied: bool = False) -> str:
     if visual_selection_supplied:
+        cut_decision, cut_reason = _plain_cut_summary(report, visual_selection_supplied=True)
         lines = [
             "# Material diagnosis",
+            cut_decision,
+            cut_reason,
             "Visual selections were supplied; filename screening is not used as the final role decision.",
             "Review the selected frames and the final source-preflight result before publishing.",
             "",
@@ -215,7 +256,14 @@ def format_asset_diagnosis(report: dict, *, visual_selection_supplied: bool = Fa
         )
         return "\n".join(lines) + "\n"
 
-    lines = ["# Material diagnosis", "Filename and duration screening only; watch the video before publishing.", ""]
+    cut_decision, cut_reason = _plain_cut_summary(report)
+    lines = [
+        "# Material diagnosis",
+        cut_decision,
+        cut_reason,
+        "Filename and duration screening only; watch the video before publishing.",
+        "",
+    ]
     for role, item in report.get("roles", {}).items():
         status = item.get("status", "unknown")
         label = "CANDIDATE" if status == "ready" else status.upper()

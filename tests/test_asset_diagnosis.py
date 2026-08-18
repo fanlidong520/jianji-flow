@@ -186,6 +186,19 @@ def test_format_asset_diagnosis_uses_plain_chinese_next_actions():
     assert "Missing pain clip" not in text
 
 
+def test_format_asset_diagnosis_frontloads_plain_cut_decision_for_missing_roles():
+    segments = build_segment_plan("product", 10_000, None)
+    report = diagnose_product_assets([_asset("01-hook.mp4")], segments)
+
+    text = format_asset_diagnosis(report)
+    first_block = text.split("\n\n", 1)[0]
+
+    assert "能不能剪" in first_block
+    assert "不能剪" in first_block
+    assert "为什么" in first_block
+    assert "缺少痛点、卖点、演示/证据、收尾素材" in first_block
+
+
 def test_format_asset_diagnosis_does_not_call_opaque_files_missing_after_visual_selection():
     segments = build_segment_plan("product", 10_000, None)
     report = diagnose_product_assets([_asset(f"IMG_{index:03d}.mp4") for index in range(1, 6)], segments)

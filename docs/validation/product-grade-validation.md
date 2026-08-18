@@ -764,3 +764,34 @@ Do not announce the project publicly until:
   evidence are still missing.
 - This improves first-run clarity only. It does not add real-material passes or
   outside-user release evidence.
+
+## 2026-08-18 Diagnosis First-Screen Decision Checkpoint
+
+- Product `diagnosis.md` now starts with a plain-language `能不能剪` and `为什么`
+  decision before the filename/duration role table.
+- Missing-role failures now say `不能剪` and list the missing Chinese role names
+  in the first block, so users do not have to infer the blocking reason from
+  lower-level action lines.
+- TDD red check:
+  `python -m pytest tests/test_asset_diagnosis.py::test_format_asset_diagnosis_frontloads_plain_cut_decision_for_missing_roles -q -p no:cacheprovider`
+  first failed because the first block only said `Filename and duration
+  screening only`.
+- Green verification:
+  `python -m pytest tests/test_asset_diagnosis.py -q -p no:cacheprovider`
+  -> `14 passed`.
+- Real failure-path check:
+  `python -m jianji_flow quick --reference out\diagnosis-first-screen-fixtures\scenario-a-product\reference.mp4 --assets out\diagnosis-first-screen-incomplete --work-dir out\diagnosis-first-screen-run --target-width 320 --target-height 180 --target-fps 12`
+  stopped before rendering, and `out\diagnosis-first-screen-run\diagnosis.md`
+  starts with `能不能剪: 不能剪` and
+  `为什么: 缺少痛点、卖点、演示/证据、收尾素材。`
+- Smoke and P0 still pass:
+  `python scripts/run_smoke.py` -> `smoke passed`;
+  `python scripts/run_p0.py` -> `p0 passed`.
+- Full suite:
+  `python -m pytest -q -p no:cacheprovider` -> `456 passed in 418.10s`.
+- Release gate remains blocked:
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v85`
+  -> `blocked` because independent real-material passes and outside-user
+  evidence are still missing.
+- This improves first-run material failure clarity. It does not add real
+  material pass evidence or change the release gate.

@@ -26,6 +26,9 @@
   directory is permission-blocked.
 - Missing input paths now report stable `missing file` / `missing directory`
   messages instead of leaking localized Windows errors.
+- Product `diagnosis.md` now frontloads a plain `能不能剪` / `为什么` decision, so
+  missing-role material failures explain the blocking reason before the detailed
+  role list.
 - Added `jianji-flow outside-trial` to create a private outside-user trial
   record template with release-gate fields kept unverified by default.
 - Added `jianji-flow outside-trial-result` to turn a completed README demo run

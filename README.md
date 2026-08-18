@@ -215,7 +215,7 @@ python -m jianji_flow run --mode talking-head --reference fixtures\scenario-b-ta
 ## 输出文件
 
 - `manifest.json`: local asset inventory.
-- `diagnosis.md`: product material readiness report from filename/duration screening, with source preflight warnings or failures when found. `CANDIDATE` means the clip can be tried in a rough cut; it is not visual proof. It also warns when different filenames have byte-identical media or when close-duration candidates look visually similar. When `--visual-selections` is supplied, it explicitly records that visible choices replace filename role matching instead of calling opaque files missing.
+- `diagnosis.md`: product material readiness report from filename/duration screening, with a top-level `能不能剪` / `为什么` decision before the role details and source preflight warnings or failures. `CANDIDATE` means the clip can be tried in a rough cut; it is not visual proof. It also warns when different filenames have byte-identical media or when close-duration candidates look visually similar. When `--visual-selections` is supplied, it explicitly records that visible choices replace filename role matching instead of calling opaque files missing.
 - `recipe.json`: authoritative timeline.
 - `matches.json`: selected assets, confidence, and evidence.
 - `captions.srt`: editable subtitle file.
@@ -435,7 +435,7 @@ unverified user trial into a release pass.
 
 Latest local result:
 
-- `python -m pytest -q -p no:cacheprovider` -> 455 passed in 458.30s. The test
+- `python -m pytest -q -p no:cacheprovider` -> 456 passed in 418.10s. The test
   suite uses repo-local temporary directories under `out\pytest-tmp`, so it
   does not depend on the host Windows temp directory being writable.
 - A real FFmpeg run converted `out\voiceover-format-real\narration.mp3` to a
