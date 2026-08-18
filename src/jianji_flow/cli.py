@@ -26,7 +26,12 @@ from jianji_flow.material_audit import audit_material_root, write_material_audit
 from jianji_flow.material_pack import build_material_pack_scaffold, write_material_pack_scaffold
 from jianji_flow.media_probe import run_ffprobe
 from jianji_flow.media_scan import scan_assets, write_manifest
-from jianji_flow.outside_trial import build_outside_trial, write_outside_trial
+from jianji_flow.outside_trial import (
+    build_outside_trial,
+    build_outside_trial_result,
+    write_outside_trial,
+    write_outside_trial_result,
+)
 from jianji_flow.paths import make_output_dir, resolve_existing_dir, resolve_existing_file
 from jianji_flow.planner import build_segment_plan
 from jianji_flow.quality_diagnosis import diagnose_source_matches
@@ -135,6 +140,19 @@ def _build_parser() -> argparse.ArgumentParser:
     outside_trial = commands.add_parser("outside-trial", help="write an outside-user trial evidence template")
     outside_trial.add_argument("--id", required=True)
     outside_trial.add_argument("--output-dir", required=True)
+
+    outside_trial_result = commands.add_parser(
+        "outside-trial-result",
+        help="record an outside-user README trial result after artifacts and tester judgment exist",
+    )
+    outside_trial_result.add_argument("--id", required=True)
+    outside_trial_result.add_argument("--demo-dir", required=True)
+    outside_trial_result.add_argument("--completed-in-minutes", type=float, required=True)
+    outside_trial_result.add_argument("--visible-remix", choices=("yes", "no"), required=True)
+    outside_trial_result.add_argument("--readme-quickstart", action="store_true")
+    outside_trial_result.add_argument("--blocked-step", default="")
+    outside_trial_result.add_argument("--notes", default="")
+    outside_trial_result.add_argument("--output-dir", required=True)
     return parser
 
 
@@ -1090,6 +1108,29 @@ def _run_outside_trial_command(args: argparse.Namespace) -> int:
         return 1
 
 
+def _run_outside_trial_result_command(args: argparse.Namespace) -> int:
+    try:
+        result = build_outside_trial_result(
+            str(args.id),
+            Path(args.demo_dir),
+            completed_in_minutes=float(args.completed_in_minutes),
+            visible_remix=str(args.visible_remix) == "yes",
+            readme_quickstart=bool(args.readme_quickstart),
+            blocked_step=str(args.blocked_step),
+            notes=str(args.notes),
+        )
+        outputs = write_outside_trial_result(result, Path(args.output_dir))
+        print(f"outside trial result: {outputs['outside_trial_result']}")
+        print(f"outside user entry: {outputs['outside_user_entry']}")
+        print("visible_remix is an explicit tester judgment; artifact checks do not decide it automatically")
+        if result["release_gate_entry"]["readme_quickstart"] is not True:
+            print("release gate entry remains uncounted until --readme-quickstart records actual README use")
+        return 0
+    except Exception as exc:
+        print(f"jianji-flow failed: {exc}", file=sys.stderr)
+        return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args_list = sys.argv[1:] if argv is None else argv
@@ -1120,6 +1161,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_material_pack_command(args)
     if args.command == "outside-trial":
         return _run_outside_trial_command(args)
+    if args.command == "outside-trial-result":
+        return _run_outside_trial_result_command(args)
     if args.command == "run":
         return _run_pipeline(args)
     return 0

@@ -28,6 +28,10 @@
   messages instead of leaking localized Windows errors.
 - Added `jianji-flow outside-trial` to create a private outside-user trial
   record template with release-gate fields kept unverified by default.
+- Added `jianji-flow outside-trial-result` to turn a completed README demo run
+  plus explicit tester judgment into a safer outside-user entry draft. It
+  checks `review.md`, `review.html`, `remix.mp4`, and `contact-sheet.png`, but
+  does not decide `visible_remix` automatically.
 - `run` and `quick` now accept local WAV, MP3, and M4A audio through
   `--voiceover`, so a real narration or external TTS can be used when Windows
   SAPI has no Chinese voice; non-WAV input is normalized to the work directory

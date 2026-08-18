@@ -76,6 +76,17 @@ After the tester actually uses the README path, copy the completed entry into a
 private evidence ledger or issue, using a stable pseudonymous id and no personal
 media. A completed passing-looking record has this shape:
 
+You can generate that entry after the demo artifacts exist:
+
+```powershell
+jianji-flow outside-trial-result --id tester-01 --demo-dir out\trial-demo --completed-in-minutes 8 --visible-remix yes --readme-quickstart --output-dir out\outside-trial-result-tester-01
+```
+
+This command checks that `review.md`, `review.html`, `remix.mp4`, and
+`contact-sheet.png` exist and are non-empty. It does not decide whether the
+result is visibly re-edited; `--visible-remix yes` must come from the tester's
+answer.
+
 ```json
 {
   "id": "tester-01",

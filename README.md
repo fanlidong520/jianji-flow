@@ -369,6 +369,17 @@ and record the result without uploading private media.
 python -m jianji_flow outside-trial --id tester-01 --output-dir out\outside-trial-tester-01
 ```
 
+After the tester actually runs the README demo path, record the result with
+artifact checks and an explicit tester judgment:
+
+```powershell
+python -m jianji_flow outside-trial-result --id tester-01 --demo-dir out\trial-demo --completed-in-minutes 8 --visible-remix yes --readme-quickstart --output-dir out\outside-trial-result-tester-01
+```
+
+`outside-trial-result` checks `review.md`, `review.html`, `remix.mp4`, and
+`contact-sheet.png`. It does not decide `visible_remix`; use `yes` only when
+the tester says the output looked visibly re-edited.
+
 ```powershell
 python -m pytest -q
 python scripts/run_smoke.py
@@ -458,6 +469,9 @@ Latest local result:
 - `out\outside-trial-v78-template` shows the outside-user trial template
   command keeps `readme_quickstart: false` and `visible_remix: null` until a
   real tester completes the README path.
+- `out\outside-trial-result-v83-template` verifies the new
+  `outside-trial-result` artifact checks against a local smoke run. It is a
+  command validation sample, not an outside-user release-gate row.
 - the Edge TTS backend's focused tests and the end-to-end auto-TTS run also pass.
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed

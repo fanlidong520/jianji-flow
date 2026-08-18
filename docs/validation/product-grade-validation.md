@@ -710,3 +710,27 @@ Do not announce the project publicly until:
   `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v82`
   -> `blocked`; the remaining blockers are still real-material pass evidence,
   one opaque real-material pass, and outside-user trial evidence.
+
+## 2026-08-18 Outside Trial Result Checkpoint
+
+- Added `jianji-flow outside-trial-result` so a real outside-user README demo
+  run can be converted into a safer outside-user entry draft after artifacts and
+  explicit tester judgment exist.
+- The command verifies `review.md`, `review.html`, `remix.mp4`, and
+  `contact-sheet.png` under the provided demo directory before writing
+  `outside-user.entry.json`.
+- Safety boundary: artifact checks do not decide `visible_remix`; the CLI
+  requires `--visible-remix yes|no`, and `yes` should only be used when the
+  tester explicitly says the output looked visibly re-edited.
+- TDD red check:
+  `python -m pytest tests/test_outside_trial.py -q -p no:cacheprovider`
+  first failed because `build_outside_trial_result` and the
+  `outside-trial-result` command did not exist.
+- Green verification:
+  `python -m pytest tests/test_outside_trial.py -q -p no:cacheprovider`
+  -> `7 passed`.
+- Local command validation:
+  `python -m jianji_flow outside-trial-result --id tester-template-01 --demo-dir out\smoke-39760\scenario-a-product --completed-in-minutes 8 --visible-remix yes --readme-quickstart --notes "Template run against local smoke artifact; not a real outside user." --output-dir out\outside-trial-result-v83-template`
+  wrote `outside-trial-result.json`, `outside-user.entry.json`, and
+  `outside-trial-result.md`; this is command validation only, not a real outside
+  user release-gate row.
