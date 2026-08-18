@@ -1,0 +1,825 @@
+# Product-Grade Validation Plan
+
+This is the validation plan for making `jianji-flow` good enough to open source.
+
+## Validation Levels
+
+| Level | Purpose | Required Before |
+| --- | --- | --- |
+| Unit tests | lock small behavior | every code change |
+| Smoke | prove main paths run | every local checkpoint |
+| P0 | prove critical safety paths | every commit/PR |
+| Synthetic fixture review | stable regression evidence | every release candidate |
+| Real-material review | product usefulness evidence | open-source launch |
+| Blind-user trial | first-time usability evidence | open-source launch |
+
+## Required Real-Material Packs
+
+Before public launch, maintain at least these packs under a non-committed local validation folder:
+
+- home cleaning product clips: clean raw clips without platform UI;
+- home storage or kitchen product clips: multiple independent shots;
+- talking-head clip pack: one long talk plus B-roll or cutaway material.
+
+Each pack needs:
+
+- source folder;
+- clean script;
+- generated `review.md`;
+- generated `review.html`;
+- `contact-sheet.png`;
+- `candidate-review.html` when fixes are generated;
+- candidate-frame screenshots when fixes are generated;
+- final `remix.mp4`;
+- written manual judgment: pass, warning, or fail with reason.
+
+## Automated Gates To Add
+
+These gates should be implemented before public launch:
+
+- preflight material quality diagnosis for platform UI and old subtitles;
+- source-diversity check that detects clips split from the same mother video when possible;
+- multi-frame sampling inside each segment, not only one contact-sheet midpoint;
+- visual-similarity checks for same-role repair candidates, with duplicate-looking or unchecked recommendations blocked from one-command application;
+- caption placement check against lower safe-area residue;
+- "visual shell" detector comparing source frames and output frames;
+- review status escalation when platform UI warnings are severe or repeated;
+- story-support review that warns or fails when clips can render but do not provide enough evidence for the script;
+- repair-loop report that turns weak or low-confidence review findings into an editable fix file;
+- README quickstart test on a clean checkout.
+
+## Manual Review Checklist
+
+For every real-material run:
+
+- Can a viewer understand the product in 3 seconds?
+- Does every clip support the current voiceover line?
+- Does `Story support` explain whether the rough cut is role-labeled only or backed by stronger evidence?
+- Does the video look newly edited rather than revoiced?
+- Are old captions, platform UI, comments, or creator handles visible?
+- Are captions readable on a phone screen?
+- Does `review.md` match what the human sees?
+- If a candidate review exists, can the human see what would change before applying a fix?
+- Is the next action clear enough for a non-technical creator?
+
+## Current Evidence
+
+Latest review-page checkpoint:
+
+- targeted review and summary tests pass;
+- a real home-product run at `out/real-quality-v54/review.html` was blocked
+  before voiceover/rendering by repeated source-frame residue, as intended;
+- the blocked run retains one browser-openable review page with `Do not use
+  yet`, missing-output explanations, artifact links, and 15 embedded source
+  diagnostic frames;
+- `out/material-failure-v55/review.html` shows the same first-stop behavior
+  when material diagnosis finds no decodable video assets, with direct links
+  to `diagnosis.md` and the candidate board;
+- public launch remains blocked until the independent real-material packs,
+  dirty-pack failure, and outside-user trials in the release gate are real
+  evidence rather than local placeholders.
+
+Latest local checkpoint:
+
+- `python -m pytest -q` -> 237 passed;
+- `python scripts/run_smoke.py` -> smoke passed;
+- `out/real-material-remix-v7/review.md` -> warning, not pass;
+- `out/real-material-remix-v7/contact-sheet.png` -> visible remix, but old lower-safe-area residue remains in one segment.
+
+Latest local checkpoint after source-preflight hardening:
+
+- `python -m pytest -q` -> 249 passed;
+- `python scripts/run_smoke.py` -> smoke passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- `out/real-material-remix-v13/review.md` -> warning, not pass;
+- `out/real-material-remix-v13/remix.mp4` -> 23.233s, 592x1280, 30fps, audio present;
+- `out/real-material-remix-v13/contact-sheet.png` -> five visible segments;
+- source preflight found no severe lower-safe-area source residue for v13;
+- review warning is correct because all five selected segments are filename-only matches.
+
+Manual judgment for v13:
+
+- Can be used to inspect whether the pipeline assembled a rough cut.
+- Should not be used as the public open-source hero example.
+- Should not be labeled `pass` until visual/story evidence is stronger than filename-only role labels.
+
+Latest local checkpoint after material diagnosis visibility:
+
+- `python -m pytest -q` -> 277 passed;
+- `python scripts/run_smoke.py` -> smoke passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- `out/real-material-remix-v23/diagnosis.md` -> all product roles show `CANDIDATE`, not visually ready;
+- `out/real-material-remix-v23/matches.json` -> every selected segment has a `window` score;
+- `out/real-material-remix-v23/matches.json` -> 3 of 5 selected segments use non-zero source windows after scoring;
+- `out/real-material-remix-v23/matches.json` -> all five selected segments include `source-preflight:clean`;
+- `out/real-material-remix-v23/window-diagnostics` -> candidate midpoint frames preserved for audit;
+- `out/real-material-remix-v23/review.md` -> warning, not pass;
+- `out/real-material-remix-v23/remix.mp4` -> 37.907s, 592x1280, audio present;
+- `review.md` and `review.html` include `Story support` with roles, filename-only roles, visual-evidence roles, and weak-evidence roles;
+- `Story support.next_action` should name the weak roles to replace or manually verify;
+- warning is correct because all five story roles rely on filename evidence and have no non-filename visual evidence.
+- `source-window` evidence must not be treated as visual evidence.
+- `window-score` evidence must not be treated as story-match evidence.
+- `source-preflight:clean` evidence must not be treated as story-match evidence.
+
+Latest local checkpoint after segment-fix workflow:
+
+- `fixes.template.json` is generated on successful or warning runs;
+- `--fixes` supports segment-id and role-based replacement;
+- blank template entries are ignored;
+- unknown targets, unknown paths, invalid source ranges, and too-short replacements fail clearly;
+- `matches.json` records override evidence when a fix is applied;
+- targeted regression proves the replaced contact-sheet segment visibly changes;
+- `out/real-material-remix-v24-fixed-seg003/matches.json` records `override:seg-003`;
+- v24 fixed third contact-sheet tile differs from base v24 by mean pixel difference about 51.9;
+- v24 fixed remains `warning`, because the replacement creates repeated adjacent visuals and source-preflight warnings remain;
+- v24 fixed `review.md` now warns that adjacent segments `seg-003` and `seg-004` use the same source video;
+- this is a repair-loop improvement, not proof of visual semantic matching.
+
+Latest local checkpoint after candidate-ranking repair template:
+
+- `fixes.template.json` now includes `recommended_asset_path`, `recommendation_status`, `recommendation_warnings`, and scored `candidate_assets`;
+- candidate ranking prioritizes avoiding adjacent repeated sources before fallback role matching;
+- real-material `out/real-material-remix-v25/fixes.template.json` marks `seg-003` as `best_available_with_warnings`, not a clean recommendation;
+- `out/real-material-remix-v25-fixed-seg003/matches.json` records `override:seg-003`;
+- v25 fixed third contact-sheet tile differs from base v25 by mean pixel difference about 51.9;
+- v25 fixed `review.md` remains `warning` and preserves the adjacent-source warning for `seg-003` and `seg-004`;
+- this improves recommendation honesty, but still does not solve semantic visual matching.
+
+Latest local checkpoint after adjacent-source and wrong-role recommendation fixes:
+
+- initial matching now prefers non-adjacent source reuse when another same-role asset is available;
+- `out/real-material-remix-v26/matches.json` uses five different source videos for the five product roles and has no adjacent repeated source;
+- repair candidates now expose `role_match`;
+- wrong-role fallback candidates are kept as manual-inspection candidates but are not promoted to `recommended_asset_path`;
+- `out/real-material-remix-v27/fixes.template.json` reports `recommendation_status: no_candidate` for weak roles when no duration-ready same-role replacement exists;
+- repeated use of the same recommended replacement across weak segments is downgraded with an explicit warning;
+- CLI integration now validates the generated `fixes.template.json` against `fixes.schema.json`;
+- `out/real-material-remix-v27/review.md` remains `warning`, correctly stating that all five roles still lack non-filename visual evidence.
+
+Latest local checkpoint after storyboard review output:
+
+- `python -m pytest -q` -> 306 passed;
+- `python scripts/run_smoke.py` -> smoke passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- `review.md` and `review.html` now include a per-segment `Storyboard`;
+- `out/real-material-remix-v29/review.md` has five storyboard rows with role, caption, selected asset, source range, evidence, and risk;
+- `out/real-material-remix-v29/review.html` has five `.storyboard-row` entries;
+- storyboard risk remains `filename-only match` for all five real-material roles, which is correct because no visual semantic evidence exists yet;
+- retimed `source-window` evidence now matches the retimed source ranges in `matches.json` and the storyboard.
+
+Latest local checkpoint after one-command recommendation application:
+
+- `--apply-recommendation SEGMENT_ID` applies one clean recommendation from `fixes.template.json` without editing JSON;
+- warned recommendations fail clearly and do not render stale success artifacts;
+- `python -m pytest tests/test_fixes.py tests/test_cli.py::test_run_applies_clean_recommendation_from_fixes_template tests/test_cli.py::test_run_rejects_warning_recommendation_without_traceback tests/test_cli.py::test_run_applies_fixes_file_to_one_segment tests/test_cli.py::test_run_reports_invalid_fixes_file_without_traceback -q` -> 14 passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- `out/real-material-apply-rec-v30-base/fixes.template.json` gives `seg-003` a clean recommendation after adding an alternate same-role feature clip;
+- `out/real-material-apply-rec-v30-fixed/matches.json` records `override:seg-003` from `--apply-recommendation seg-003`;
+- the v30 contact-sheet third tile mean difference is 0.0 because the alternate file was a duplicate copy, proving the next gate must detect visually duplicate candidates.
+
+Latest local checkpoint after visual duplicate recommendation checks:
+
+- same-role repair candidates are compared against the current selected source window with three sampled frames;
+- visually similar candidates are downgraded to `best_available_with_warnings`;
+- visual-check failures are also downgraded instead of failing the whole run;
+- wrong-role fallback candidates skip visual comparison and remain manual-inspection candidates only;
+- `review.md` lists `visual_similarity_diagnostics` when sampled diagnostic frames are written;
+- warning CLI output now says `jianji-flow review required`, not `completed`;
+- real-material duplicate-feature validation downgraded `seg-003` because the copied candidate looked like the current segment;
+- `--apply-recommendation seg-003` rejected the warned recommendation and did not render stale success artifacts.
+
+Strict product audit after v31:
+
+- current outputs are still not launch-quality automatic editing;
+- recent improvements make the review and repair loop more honest, but v29 and v31 video outputs can remain visually unchanged;
+- public launch requires actual visual shot selection, not only safer reports around filename-based assembly;
+- first-run validation must include one real product-material pack with non-semantic filenames such as `IMG_001.mp4`;
+- a blind baseline comparison must show that `jianji-flow` beats simple file-order concatenation with voiceover and captions.
+
+Latest local checkpoint after candidate visual review:
+
+- `candidate-review.html` is generated from `fixes.template.json` on successful or warning runs;
+- `candidate-frames/` is regenerated on rerun so stale candidate screenshots are removed;
+- main `review.md` and `review.html` expose the candidate review path;
+- failed artifact-review runs remove candidate-review outputs while preserving diagnostic contact-sheet evidence;
+- real-material `out/real-material-candidate-review-v32/candidate-review.html` shows current and candidate frames for all five weak home-product roles;
+- real-material v32 correctly remains `warning`: all five roles are filename-only story support and the candidate page exposes wrong-role fallbacks instead of inventing clean replacements;
+- this makes repair candidates easier to judge, but it is not yet semantic visual shot selection.
+
+Latest local checkpoint after same-source window candidates:
+
+- `fixes.template.json` can include `recommended_source_start_ms` and candidate-level `source_start_ms` / `source_end_ms`;
+- `--apply-recommendation SEGMENT_ID` carries a clean recommended source window into the generated fixes file;
+- `candidate-review.html` extracts candidate frames from candidate windows when those fields are present;
+- same-source windows are downgraded with `same source window; manual review required`;
+- candidate-review labels recommended windows by asset path plus `source_start_ms`, preventing same-path non-recommended windows from being mislabeled;
+- `candidate_asset_paths` now uses `path#source_start_ms` for window candidates; reviewers should rely on `candidate_assets` for exact windows;
+- targeted regression verifies that a recommended source window changes `matches.json` `source_start_ms`;
+- real-material `out/real-material-same-source-windows-v33/fixes.template.json` exposes same-source window candidates for evidence and cta while keeping the run at `warning`;
+- this is a stronger repair-inspection loop, but still not a public launch pass.
+
+Latest local checkpoint after fix-run change reports:
+
+- `review.md` and `review.html` include a `Change report` section when a fix file or clean recommendation is applied;
+- changed segments show before asset/range, after asset/range, before/after sampled frames, picture-change score, sampling note, and override reason;
+- unchanged segments are listed so users can see the fix did not rebuild the whole cut;
+- unaccounted segments are listed instead of being silently skipped;
+- `change-diagnostics/` stores the sampled frames used for the picture-change score;
+- targeted regression verifies that `--apply-recommendation seg-003` writes the change report and diagnostics;
+- real-material `out/real-material-change-report-v34/review.html` embeds before/after sampled frames for `seg-004`, with `Picture change` 51.9 and `review required` status;
+- this improves first-time usability, but it still does not prove semantic visual shot selection.
+
+Latest local checkpoint after visual candidate selection v35:
+
+- `python -m pytest -q` -> 355 passed in 628.96s;
+- `python scripts/run_smoke.py` -> smoke passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- `visual-review` generated a 45-candidate board for the real home-product material using opaque filenames;
+- `out/visual-selection-v35/run-v35e/review.md` and `review.html` record four explicit visual selections and one honest feature-role abstention;
+- `out/visual-selection-v35/run-v35e/contact-sheet.png` shows five actual source-window choices, with `seg-002` and `seg-004` changed from the baseline and a `warning` status retained;
+- `out/visual-selection-v35/run-v35e/matches.json` now keeps each selected visual candidate's asset and source window aligned with its `candidates` record, including after voiceover retiming;
+- `out/visual-selection-v35/run-v35e/source-diagnostics/` contains 15 sampled frames because the new upper/lower platform-chrome checks correctly detected residue in the real pack;
+- after deliberately mutating `seg-001-candidate-03-01.png`, the rerun failed before rendering with `visual selection frame fingerprint changed`, and `out/stale-visual-selection-v35/run/review.md` contains no `remix.mp4` or `voiceover.wav`;
+- `out/dirty-pack-v35` was blocked on the malformed asset before manifest creation and produced no `remix.mp4`;
+- an opaque-filename run without visual selections stopped with a diagnosis instead of pretending filename-based assembly was sufficient.
+
+Product judgment:
+
+- this is a stronger and more honest visual review workflow, not proof of autonomous semantic editing;
+- the real pack is still `warning` because the feature shot is not clearly supported and the source material contains old in-video residue;
+- public launch remains blocked until three independent real-material packs, a clean non-semantic filename pass, a dirty-pack fail, clean-install verification, and outside-user trials all pass the launch rule.
+
+Latest local checkpoint after render cleanliness v36:
+
+- `python -m pytest -q` -> 355 passed in 628.96s;
+- `python scripts/run_smoke.py` -> smoke passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- `out/visual-selection-v35/run-v35f/contact-sheet.png` and an extracted frame from `remix.mp4` show the artificial gray/black top and bottom bands are gone;
+- captions remain visible through the ASS outline/shadow treatment;
+- source preflight still keeps the same run at `warning` and preserves platform-residue diagnostics, so the render cleanup did not weaken the honesty gate.
+
+Latest local checkpoint after reference comparison and crop-aware preflight v37:
+
+- `python -m pytest -q` -> 355 passed in 628.96s;
+- `python scripts/run_smoke.py` -> smoke passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- Skill validation -> `Skill is valid!`;
+- `out/visual-selection-v37/run-v37c/reference-comparison.png` shows five relative storyboard samples from the reference above the remix below, with visibly different source shots;
+- the same real run remains `warning` because the feature role is weak and selected source frames still need review;
+- source preflight now stores cropped safe-area diagnostics, reducing irrelevant warnings from platform chrome that the renderer removes.
+
+Latest local checkpoint after opt-in multi-shot v38:
+
+- `python -m pytest -q` -> 380 passed in 361.65s;
+- `python scripts/run_smoke.py` -> smoke passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- Skill validation -> `Skill is valid!`;
+- multi-shot unit, schema, semantic, matcher, renderer, and review tests pass;
+- final `shot-plan.json` is regenerated after voiceover retiming and matches the
+  final `matches.json` shot ranges;
+- `shot-contact-sheet.png` makes every final rendered shot inspectable without
+  scrubbing the video manually;
+- visual-review matches preserve the confirmed source window and record the
+  playback rate used to fit the final narration duration;
+- the default one-window path remains covered separately, while multi-shot is
+  explicitly opt-in during real-material validation;
+- no public launch claim is made until clean packs and outside-user trials pass
+  the launch rule below.
+
+Latest local checkpoint after conservative multi-shot and duplicate-sequence
+audit v41:
+
+- `python -m pytest -q` -> 384 passed in 1108.41s;
+- `python scripts/run_smoke.py` -> smoke passed;
+- `python scripts/run_p0.py` -> p0 passed;
+- Skill validation -> `Skill is valid!`;
+- the real home-product run has all five story roles visually supported after
+  reviewing the feature candidate, but remains `warning` because source frames
+  contain original platform/subtitle residue and adjacent segments repeat the
+  same shot sequence;
+- low-confidence segments are kept as one source window instead of being
+  automatically split into more questionable shots;
+- the current real run is not evidence for public launch; it is a quality gate
+  showing exactly what still needs better source material.
+
+Latest package consistency and repeat-validation checkpoint:
+
+- the package now reports `jianji-flow 0.3.0.dev0` from both the source tree
+  and a fresh non-editable installation;
+- one long-suite run recorded a transient `ffprobe` timeout after 383 passing
+  tests; the affected test passed in five isolated reruns, and the next full
+  suite passed 384/384 in 344.27 seconds;
+- smoke, P0, and skill validation passed again after the version change;
+- this does not relax the product launch rule: real-material quality and
+  outside-user trials are still outstanding.
+
+Latest source-preflight escalation checkpoint:
+
+- the previous real home-product visual-selection run would have produced a
+  37.9-second remix with a `warning`;
+- after repeated-warning escalation, the same material now stops before
+  voiceover and rendering with `Status: fail` because `seg-001`, `seg-003`,
+  and `seg-005` contain source UI/subtitle warnings;
+- `out/visual-selection-v44/run-repeat-gate/` retains `review.md`,
+  `diagnosis.md`, `source-diagnostics/`, and no `remix.mp4` or `voiceover.wav`;
+- when visual selections are present, `diagnosis.md` now says `VISUAL REVIEW
+  SUPPLIED` instead of mislabeling opaque filenames as `MISSING`.
+
+Latest conservative source-diversity checkpoint:
+
+- exact duplicate media is grouped by the scanned SHA-256, independent of the
+  filename used for each copy;
+- a duplicate-material run reported two duplicate groups in `diagnosis.md`
+  instead of treating five role-labeled names as five independent clips;
+- a real re-encoded fixture pair was scored `0.18` and reported as `SIMILAR
+  MEDIA` with sampled diagnostics;
+- a real middle segment cut from a longer source was detected as
+  `partial-overlap` with score `3.154` and coverage `0.667`;
+- this gate intentionally does not claim to detect every re-encoded file or
+  clip cut from the same mother video; that remains an open validation item.
+
+Latest full validation after visual-diversity audit:
+
+- `python -m pytest -q` -> 394 passed in 349.81s;
+- smoke, P0, and Skill validation passed;
+- fresh non-editable installation reports `0.3.0.dev0`, and the installed
+  package detects a re-encoded fixture pair as `SIMILAR MEDIA` with score
+  `0.18`;
+- real home-product visual-selection run v45 still fails before voiceover and
+  rendering on repeated source UI/subtitle warnings, with no remix or
+  voiceover output.
+
+Latest local A/B checkpoint after feature candidate review v42:
+
+- the feature role remains visually supported and `Story support` is `pass`;
+- candidate 04 removes the identical adjacent feature/evidence shot sequence
+  found in candidate 05 while keeping a 20-shot plan and a 37.9-second
+  video-plus-voiceover output;
+- the run remains `warning` because the source pack contains original
+  platform/subtitle residue and adjacent segments still draw from the same
+  source video;
+- this is the strongest result from the current pack, not a clean-pack or
+  public-launch result.
+
+Latest clean-install checkpoint:
+
+- created a fresh Python 3.11 virtual environment outside the repository;
+- installed the built project with `pip install "E:\\AI-Companion\\jianji-flow[dev]"`;
+- `python -m jianji_flow --version` returned `jianji-flow 0.3.0.dev0`;
+- `python -m jianji_flow doctor` returned `Ready to run quick draft`;
+- `python -m jianji_flow demo --target-width 320 --target-height 180
+  --target-fps 12` exited successfully and wrote `remix.mp4`, `review.md`,
+  `review.html`, and the contact sheets;
+- this check caught and fixed a missing packaged-schema failure before the
+  project is presented as installable.
+
+Latest preflight false-positive recalibration and default-script checkpoint:
+
+- source preflight no longer escalates the same warning repeatedly when one
+  source video is reused across multiple timeline segments;
+- manifest SHA-256 identities are reused by source preflight, so renamed
+  byte-identical copies do not become false independent-warning evidence;
+- the escalation rule still fails repeated sampled warnings within one source
+  segment or the same warning family across independent source files;
+- the regression suite now passes `399/399`, with smoke and P0 passing again;
+- the no-script quick path now produces a five-beat cleaning product script
+  instead of placeholder labels: hook, pain, feature, demonstration, and
+  closing line;
+- real-material run `out/visual-selection-v50/run-default-script/` renders a
+  20-shot preview with the default script and remains `warning` because the
+  source pack still contains original overlay/UI risk and adjacent source
+  reuse;
+- visual inspection of the real contact sheet confirms that the preview is
+  visibly re-edited, but the source pack is still not publish-ready.
+
+Latest partial-mother-clip audit checkpoint:
+
+- the source-diversity audit now compares a longer/shorter pair across
+  uniformly extracted frames instead of assuming matching timestamps;
+- a real 4.5-second middle cut from `IMG_003.mp4` was reported as
+  `partial-overlap`, score `3.154`, coverage `0.667`;
+- the audit remains a warning-only signal and does not prove all clips from
+  the same mother video are detected;
+- the full suite remains green at `399/399` after the new audit and output
+  formatting.
+
+Latest visual-selection integrity checkpoint:
+
+- a stale real selection file from the previous script was rejected before
+  rendering with `visual selection caption changed`;
+- generated candidate manifests now carry role and caption metadata, so
+  deleting those fields from the selection JSON cannot bypass stale-board
+  detection;
+- a missing `visual-candidate-sheet.png` is a blocking input error, and final
+  reports reference the copied evidence inside the current work directory;
+- a fresh real-material selection was correctly blocked by repeated old-title
+  and platform-residue warnings across independent source files, so no dirty
+  remix was emitted.
+
+Latest regression checkpoint after visual-selection integrity hardening:
+
+- `python -m pytest -q` -> `403 passed in 376.18s`;
+- smoke, P0, Skill validation, and `jianji-flow doctor` passed;
+- the clean synthetic workflows still emit `review required` for review-only
+  output instead of claiming a publish-ready result.
+
+Latest release-gate automation checkpoint:
+
+- `scripts/check_release_gate.py` now verifies review status, manifest
+  SHA-256 material identity, decodable real output video/audio, valid contact
+  sheets, independent-pack count, dirty-pack absence of `remix.mp4`, README
+  honesty, and outside-user evidence;
+- the same manifest identity or review path cannot be counted as multiple
+  independent packs;
+- the example ledger correctly returns `blocked` and writes both machine and
+  human reports when evidence is absent;
+- `python -m pytest -q` -> `425 passed in 341.66s`;
+- source preflight now ignores platform-bar heuristics outside the renderer's
+  safe crop while retaining lower-safe-area residue checks; the earlier real
+  home-product baseline `v57` remains a `warning` because it used filename-only
+  story evidence and had a source-residue warning;
+- a fresh visual-review run on the real home-product material selected five
+  caption-supported windows and changed `Story support` from `weak` to `pass`;
+  the rendered result remains `warning` because the last two segments reuse one
+  source video, so this is evidence of a real visual remix, not publish-ready
+  evidence;
+- `quick` and `run` now accept a local WAV via `--voiceover`, which keeps the
+  workflow usable when the host has no Windows Chinese SAPI voice;
+- `out/clean-install-v60` built and installed the wheel with its declared
+  runtime dependencies; an isolated `-S` import ran `jianji-flow --version`,
+  parsed `--voiceover`, and found all five packaged schemas;
+- smoke, P0, and Skill validation passed again;
+- `jianji-flow doctor --work-dir out\doctor-v62` accurately reports that this
+  host has no selectable Chinese SAPI voice and points to `--voiceover` as the
+  external WAV fallback;
+- after adding the optional `edge-tts` backend, `jianji-flow doctor
+  --work-dir out\doctor-v63` reports `local_tts: FAIL`, `edge_tts: OK`, and
+  `Ready to run quick draft`; an end-to-end `quick --tts-provider auto` run
+  generated a decodable voiceover and video/audio remix;
+- `out\opaque-trial-v63-run` combines auto Edge TTS with Codex visual selection
+  on opaque filenames and passes review with all five story roles supported;
+  it remains synthetic evidence and is not counted as a real-material pass.
+- the synthetic opaque-filename trial at
+  `out\opaque-trial-v61\run-short-wav-v2` passed with `Story support: pass`,
+  no filename-only roles, no warnings, and a visibly different five-role
+  remix; it is usability evidence only, not an independent real-material
+  release-gate pass.
+
+## Launch Rule
+
+Do not announce the project publicly until:
+
+- at least three real-material packs reach `pass`;
+- at least one real-material pack uses non-semantic filenames and still reaches `pass`;
+- at least one dirty-material pack is correctly blocked as `fail`;
+- at least five outside users try the README quickstart, with four finishing in 10 minutes and four judging the output as visibly re-edited;
+- no known false pass remains;
+- installation and quickstart are verified from a clean environment;
+- README shows honest examples, including a warning case.
+
+## 2026-08-17 Input Usability Checkpoint
+
+- `--voiceover` now accepts local WAV, MP3, and M4A input. Non-WAV audio is
+  normalized to the work directory's `voiceover.wav` before the existing decode,
+  duration, and non-silent checks.
+- Targeted voiceover and CLI regression: `20 passed`.
+- P0 rerun: `p0 passed`; the previously affected render probe rerun: `1 passed`;
+  Smoke rerun: `smoke passed`; Skill metadata tests: `12 passed`.
+- Real FFmpeg conversion produced a 2,000ms probeable non-silent WAV from the
+  generated MP3 at `out/voiceover-format-real`.
+- A full five-asset `quick` run using that MP3 generated `remix.mp4`, normalized
+  narration, captions, contact sheet, and review artifacts at
+  `out/mp3-voiceover-e2e-v65b`; its `warning` status is correct because the run
+  uses filename-based matching without visual selection.
+- Final complete suite after the input and error-path changes: `429 passed in
+  328.64s`.
+
+## 2026-08-17 Review Verdict Usability Checkpoint
+
+- Added a first-screen verdict panel to `review.html` with `能不能用`,
+  `先看哪里`, and `主要风险`, aimed at preventing warning rough cuts from being
+  mistaken for publishable videos.
+- Added a focused regression test that first failed without the verdict panel,
+  then passed after implementation:
+  `tests/test_review.py::test_build_review_html_contains_nontechnical_verdict_panel_for_warning`.
+- Focused verification:
+  `python -m pytest tests/test_review.py::test_build_review_html_contains_nontechnical_verdict_panel_for_warning tests/test_review_summary.py -q -p no:cacheprovider`
+  -> `13 passed`.
+- Smoke and P0 still pass after the page change:
+  `python scripts/run_smoke.py` -> `smoke passed`;
+  `python scripts/run_p0.py` -> `p0 passed`.
+- Release gate still blocks correctly:
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v79`
+  -> `blocked` because real-material passes, opaque real-material evidence, and
+  outside-user trials are still missing.
+- Real rendered verification:
+  `out/review-verdict-v68` completed `quick` with a local MP3 voiceover and
+  generated `remix.mp4`, `contact-sheet.png`, and `review.html`; the run remains
+  `warning` because it is filename-based and has weak story support.
+- Windows temp note from this checkpoint: the full review pytest file hit a
+  host-specific `Path.mkdir(mode=0o700)` permission issue for tests using
+  `tmp_path`; the changed behavior was validated with non-`tmp_path` review
+  tests plus smoke, P0, and an end-to-end rendered run. This was later addressed
+  by the 2026-08-18 Test Temp And Missing Path Reliability checkpoint.
+
+## 2026-08-17 Source Diversity Review Carry-Through Checkpoint
+
+- Product `quick` now carries material source-diversity findings into the final
+  review, not only `diagnosis.md`.
+- This protects against "fake many materials": duplicate files, re-encodes,
+  crops, or overlapping clips can no longer be hidden from the first-stop
+  `review.md` / `review.html` judgment.
+- TDD red checks:
+  `tests/test_cli.py::test_quick_carries_source_diversity_warning_into_final_review`
+  first failed because final `review.md` omitted the warning;
+  `tests/test_review_summary.py::test_review_summary_prioritizes_limited_material_diversity_over_story_support_warning`
+  first failed because summary still prioritized weak story support.
+- Green verification:
+  `python -m pytest tests/test_review_summary.py tests/test_cli.py::test_quick_carries_source_diversity_warning_into_final_review tests/test_review.py::test_build_review_html_contains_nontechnical_verdict_panel_for_warning -q -p no:cacheprovider`
+  -> `15 passed`.
+- Smoke and P0 still pass:
+  `python scripts/run_smoke.py` -> `smoke passed`;
+  `python scripts/run_p0.py` -> `p0 passed`.
+- Evidence output:
+  `out\pytest-source-diversity-review\review.md` records
+  `Similar source material detected`; `review.html` first screen says
+  `素材多样性有限`.
+
+## 2026-08-17 Evidence Pack Usability Checkpoint
+
+- Added `jianji-flow evidence-pack` so each completed run can be converted into
+  a local validation pack before it is considered for release evidence.
+- The command writes:
+  `validation-pack.json`, `release-evidence.entry.json`, and
+  `human-judgment.md`.
+- Safe default: generated entries keep `human_judgment` as `pending`, even when
+  `--independent` or `--opaque-filenames` is provided. A human must open
+  `review.html`, inspect the output, and edit the private ledger separately.
+- TDD verification:
+  `python -m pytest tests/test_validation_pack.py -q -p no:cacheprovider`
+  -> `3 passed`.
+- Real warning-run packaging evidence:
+  `python -m jianji_flow evidence-pack --run-dir out\real-material-visual-selected-v59 --name real-home-product-visual-selection-v59 --kind real --output-dir out\evidence-pack-v73-real-v59 --independent`
+  wrote all three pack files; `observed_review_status` is `warning`, and
+  `release-evidence.entry.json` keeps `human_judgment: pending`.
+- Latest release gate rerun:
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v79`
+  -> `blocked`; no release evidence was upgraded by packaging alone.
+
+## 2026-08-17 Material Audit Checkpoint
+
+- Added `jianji-flow material-audit` to audit local material roots before
+  running or packaging validation evidence.
+- The audit groups child pack folders by sorted media SHA-256 identities and
+  reports duplicate pack groups, so renamed copies cannot be counted as
+  independent real-material packs.
+- TDD verification:
+  `python -m pytest tests/test_material_audit.py -q -p no:cacheprovider`
+  -> `4 passed`.
+- Combined focused verification:
+  `python -m pytest tests/test_material_audit.py tests/test_validation_pack.py tests/test_cli.py::test_cli_help_no_args tests/test_cli.py::test_cli_version -q -p no:cacheprovider`
+  -> `9 passed`.
+- Local material audit:
+  `python -m jianji_flow material-audit --root E:\jianji-sucai --output-dir out\material-audit-v76-jianji-sucai`
+  -> `warning`, `independent packs: 1 of 2`.
+- Current conclusion: `E:\jianji-sucai\home-cleaning-kit-v1` and
+  `E:\jianji-sucai\home-cleaning-kit-v2` are renamed copies for release-gate
+  purposes. They can support usability testing, but only one independent
+  real-material pack can be counted from that root.
+
+## 2026-08-17 Outside Trial Template Checkpoint
+
+- Added `jianji-flow outside-trial` so outside-user trials start from a private,
+  structured evidence template instead of ad hoc notes.
+- The generated `outside-user.entry.json` keeps `readme_quickstart: false`,
+  `completed_in_minutes: null`, and `visible_remix: null` by default, so it
+  cannot count toward release-gate user evidence until a real tester completes
+  the README path.
+- TDD verification:
+  `python -m pytest tests/test_outside_trial.py -q -p no:cacheprovider`
+  -> `3 passed`.
+- Combined focused verification:
+  `python -m pytest tests/test_outside_trial.py tests/test_material_audit.py tests/test_validation_pack.py tests/test_cli.py::test_cli_help_no_args tests/test_cli.py::test_cli_version -q -p no:cacheprovider`
+  -> `12 passed`.
+- Evidence output:
+  `python -m jianji_flow outside-trial --id tester-template-01 --output-dir out\outside-trial-v78-template`
+  wrote `outside-user-trial.md`, `outside-user.entry.json`, and
+  `outside-trial.json`; the entry remains unverified.
+
+## 2026-08-17 Material Pack Scaffold Checkpoint
+
+- Added `jianji-flow material-pack` so a new real-material pack can start from a
+  clear folder and capture checklist instead of guesswork.
+- The generated scaffold creates `assets/`, `script.txt`, `README.md`,
+  `capture-checklist.md`, and `material-pack.json`.
+- Safety boundary: the scaffold is marked `release_gate_status: not_evidence`.
+  It does not create fake media, `remix.mp4`, `review.html`, or release-gate
+  evidence, and it cannot count as real-material validation until real assets,
+  `quick`, and human review exist.
+- TDD red checks:
+  `python -m pytest tests/test_material_pack.py -q -p no:cacheprovider`
+  first failed because `jianji_flow.material_pack` and the `material-pack`
+  command did not exist.
+- Green verification:
+  `python -m pytest tests/test_material_pack.py -q -p no:cacheprovider`
+  -> `3 passed`.
+- Real scaffold command:
+  `python -m jianji_flow material-pack --root out\material-pack-v80-root --name home-storage-real-02 --kind home-storage`
+  wrote the scaffold and printed `release gate status: not evidence until real
+  assets, quick output, and human review exist`.
+- Repeat-run safety:
+  rerunning the same command returned exit 1 with
+  `material pack already exists`, so it does not overwrite a pack folder
+  silently.
+- Empty-scaffold audit:
+  `python -m jianji_flow material-audit --root out\material-pack-v80-root --output-dir out\material-audit-v80-empty-scaffold`
+  -> `fail`, `independent packs: 0 of 0`, proving a template is not counted as
+  independent real-material evidence.
+- Full-suite attempt:
+  `python -m pytest -q -p no:cacheprovider` and
+  `python -m pytest -q -p no:cacheprovider --basetemp out\pytest-basetemp-v80`
+  both stopped on Windows `PermissionError` while pytest tried to access its
+  temp base directory; no material-pack assertion failure was observed before
+  the session cleanup error. Focused tests, smoke, and P0 are the valid
+  verification evidence for this checkpoint.
+- Current release gate after this scaffold change:
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v80`
+  -> `blocked`; the remaining blockers are still real-material pass evidence,
+  one opaque real-material pass, and outside-user trial evidence.
+
+## 2026-08-18 Edit Diversity Review Checkpoint
+
+- Added a first-class `Edit diversity` diagnosis to make the "is this actually
+  edited, or mostly the same source with a new voiceover?" question visible in
+  the main review artifacts.
+- The diagnosis records selected segment count, distinct source video count,
+  distinct source window count, most reused source, and warning text when most
+  segments reuse one source video.
+- TDD red check:
+  `python -m pytest tests/test_edit_diversity.py tests/test_review.py::test_review_exposes_edit_diversity_in_review_outputs -q -p no:cacheprovider`
+  first failed because `jianji_flow.edit_diversity` did not exist.
+- Green verification:
+  `python -m pytest tests/test_edit_diversity.py tests/test_review.py::test_review_warns_when_most_segments_come_from_same_source tests/test_review.py::test_review_exposes_edit_diversity_in_review_outputs tests/test_review.py::test_build_review_html_contains_nontechnical_verdict_panel_for_warning tests/test_review_summary.py -q -p no:cacheprovider`
+  -> `18 passed`.
+- Combined focused verification:
+  `python -m pytest tests/test_edit_diversity.py tests/test_review_summary.py tests/test_review.py::test_review_warns_when_most_segments_come_from_same_source tests/test_review.py::test_review_exposes_edit_diversity_in_review_outputs tests/test_review.py::test_build_review_html_contains_nontechnical_verdict_panel_for_warning tests/test_cli.py::test_cli_help_no_args tests/test_cli.py::test_cli_version -q -p no:cacheprovider`
+  -> `20 passed`.
+- Smoke and P0:
+  `python scripts/run_smoke.py` -> `smoke passed`;
+  `python scripts/run_p0.py` -> `p0 passed`.
+- Real smoke artifact check:
+  `out\smoke-36168\scenario-a-product\review.md` and `review.html` both include
+  `Edit diversity`; the synthetic sample reports `distinct_source_video_count:
+  5` and `warnings: none`.
+- Current release gate after this review change:
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v81`
+  -> `blocked`; the remaining blockers are still real-material pass evidence,
+  one opaque real-material pass, and outside-user trial evidence.
+- User-facing effect: warning runs that mostly reuse one source now show
+  `Edit diversity` in `review.md` and `review.html`, and the first-screen
+  verdict points the user to `Reference vs Remix` before trusting the video.
+
+## 2026-08-18 Test Temp And Missing Path Reliability Checkpoint
+
+- Added a repo-local pytest `tmp_path` fixture under `out\pytest-tmp` so the
+  full suite no longer depends on the host Windows system temp directory.
+- Added stable missing-path messages in `resolve_existing_file` and
+  `resolve_existing_dir`: missing inputs now say `missing file` or
+  `missing directory` instead of leaking localized Windows `WinError` text.
+- TDD red checks:
+  `python -m pytest tests/test_repo_tmp_path.py -q -p no:cacheprovider`
+  first failed because no repo-local temp helper existed; after the first helper
+  attempt, candidate-review tests exposed that `tempfile.mkdtemp` created
+  directories that could not accept child writes on this Windows host.
+- Path-error red checks:
+  `python -m pytest tests/test_paths.py tests/test_cli.py::test_run_reports_missing_paths -q -p no:cacheprovider`
+  first failed because missing paths printed localized Windows text without
+  `missing` or `not found`.
+- Green verification:
+  `python -m pytest tests/test_repo_tmp_path.py tests/test_candidate_review.py::test_write_candidate_review_shows_current_and_recommended_candidate_frames -q -p no:cacheprovider`
+  -> `2 passed`;
+  `python -m pytest tests/test_paths.py tests/test_cli.py::test_run_reports_missing_paths -q -p no:cacheprovider`
+  -> `9 passed`.
+- Full suite:
+  `python -m pytest -q -p no:cacheprovider` -> `450 passed in 413.55s`.
+- Smoke and P0:
+  `python scripts/run_smoke.py` -> `smoke passed`;
+  `python scripts/run_p0.py` -> `p0 passed`.
+- Current release gate:
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v82`
+  -> `blocked`; the remaining blockers are still real-material pass evidence,
+  one opaque real-material pass, and outside-user trial evidence.
+
+## 2026-08-18 Outside Trial Result Checkpoint
+
+- Added `jianji-flow outside-trial-result` so a real outside-user README demo
+  run can be converted into a safer outside-user entry draft after artifacts and
+  explicit tester judgment exist.
+- The command verifies `review.md`, `review.html`, `remix.mp4`, and
+  `contact-sheet.png` under the provided demo directory before writing
+  `outside-user.entry.json`.
+- Safety boundary: artifact checks do not decide `visible_remix`; the CLI
+  requires `--visible-remix yes|no`, and `yes` should only be used when the
+  tester explicitly says the output looked visibly re-edited.
+- TDD red check:
+  `python -m pytest tests/test_outside_trial.py -q -p no:cacheprovider`
+  first failed because `build_outside_trial_result` and the
+  `outside-trial-result` command did not exist.
+- Green verification:
+  `python -m pytest tests/test_outside_trial.py -q -p no:cacheprovider`
+  -> `7 passed`.
+- Local command validation:
+  `python -m jianji_flow outside-trial-result --id tester-template-01 --demo-dir out\smoke-39760\scenario-a-product --completed-in-minutes 8 --visible-remix yes --readme-quickstart --notes "Template run against local smoke artifact; not a real outside user." --output-dir out\outside-trial-result-v83-template`
+  wrote `outside-trial-result.json`, `outside-user.entry.json`, and
+  `outside-trial-result.md`; this is command validation only, not a real outside
+  user release-gate row.
+
+## 2026-08-18 Doctor Next-Step Usability Checkpoint
+
+- `doctor` now prints a pass-state `Next steps` block instead of ending at
+  environment readiness. It points first-time users to `jianji-flow demo`, then
+  to their own `jianji-flow quick` run when they already have a reference video
+  and asset folder.
+- README now mirrors that first-use path: pass `doctor`, run `demo` for the
+  local synthetic flow, or run `quick` with real local media.
+- Focused verification:
+  `python -m pytest tests/test_environment.py tests/test_cli.py::test_doctor_prints_environment_report tests/test_cli.py::test_doctor_returns_failure_when_environment_is_not_ready -q -p no:cacheprovider`
+  -> `11 passed`.
+- Skill metadata and review first-screen subset:
+  `python -m pytest tests/test_skill_metadata.py tests/test_review.py::test_build_review_html_contains_nontechnical_verdict_panel_for_warning -q -p no:cacheprovider`
+  -> `13 passed`.
+- Real command check:
+  `python -m jianji_flow doctor --work-dir out\doctor-v-next` reports
+  `Ready to run quick draft` and prints the `jianji-flow demo` /
+  `jianji-flow quick` next steps.
+- Smoke and P0 still pass:
+  `python scripts/run_smoke.py` -> `smoke passed`;
+  `python scripts/run_p0.py` -> `p0 passed`.
+- Full suite:
+  `python -m pytest -q -p no:cacheprovider` -> `455 passed in 458.30s`.
+- Release gate remains blocked:
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v84`
+  -> `blocked` because independent real-material passes and outside-user
+  evidence are still missing.
+- This improves first-run clarity only. It does not add real-material passes or
+  outside-user release evidence.
+
+## 2026-08-18 Diagnosis First-Screen Decision Checkpoint
+
+- Product `diagnosis.md` now starts with a plain-language `能不能剪` and `为什么`
+  decision before the filename/duration role table.
+- Missing-role failures now say `不能剪` and list the missing Chinese role names
+  in the first block, so users do not have to infer the blocking reason from
+  lower-level action lines.
+- TDD red check:
+  `python -m pytest tests/test_asset_diagnosis.py::test_format_asset_diagnosis_frontloads_plain_cut_decision_for_missing_roles -q -p no:cacheprovider`
+  first failed because the first block only said `Filename and duration
+  screening only`.
+- Green verification:
+  `python -m pytest tests/test_asset_diagnosis.py -q -p no:cacheprovider`
+  -> `14 passed`.
+- Real failure-path check:
+  `python -m jianji_flow quick --reference out\diagnosis-first-screen-fixtures\scenario-a-product\reference.mp4 --assets out\diagnosis-first-screen-incomplete --work-dir out\diagnosis-first-screen-run --target-width 320 --target-height 180 --target-fps 12`
+  stopped before rendering, and `out\diagnosis-first-screen-run\diagnosis.md`
+  starts with `能不能剪: 不能剪` and
+  `为什么: 缺少痛点、卖点、演示/证据、收尾素材。`
+- Smoke and P0 still pass:
+  `python scripts/run_smoke.py` -> `smoke passed`;
+  `python scripts/run_p0.py` -> `p0 passed`.
+- Full suite:
+  `python -m pytest -q -p no:cacheprovider` -> `456 passed in 418.10s`.
+- Release gate remains blocked:
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v85`
+  -> `blocked` because independent real-material passes and outside-user
+  evidence are still missing.
+- This improves first-run material failure clarity. It does not add real
+  material pass evidence or change the release gate.
+
+## 2026-08-18 README First-Time Path Checkpoint
+
+- README now has one linear first-time path:
+  install -> `jianji-flow doctor` -> `jianji-flow demo` when there is no
+  material -> `jianji-flow quick` when the user has a reference and assets ->
+  first review through `review.html`, `diagnosis.md`, `contact-sheet.png`, and
+  `reference-comparison.png`.
+- The previous install and v0.3 quickstart sections were merged to reduce
+  duplicated guidance and make the first ten minutes easier to follow.
+- TDD red check:
+  `python -m pytest tests/test_skill_metadata.py::test_readme_has_linear_first_time_path -q -p no:cacheprovider`
+  first failed because the README did not have the new ordered
+  `## 第一次使用：从这里开始` path.
+- Green verification:
+  `python -m pytest tests/test_skill_metadata.py -q -p no:cacheprovider`
+  -> `13 passed`.
+- Smoke and P0 still pass:
+  `python scripts/run_smoke.py` -> `smoke passed`;
+  `python scripts/run_p0.py` -> `p0 passed`.
+- Full suite:
+  `python -m pytest -q -p no:cacheprovider` -> `457 passed in 434.15s`.
+- Release gate remains blocked:
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v86`
+  -> `blocked` because independent real-material passes and outside-user
+  evidence are still missing.
+- This is a documentation usability change only. It does not add real-material
+  evidence or change the release gate.

@@ -163,8 +163,19 @@ def validate_semantics(
                 or source_end > duration
             ):
                 errors.append(f"match {match_id!r}: source range exceeds asset duration or is invalid")
-            elif start is not None and end is not None and (source_end - source_start) != (end - start):
-                errors.append(f"match {match_id!r}: source range duration must match recipe segment duration")
+            elif start is not None and end is not None:
+                playback_rate = match.get("playback_rate")
+                if playback_rate is None:
+                    duration_matches = (source_end - source_start) == (end - start)
+                else:
+                    try:
+                        duration_matches = round((source_end - source_start) / float(playback_rate)) == (end - start)
+                    except (TypeError, ValueError, ZeroDivisionError):
+                        duration_matches = False
+                if not duration_matches:
+                    errors.append(
+                        f"match {match_id!r}: source range duration must match recipe segment duration"
+                    )
 
         source_path = match.get("source_path")
         if not isinstance(source_path, str) or _has_url_or_protocol(source_path):
@@ -188,9 +199,98 @@ def validate_semantics(
             ):
                 errors.append(f"match {match_id!r}: source_path does not match manifest asset path")
 
+        errors.extend(
+            _validate_match_shots(
+                match,
+                segment,
+                manifest_by_id,
+                resolved_asset_root,
+                resolved_reference,
+                reference_hash,
+            )
+        )
+
     if segments and previous_end != recipe.get("duration_ms"):
         errors.append(
             f"timeline final end_ms {previous_end!r} does not equal recipe duration_ms {recipe.get('duration_ms')!r}"
         )
 
+    return errors
+
+
+def _validate_match_shots(
+    match: dict,
+    segment: dict,
+    manifest_by_id: dict,
+    asset_root: Path,
+    reference_path: Path,
+    reference_hash: str | None,
+) -> list[str]:
+    shots = match.get("shots")
+    if not shots:
+        return []
+
+    errors: list[str] = []
+    match_id = str(match.get("id", "unknown"))
+    source_duration = int(match.get("source_end_ms", 0)) - int(match.get("source_start_ms", 0))
+    playback_rate = match.get("playback_rate")
+    if playback_rate is None:
+        expected_duration = int(segment.get("end_ms", 0)) - int(segment.get("start_ms", 0))
+    else:
+        try:
+            expected_duration = source_duration
+            if round(source_duration / float(playback_rate)) != (
+                int(segment.get("end_ms", 0)) - int(segment.get("start_ms", 0))
+            ):
+                errors.append(f"match {match_id!r}: playback_rate does not fit segment duration")
+        except (TypeError, ValueError, ZeroDivisionError):
+            errors.append(f"match {match_id!r}: playback_rate is invalid")
+            expected_duration = source_duration
+    total_duration = 0
+    for index, shot in enumerate(shots, start=1):
+        label = f"match {match_id!r} shot {index}"
+        asset_id = shot.get("asset_id")
+        asset = manifest_by_id.get(asset_id)
+        if asset is None:
+            errors.append(f"{label}: asset_id {asset_id!r} is missing from manifest")
+            continue
+
+        source_path = shot.get("source_path")
+        if not isinstance(source_path, str) or _has_url_or_protocol(source_path):
+            errors.append(f"{label}: source_path must not be a URL or protocol path")
+            continue
+        resolved_source = _resolved(source_path)
+        if not _is_inside(asset_root, resolved_source):
+            errors.append(f"{label}: source_path is outside asset_root")
+        if resolved_source == reference_path or _same_file(resolved_source, reference_path):
+            errors.append(f"{label}: source_path resolves to reference_path")
+        source_hash = _sha256_or_none(resolved_source)
+        if reference_hash is not None and source_hash == reference_hash:
+            errors.append(f"{label}: source_path file hash matches reference_path")
+        manifest_asset_path = asset.get("path")
+        if (
+            isinstance(manifest_asset_path, str)
+            and not _has_url_or_protocol(manifest_asset_path)
+            and resolved_source != _resolved(manifest_asset_path)
+        ):
+            errors.append(f"{label}: source_path does not match manifest asset path")
+
+        start_ms = shot.get("source_start_ms")
+        end_ms = shot.get("source_end_ms")
+        duration_ms = asset.get("duration_ms")
+        if (
+            start_ms is None
+            or end_ms is None
+            or start_ms < 0
+            or end_ms <= start_ms
+            or end_ms > duration_ms
+        ):
+            errors.append(f"{label}: source range exceeds asset duration or is invalid")
+            continue
+        total_duration += end_ms - start_ms
+
+    if total_duration != expected_duration:
+        errors.append(
+            f"match {match_id!r}: shot durations {total_duration}ms do not match segment duration {expected_duration}ms"
+        )
     return errors

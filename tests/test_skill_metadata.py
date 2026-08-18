@@ -28,10 +28,14 @@ def test_license_is_mit():
 
 def test_readme_mentions_v0_2_experience_boundaries():
     text = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "What v0.2 Does" in text
+    assert "What It Does Now" in text
     assert "It does not create Jianying or CapCut draft projects." in text
     assert "voiceover.wav" in text
     assert "remix.mp4" in text
+    assert "filename-only" in text
+    assert "source preflight" in text
+    assert "fixes.template.json" in text
+    assert "--fixes" in text
 
 
 def test_readme_has_open_source_getting_started_sections():
@@ -58,12 +62,65 @@ def test_readme_references_demo_contact_sheet_asset():
     assert asset_path.stat().st_size > 100_000
 
 
+def test_readme_documents_v0_3_usability_commands():
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "jianji-flow doctor" in text
+    assert "jianji-flow demo" in text
+    assert "jianji-flow quick" in text
+    assert "examples\\reference.mp4" not in text
+    assert "fixtures\\scenario-a-product\\reference.mp4" in text
+    assert "默认文案只适合清洁类家居样例" in text
+    assert "winget install Gyan.FFmpeg" in text
+    assert "Ready to run quick draft" in text
+
+
+def test_readme_has_linear_first_time_path():
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    markers = [
+        "## 第一次使用：从这里开始",
+        "### 1. 安装",
+        "### 2. 检查环境",
+        "### 3. 没有素材：跑 demo",
+        "### 4. 有自己的素材：跑 quick",
+        "### 5. 看结果",
+    ]
+
+    positions = [text.index(marker) for marker in markers]
+
+    assert positions == sorted(positions)
+    assert "先跑 demo 看完整流程，再换成自己的素材。" in text
+    assert "如果 `quick` 停住，先打开 `review.html`，再看 `diagnosis.md`。" in text
+
+
+def test_skill_documents_quick_start_commands():
+    text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+    assert "doctor" in text
+    assert "demo" in text
+    assert "quick" in text
+    assert "diagnosis.md" in text
+    assert "filename-only" in text
+    assert "source-diagnostics" in text
+    assert "fixes.template.json" in text
+    assert "--fixes" in text
+    assert "examples\\reference.mp4" not in text
+    assert "fixtures\\scenario-a-product\\reference.mp4" in text
+
+
+def test_v0_3_validation_record_has_ten_runs():
+    text = (ROOT / "docs" / "validation" / "v0.3-usability-runs.md").read_text(encoding="utf-8")
+    assert text.count("## Run ") == 10
+    assert "usable rough cut" in text
+    assert "do not use yet" in text
+
+
 def test_changelog_documents_public_versions():
     text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     assert "# Changelog" in text
     assert "## 0.2.0" in text
     assert "## 0.1.0" in text
     assert "voiceover.wav" in text
+    assert "filename-only" in text
+    assert "source preflight" in text
 
 
 def test_github_ci_runs_unit_tests_without_local_tts_smoke():

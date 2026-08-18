@@ -1,13 +1,28 @@
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 from jsonschema.exceptions import ValidationError
 
+import jianji_flow.contracts as contracts
 from jianji_flow.contracts import (
+    validate_fixes,
     validate_manifest,
     validate_matches,
     validate_recipe,
 )
+
+
+def test_schema_files_are_available_inside_the_installed_package():
+    package_schema_dir = Path(contracts.__file__).resolve().parent / "schemas"
+
+    assert {path.name for path in package_schema_dir.glob("*.schema.json")} == {
+        "fixes.schema.json",
+        "manifest.schema.json",
+        "matches.schema.json",
+        "recipe.schema.json",
+        "visual-selection.schema.json",
+    }
 
 
 def valid_manifest():
@@ -63,6 +78,7 @@ def valid_matches():
                 "source_path": "assets/product-demo.mp4",
                 "source_start_ms": 0,
                 "source_end_ms": 3000,
+                "asset_duration_ms": 5000,
                 "confidence": 0.82,
                 "scores": {"visual": 0.9},
                 "candidates": [],
@@ -72,12 +88,53 @@ def valid_matches():
     }
 
 
+def valid_fixes():
+    return {
+        "version": "0.1",
+        "segments": {
+            "seg-003": {
+                "asset_path": "assets/new-demo.mp4",
+                "source_start_ms": 1000,
+            },
+            "feature": {
+                "asset_path": "",
+                "recommended_asset_path": "assets/feature-a.mp4",
+                "recommended_source_start_ms": 2000,
+                "recommendation_status": "recommended",
+                "recommendation_warnings": [],
+                "candidate_asset_paths": ["assets/feature-a.mp4#2000", "assets/feature-b.mp4#4000"],
+                "candidate_assets": [
+                    {
+                        "asset_path": "assets/feature-a.mp4",
+                        "source_start_ms": 2000,
+                        "source_end_ms": 3500,
+                        "score": 70,
+                        "role_match": True,
+                        "reasons": ["matches role feature", "avoids adjacent repetition"],
+                        "warnings": [],
+                    },
+                    {
+                        "asset_path": "assets/feature-b.mp4",
+                        "source_start_ms": 4000,
+                        "source_end_ms": 5500,
+                        "score": 10,
+                        "role_match": True,
+                        "reasons": ["matches role feature"],
+                        "warnings": ["would repeat adjacent segment"],
+                    },
+                ],
+            },
+        },
+    }
+
+
 @pytest.mark.parametrize(
     ("validator", "factory"),
     [
         (validate_manifest, valid_manifest),
         (validate_recipe, valid_recipe),
         (validate_matches, valid_matches),
+        (validate_fixes, valid_fixes),
     ],
 )
 def test_valid_minimal_data_passes(validator, factory):
@@ -90,6 +147,7 @@ def test_valid_minimal_data_passes(validator, factory):
         (validate_manifest, valid_manifest),
         (validate_recipe, valid_recipe),
         (validate_matches, valid_matches),
+        (validate_fixes, valid_fixes),
     ],
 )
 def test_unknown_top_level_fields_fail(validator, factory):
@@ -106,6 +164,7 @@ def test_unknown_top_level_fields_fail(validator, factory):
         (validate_manifest, valid_manifest, ("assets", 0, "unexpected")),
         (validate_recipe, valid_recipe, ("segments", 0, "unexpected")),
         (validate_matches, valid_matches, ("matches", 0, "unexpected")),
+        (validate_fixes, valid_fixes, ("segments", "seg-003", "unexpected")),
     ],
 )
 def test_unknown_nested_fields_fail(validator, factory, path):
@@ -143,6 +202,71 @@ def test_match_float_source_time_fails():
         validate_matches(data)
 
 
+def test_matches_accept_bounded_multi_shot_ranges():
+    data = valid_matches()
+    data["matches"][0]["shots"] = [
+        {
+            "shot_id": "seg-001-shot-01",
+            "asset_id": "asset-001",
+            "source_path": "assets/product-demo.mp4",
+            "source_start_ms": 0,
+            "source_end_ms": 1200,
+            "asset_duration_ms": 5000,
+            "evidence": ["scene-change-boundary"],
+        },
+        {
+            "shot_id": "seg-001-shot-02",
+            "asset_id": "asset-001",
+            "source_path": "assets/product-demo.mp4",
+            "source_start_ms": 1200,
+            "source_end_ms": 3000,
+            "asset_duration_ms": 5000,
+            "evidence": ["scene-change-boundary"],
+        },
+    ]
+
+    validate_matches(data)
+
+
+def test_matches_accept_bounded_playback_rate():
+    data = valid_matches()
+    data["matches"][0]["playback_rate"] = 1.25
+
+    validate_matches(data)
+
+
+def test_matches_reject_excessive_playback_rate():
+    data = valid_matches()
+    data["matches"][0]["playback_rate"] = 2.01
+
+    with pytest.raises(ValidationError):
+        validate_matches(data)
+
+
+def test_multi_shot_rejects_unknown_nested_fields():
+    data = valid_matches()
+    data["matches"][0]["shots"] = [
+        {
+            "shot_id": "seg-001-shot-01",
+            "asset_id": "asset-001",
+            "source_path": "assets/product-demo.mp4",
+            "source_start_ms": 0,
+            "source_end_ms": 1200,
+            "unexpected": True,
+        },
+        {
+            "shot_id": "seg-001-shot-02",
+            "asset_id": "asset-001",
+            "source_path": "assets/product-demo.mp4",
+            "source_start_ms": 1200,
+            "source_end_ms": 3000,
+        },
+    ]
+
+    with pytest.raises(ValidationError):
+        validate_matches(data)
+
+
 def test_invalid_mode_fails():
     data = valid_recipe()
     data["mode"] = "bad"
@@ -157,6 +281,7 @@ def test_invalid_mode_fails():
         (validate_manifest, valid_manifest),
         (validate_recipe, valid_recipe),
         (validate_matches, valid_matches),
+        (validate_fixes, valid_fixes),
     ],
 )
 def test_version_must_be_exact_v0_1(validator, factory):
@@ -266,6 +391,7 @@ def test_candidate_float_time_fails():
             "source_path": "assets/candidate.mp4",
             "source_start_ms": 0.5,
             "source_end_ms": 1000,
+            "asset_duration_ms": 2000,
             "score": 0.5,
             "evidence": [],
         }
@@ -335,3 +461,18 @@ def test_rejected_requires_reason_and_has_distinct_structure():
     invalid["matches"][0]["asset_id"] = "asset-001"
     with pytest.raises(ValidationError):
         validate_matches(invalid)
+
+
+def test_fixes_rejects_negative_source_start():
+    data = valid_fixes()
+    data["segments"]["seg-003"]["source_start_ms"] = -1
+
+    with pytest.raises(ValidationError):
+        validate_fixes(data)
+
+
+def test_fixes_allows_blank_template_asset_path():
+    data = valid_fixes()
+    data["segments"]["seg-003"]["asset_path"] = ""
+
+    validate_fixes(data)

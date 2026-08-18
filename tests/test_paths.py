@@ -20,7 +20,7 @@ def test_resolve_existing_file_supports_chinese_path_with_spaces(tmp_path: Path)
 
 
 def test_resolve_existing_file_raises_for_missing_file(tmp_path: Path):
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(FileNotFoundError, match="missing file"):
         resolve_existing_file(str(tmp_path / "missing.mp4"))
 
 
@@ -29,6 +29,11 @@ def test_resolve_existing_dir_returns_resolved_directory(tmp_path: Path):
     directory.mkdir()
 
     assert resolve_existing_dir(str(directory)) == directory.resolve()
+
+
+def test_resolve_existing_dir_raises_stable_message_for_missing_directory(tmp_path: Path):
+    with pytest.raises(FileNotFoundError, match="missing directory"):
+        resolve_existing_dir(str(tmp_path / "missing-assets"))
 
 
 def test_ensure_inside_rejects_parent_escape(tmp_path: Path):

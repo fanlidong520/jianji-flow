@@ -22,9 +22,15 @@ def _roles_and_weights(mode: str) -> tuple[tuple[str, ...], tuple[int, ...]]:
 def _split_script(script_text: str | None) -> list[str]:
     if not script_text:
         return []
+    cleaned_lines = []
+    for raw_line in script_text.splitlines():
+        line = raw_line.strip()
+        if re.fullmatch(r"[\[\(（【]\s*\d{1,2}[^]\)）】]*[\]\)）】]", line):
+            continue
+        cleaned_lines.append(line)
     return [
         part.strip()
-        for part in re.split(r"[\r\n.!?]+", script_text)
+        for part in re.split(r"[\r\n.!?]+", "\n".join(cleaned_lines))
         if part.strip()
     ]
 

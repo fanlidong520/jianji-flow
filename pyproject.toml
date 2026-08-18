@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jianji-flow"
-version = "0.2.0"
+version = "0.3.0.dev0"
 description = "A Codex skill for automatic preview video remix workflows."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -22,9 +22,15 @@ vision = [
   "numpy>=2.0.0",
   "opencv-python>=4.10.0.84"
 ]
+edge-tts = [
+  "edge-tts>=7.2.0"
+]
 
 [project.scripts]
 jianji-flow = "jianji_flow.cli:main"
+
+[tool.setuptools.package-data]
+jianji_flow = ["schemas/*.schema.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

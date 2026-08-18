@@ -1,3 +1,4 @@
+import base64
 import math
 import subprocess
 import struct
@@ -6,7 +7,16 @@ from pathlib import Path
 
 import pytest
 
-from jianji_flow.voiceover import build_voiceover_text, create_voiceover, probe_voiceover, validate_voiceover
+from jianji_flow.voiceover import (
+    build_voiceover_text,
+    create_voiceover,
+    create_edge_voiceover,
+    has_edge_tts,
+    has_local_chinese_tts,
+    prepare_voiceover,
+    probe_voiceover,
+    validate_voiceover,
+)
 
 
 def _write_tone_wav(path: Path, *, seconds: float = 0.25) -> None:
@@ -115,6 +125,202 @@ def test_probe_voiceover_reports_duration_for_decodable_wav(tmp_path: Path):
     assert 450 <= info.duration_ms <= 550
 
 
+def test_prepare_voiceover_converts_common_audio_input_to_normalized_wav(tmp_path: Path, monkeypatch):
+    source = tmp_path / "phone-recording.m4a"
+    source.write_bytes(b"encoded audio")
+    output = tmp_path / "voiceover.wav"
+    commands = []
+    real_run = subprocess.run
+
+    def fake_run(command, **kwargs):
+        if command[0] == "ffprobe":
+            return real_run(command, **kwargs)
+        commands.append(command)
+        _write_tone_wav(Path(command[-1]), seconds=0.5)
+
+        class Result:
+            returncode = 0
+            stderr = ""
+            stdout = ""
+
+        return Result()
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fake_run)
+
+    result = prepare_voiceover(source, output)
+
+    assert result == output
+    assert output.exists()
+    assert commands[0][0] == "ffmpeg"
+    assert "-i" in commands[0]
+    assert str(source) in commands[0]
+    assert "-ac" in commands[0]
+    assert "-ar" in commands[0]
+    assert output.read_bytes()[:4] == b"RIFF"
+
+
+def test_prepare_voiceover_copies_wav_without_reencoding(tmp_path: Path, monkeypatch):
+    source = tmp_path / "narration.wav"
+    _write_tone_wav(source, seconds=0.5)
+    output = tmp_path / "voiceover.wav"
+    real_run = subprocess.run
+
+    def fail_if_called(command, **kwargs):
+        if command[0] == "ffprobe":
+            return real_run(command, **kwargs)
+        raise AssertionError("WAV input should not be re-encoded")
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fail_if_called)
+
+    result = prepare_voiceover(source, output)
+
+    assert result == output
+    assert output.read_bytes()[:4] == b"RIFF"
+
+
+def test_prepare_voiceover_reports_missing_ffmpeg_for_non_wav_input(tmp_path: Path, monkeypatch):
+    source = tmp_path / "phone-recording.mp3"
+    source.write_bytes(b"encoded audio")
+    output = tmp_path / "voiceover.wav"
+
+    def missing_ffmpeg(*args, **kwargs):
+        raise FileNotFoundError("ffmpeg")
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", missing_ffmpeg)
+
+    with pytest.raises(ValueError, match="FFmpeg.*non-WAV"):
+        prepare_voiceover(source, output)
+
+
+def test_has_local_chinese_tts_returns_false_when_powershell_is_missing(monkeypatch):
+    def fake_run(*args, **kwargs):
+        raise FileNotFoundError("powershell")
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fake_run)
+
+    assert has_local_chinese_tts() is False
+
+
+def test_has_local_chinese_tts_returns_false_when_powershell_times_out(monkeypatch):
+    def fake_run(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd=args[0], timeout=kwargs["timeout"])
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fake_run)
+
+    assert has_local_chinese_tts() is False
+
+
+def test_has_local_chinese_tts_returns_false_when_powershell_cannot_start(monkeypatch):
+    def fake_run(*args, **kwargs):
+        raise PermissionError("blocked")
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fake_run)
+
+    assert has_local_chinese_tts() is False
+
+
+def test_has_local_chinese_tts_returns_true_when_local_voice_exists(monkeypatch):
+    class Result:
+        returncode = 0
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", lambda *args, **kwargs: Result())
+
+    assert has_local_chinese_tts() is True
+
+
+def test_has_local_chinese_tts_checks_voice_selection(monkeypatch):
+    captured = {}
+
+    class Result:
+        returncode = 0
+
+    def fake_run(command, **kwargs):
+        captured["script"] = base64.b64decode(command[-1]).decode("utf-16le")
+        return Result()
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fake_run)
+
+    assert has_local_chinese_tts() is True
+    assert "$s.SelectVoice($voice.VoiceInfo.Name)" in captured["script"]
+
+
+def test_has_edge_tts_checks_executable_version(monkeypatch):
+    calls = []
+
+    class Result:
+        returncode = 0
+
+    monkeypatch.setattr("jianji_flow.voiceover.shutil.which", lambda name: "edge-tts.exe")
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        return Result()
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fake_run)
+
+    assert has_edge_tts() is True
+    assert calls == [["edge-tts.exe", "--version"]]
+
+
+def test_create_edge_voiceover_converts_generated_media_to_wav(tmp_path: Path, monkeypatch):
+    output = tmp_path / "voiceover.wav"
+    real_run = subprocess.run
+    commands = []
+
+    monkeypatch.setattr("jianji_flow.voiceover.shutil.which", lambda name: "edge-tts.exe")
+
+    def fake_run(command, **kwargs):
+        commands.append(command)
+        if command[0] == "edge-tts.exe":
+            media_path = Path(command[command.index("--write-media") + 1])
+            _write_tone_wav(media_path)
+
+            class Result:
+                returncode = 0
+                stderr = ""
+                stdout = ""
+
+            return Result()
+        if command[0] == "ffmpeg":
+            _write_tone_wav(Path(command[-1]))
+
+            class Result:
+                returncode = 0
+                stderr = ""
+                stdout = ""
+
+            return Result()
+        return real_run(command, **kwargs)
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fake_run)
+
+    result = create_edge_voiceover({"segments": [{"caption": "家居清洁"}]}, output)
+
+    assert result == output
+    assert output.exists()
+    assert commands[0][:2] == ["edge-tts.exe", "--voice"]
+    assert commands[1][0] == "ffmpeg"
+    assert probe_voiceover(output).duration_ms > 0
+
+
+def test_create_edge_voiceover_reports_network_failure_without_traceback(tmp_path: Path, monkeypatch):
+    output = tmp_path / "voiceover.wav"
+    monkeypatch.setattr("jianji_flow.voiceover.shutil.which", lambda name: "edge-tts.exe")
+
+    class Result:
+        returncode = 1
+        stderr = "Traceback (most recent call last):\n...\naiohttp.client_exceptions.ClientConnectorError: Cannot connect"
+        stdout = ""
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", lambda *args, **kwargs: Result())
+
+    with pytest.raises(RuntimeError) as error:
+        create_edge_voiceover({"segments": [{"caption": "家居清洁"}]}, output)
+
+    assert "Traceback" not in str(error.value)
+    assert "Cannot connect" in str(error.value)
+
+
 def test_create_voiceover_invokes_local_tts_and_validates_output(tmp_path: Path, monkeypatch):
     output = tmp_path / "voiceover.wav"
     real_run = subprocess.run
@@ -137,3 +343,33 @@ def test_create_voiceover_invokes_local_tts_and_validates_output(tmp_path: Path,
 
     assert result == output
     assert probe_voiceover(output).duration_ms > 0
+
+
+def test_create_voiceover_allows_shorter_audio_before_timeline_retime(tmp_path: Path, monkeypatch):
+    output = tmp_path / "voiceover.wav"
+    real_run = subprocess.run
+
+    def fake_run(command, **kwargs):
+        if command[:3] != ["powershell", "-NoProfile", "-EncodedCommand"]:
+            return real_run(command, **kwargs)
+        _write_tone_wav(output, seconds=0.25)
+
+        class Result:
+            returncode = 0
+            stderr = ""
+            stdout = ""
+
+        return Result()
+
+    monkeypatch.setattr("jianji_flow.voiceover.subprocess.run", fake_run)
+
+    result = create_voiceover(
+        {
+            "duration_ms": 43_933,
+            "segments": [{"caption": "\u5bb6\u5c45\u6e05\u6d01"}],
+        },
+        output,
+    )
+
+    assert result == output
+    assert probe_voiceover(output).duration_ms < 43_933

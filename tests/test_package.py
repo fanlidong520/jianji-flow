@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_version_constant():
-    assert jianji_flow.__version__ == "0.2.0"
+    assert jianji_flow.__version__ == "0.3.0.dev0"
 
 
 def test_python_module_version_entrypoint():
@@ -27,7 +27,7 @@ def test_python_module_version_entrypoint():
         env=env,
     )
     assert result.returncode == 0
-    assert "jianji-flow 0.2.0" in result.stdout
+    assert "jianji-flow 0.3.0.dev0" in result.stdout
 
 
 def test_python_module_help_entrypoint():

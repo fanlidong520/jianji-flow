@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import shutil
 import os
+import math
+import struct
+import wave
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
@@ -29,9 +32,25 @@ def _run(args: list[str]) -> tuple[int, str, str]:
 
 
 def _assert_no_remix(work_dir: Path) -> None:
-    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png", "review.html"):
+    for name in ("remix.mp4", "voiceover.wav", "captions.ass", "contact-sheet.png"):
         if (work_dir / name).exists():
             raise AssertionError(f"blocking failure produced stale success artifact {name}: {work_dir}")
+    if not (work_dir / "review.html").exists():
+        raise AssertionError(f"blocking failure did not produce review.html: {work_dir}")
+
+
+def _write_test_wav(path: Path, *, seconds: float = 5.0) -> None:
+    sample_rate = 8000
+    frame_count = int(sample_rate * seconds)
+    frames = bytearray()
+    for index in range(frame_count):
+        value = int(math.sin(index / sample_rate * 440 * math.tau) * 8000)
+        frames.extend(struct.pack("<h", value))
+    with wave.open(str(path), "wb") as handle:
+        handle.setnchannels(1)
+        handle.setsampwidth(2)
+        handle.setframerate(sample_rate)
+        handle.writeframes(frames)
 
 
 def test_missing_reference(base: Path, fixture_root: Path) -> None:
@@ -110,6 +129,8 @@ def test_chinese_path_with_spaces(base: Path, fixture_root: Path) -> None:
     scenario = base / "中文 路径" / "产品 样例"
     shutil.copytree(source, scenario)
     work_dir = base / "中文 输出"
+    voiceover = base / "test-voiceover.wav"
+    _write_test_wav(voiceover)
     code, _, stderr = _run(
         [
             "run",
@@ -123,6 +144,8 @@ def test_chinese_path_with_spaces(base: Path, fixture_root: Path) -> None:
             str(scenario / "script.txt"),
             "--work-dir",
             str(work_dir),
+            "--voiceover",
+            str(voiceover),
             "--target-width",
             "320",
             "--target-height",

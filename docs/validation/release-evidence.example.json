@@ -1,0 +1,17 @@
+{
+  "quality": {
+    "full_tests": {
+      "status": "not_recorded",
+      "passed": 0
+    },
+    "smoke": "not_recorded",
+    "p0": "not_recorded",
+    "skill_validation": "not_recorded",
+    "clean_install": "not_recorded"
+  },
+  "real_material_packs": [],
+  "dirty_material_packs": [],
+  "outside_users": [],
+  "known_false_passes": [],
+  "readme": "README.md"
+}

@@ -19,17 +19,17 @@ def reject_url_or_protocol(path_text: str) -> None:
 
 def resolve_existing_file(path_text: str) -> Path:
     reject_url_or_protocol(path_text)
-    path = Path(path_text).resolve(strict=True)
+    path = Path(path_text).resolve(strict=False)
     if not path.is_file():
-        raise FileNotFoundError(path)
+        raise FileNotFoundError(f"missing file: {path}")
     return path
 
 
 def resolve_existing_dir(path_text: str) -> Path:
     reject_url_or_protocol(path_text)
-    path = Path(path_text).resolve(strict=True)
+    path = Path(path_text).resolve(strict=False)
     if not path.is_dir():
-        raise FileNotFoundError(path)
+        raise FileNotFoundError(f"missing directory: {path}")
     return path
 
 

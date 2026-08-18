@@ -14,7 +14,11 @@ python scripts/run_smoke.py
 python scripts/run_p0.py
 ```
 
-`run_smoke.py` uses local voiceover generation, so it is best run on a Windows machine with a Chinese TTS voice installed. GitHub CI runs the unit test suite only.
+`run_smoke.py` and `run_p0.py` generate a small test WAV, so they do not depend
+on a developer machine having a Chinese TTS voice. For a real first-time trial,
+use [`docs/validation/outside-user-trial.md`](docs/validation/outside-user-trial.md);
+the normal `auto` provider uses Windows SAPI or the optional `edge-tts` backend.
+GitHub CI runs the unit test suite only.
 
 ## Change Guidelines
 

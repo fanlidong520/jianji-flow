@@ -7,7 +7,7 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 
-SCHEMA_DIR = Path(__file__).resolve().parents[2] / "schemas"
+SCHEMA_DIR = Path(__file__).resolve().parent / "schemas"
 
 
 @lru_cache(maxsize=None)
@@ -30,3 +30,11 @@ def validate_recipe(data: dict) -> None:
 
 def validate_matches(data: dict) -> None:
     _validate("matches.schema.json", data)
+
+
+def validate_fixes(data: dict) -> None:
+    _validate("fixes.schema.json", data)
+
+
+def validate_visual_selection(data: dict) -> None:
+    _validate("visual-selection.schema.json", data)

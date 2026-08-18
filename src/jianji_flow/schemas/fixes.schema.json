@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "jianji-flow fixes",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "segments"],
+  "properties": {
+    "version": {"const": "0.1"},
+    "how_to_use": {"type": "string"},
+    "segments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["asset_path"],
+        "properties": {
+          "role": {"type": "string"},
+          "caption": {"type": "string"},
+          "reason": {"type": "string"},
+          "current_asset_path": {"type": "string"},
+          "asset_path": {"type": "string"},
+          "recommended_asset_path": {"type": "string"},
+          "recommended_source_start_ms": {"type": ["integer", "null"], "minimum": 0},
+          "recommendation_status": {"enum": ["recommended", "best_available_with_warnings", "no_candidate"]},
+          "recommendation_warnings": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "source_start_ms": {"type": ["integer", "null"], "minimum": 0},
+          "candidate_asset_paths": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "candidate_assets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["asset_path", "score", "reasons", "warnings", "role_match"],
+              "properties": {
+                "asset_path": {"type": "string"},
+                "source_start_ms": {"type": ["integer", "null"], "minimum": 0},
+                "source_end_ms": {"type": ["integer", "null"], "minimum": 0},
+                "score": {"type": "number"},
+                "role_match": {"type": "boolean"},
+                "reasons": {
+                  "type": "array",
+                  "items": {"type": "string"}
+                },
+                "warnings": {
+                  "type": "array",
+                  "items": {"type": "string"}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

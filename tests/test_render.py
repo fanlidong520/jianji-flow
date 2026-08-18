@@ -112,6 +112,76 @@ def test_render_command_uses_validated_inputs_only():
     assert "out\\remix.mp4" not in command
 
 
+def test_render_command_flattens_multi_shot_match_into_ordered_inputs():
+    recipe, matches = _recipe(Path("assets/hook.mp4"))
+    recipe["duration_ms"] = 2000
+    recipe["segments"][0]["end_ms"] = 2000
+    match = matches["matches"][0]
+    match["source_end_ms"] = 2000
+    match["asset_duration_ms"] = 3000
+    match["shots"] = [
+        {
+            "shot_id": "seg-001-shot-01",
+            "asset_id": "asset-001",
+            "source_path": "assets/hook.mp4",
+            "source_start_ms": 0,
+            "source_end_ms": 1000,
+            "asset_duration_ms": 3000,
+        },
+        {
+            "shot_id": "seg-001-shot-02",
+            "asset_id": "asset-001",
+            "source_path": "assets/hook.mp4",
+            "source_start_ms": 1000,
+            "source_end_ms": 2000,
+            "asset_duration_ms": 3000,
+        },
+    ]
+    manifest = _manifest("assets/hook.mp4")
+    manifest["assets"][0]["duration_ms"] = 3000
+
+    command = build_ffmpeg_plan(
+        recipe,
+        matches,
+        manifest,
+        Path("out/remix.mp4"),
+        work_dir=Path("out"),
+        reference_path=Path("reference.mp4"),
+        asset_root=Path("assets"),
+        captions_path=None,
+    )
+
+    assert command.count("assets/hook.mp4") == 2
+    assert "concat=n=2:v=1:a=0" in command[command.index("-filter_complex") + 1]
+
+
+def test_render_command_preserves_visual_window_with_playback_rate():
+    recipe, matches = _recipe(Path("assets/hook.mp4"))
+    match = matches["matches"][0]
+    match["source_end_ms"] = 2000
+    match["asset_duration_ms"] = 3000
+    match["playback_rate"] = 2.0
+    match["evidence"] = ["visual-review:seg-001-candidate-01"]
+    manifest = _manifest("assets/hook.mp4")
+    manifest["assets"][0]["duration_ms"] = 3000
+
+    command = build_ffmpeg_plan(
+        recipe,
+        matches,
+        manifest,
+        Path("out/remix.mp4"),
+        work_dir=Path("out"),
+        reference_path=Path("reference.mp4"),
+        asset_root=Path("assets"),
+        captions_path=None,
+    )
+
+    filter_text = command[command.index("-filter_complex") + 1]
+    assert "-t" in command
+    assert "2.000" in command
+    assert "setpts=PTS/2.000000" in filter_text
+
+
 def test_render_command_rejects_missing_match():
     recipe, matches = _recipe(Path("assets/hook.mp4"))
     matches["matches"][0] = {
@@ -234,11 +304,34 @@ def test_render_command_uses_voiceover_audio_and_burned_captions(tmp_path: Path)
     assert any("subtitles=" in part for part in command)
 
 
+def test_render_command_uses_default_remix_visual_treatment_for_vertical_preview():
+    recipe, matches = _recipe(Path("assets/hook.mp4"))
+    recipe["target"] = {"width": 592, "height": 1280, "fps": 30}
+    recipe["caption_burn_in"] = True
+
+    command = build_ffmpeg_plan(
+        recipe,
+        matches,
+        _manifest("assets/hook.mp4"),
+        Path("out/remix.mp4"),
+        work_dir=Path("out"),
+        reference_path=Path("reference.mp4"),
+        asset_root=Path("assets"),
+        captions_path=Path("out/captions.ass"),
+    )
+
+    filter_complex = command[command.index("-filter_complex") + 1]
+    assert "crop=iw*0.76:ih*0.58" in filter_complex
+    assert "force_original_aspect_ratio=increase" in filter_complex
+    assert "crop=592:1280" in filter_complex
+    assert "drawbox=" not in filter_complex
+
+
 @pytest.mark.skipif(shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None, reason="ffmpeg required")
 def test_render_preview_creates_probeable_mp4(tmp_path: Path):
     fixture_root = tmp_path / "fixtures"
     subprocess.run([sys.executable, str(GENERATOR), "--output", str(fixture_root)], check=True)
-    source_path = fixture_root / "scenario-a-product" / "assets" / "product-overview.mp4"
+    source_path = fixture_root / "scenario-a-product" / "assets" / "01-hook-opening.mp4"
     recipe, matches = _recipe(source_path)
     recipe_path = tmp_path / "recipe.json"
     matches_path = tmp_path / "matches.json"
