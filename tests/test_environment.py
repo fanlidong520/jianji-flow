@@ -51,7 +51,11 @@ def test_check_environment_accepts_edge_tts_when_local_tts_is_missing(tmp_path: 
     assert report["status"] == "pass"
     assert report["checks"]["local_tts"]["status"] == "fail"
     assert report["checks"]["edge_tts"]["status"] == "pass"
-    assert format_environment_report(report).strip().endswith("Ready to run quick draft")
+    text = format_environment_report(report)
+    assert "Next steps:" in text
+    assert "jianji-flow demo" in text
+    assert "jianji-flow quick" in text
+    assert text.strip().endswith("Ready to run quick draft")
 
 
 def test_check_environment_reports_missing_ffmpeg_tools(tmp_path: Path, monkeypatch):
@@ -130,3 +134,18 @@ def test_format_environment_report_ends_with_plain_decision(tmp_path: Path, monk
 
     assert "Environment" in text
     assert text.strip().endswith("Ready to run quick draft")
+
+
+def test_format_environment_report_on_pass_points_to_demo_and_quick(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(
+        "jianji_flow.environment.check_ffmpeg_available",
+        lambda: {"ffmpeg": "ffmpeg ok", "ffprobe": "ffprobe ok"},
+    )
+    monkeypatch.setattr("jianji_flow.environment.platform.system", lambda: "Windows")
+    monkeypatch.setattr("jianji_flow.environment.has_local_chinese_tts", lambda: True)
+
+    text = format_environment_report(check_environment(output_root=tmp_path))
+
+    assert "Next steps:" in text
+    assert "jianji-flow demo" in text
+    assert "jianji-flow quick" in text

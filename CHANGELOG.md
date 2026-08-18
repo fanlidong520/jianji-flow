@@ -42,6 +42,9 @@
 - Added an optional `edge-tts` narration backend. `auto` prefers a working local
   Windows voice and falls back to Edge TTS when installed; `windows` and `edge`
   can be selected explicitly, while `--voiceover` remains the offline override.
+- `doctor` now prints pass-state next steps, pointing first-time users to
+  `jianji-flow demo` or their own `jianji-flow quick` run instead of ending at
+  environment readiness.
 - Online TTS failures now keep the review artifacts and report a compact
   actionable error instead of leaking the provider's full traceback.
 - Failed runs now keep a local `review.html` alongside `review.md`; the page

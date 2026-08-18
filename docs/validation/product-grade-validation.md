@@ -734,3 +734,33 @@ Do not announce the project publicly until:
   wrote `outside-trial-result.json`, `outside-user.entry.json`, and
   `outside-trial-result.md`; this is command validation only, not a real outside
   user release-gate row.
+
+## 2026-08-18 Doctor Next-Step Usability Checkpoint
+
+- `doctor` now prints a pass-state `Next steps` block instead of ending at
+  environment readiness. It points first-time users to `jianji-flow demo`, then
+  to their own `jianji-flow quick` run when they already have a reference video
+  and asset folder.
+- README now mirrors that first-use path: pass `doctor`, run `demo` for the
+  local synthetic flow, or run `quick` with real local media.
+- Focused verification:
+  `python -m pytest tests/test_environment.py tests/test_cli.py::test_doctor_prints_environment_report tests/test_cli.py::test_doctor_returns_failure_when_environment_is_not_ready -q -p no:cacheprovider`
+  -> `11 passed`.
+- Skill metadata and review first-screen subset:
+  `python -m pytest tests/test_skill_metadata.py tests/test_review.py::test_build_review_html_contains_nontechnical_verdict_panel_for_warning -q -p no:cacheprovider`
+  -> `13 passed`.
+- Real command check:
+  `python -m jianji_flow doctor --work-dir out\doctor-v-next` reports
+  `Ready to run quick draft` and prints the `jianji-flow demo` /
+  `jianji-flow quick` next steps.
+- Smoke and P0 still pass:
+  `python scripts/run_smoke.py` -> `smoke passed`;
+  `python scripts/run_p0.py` -> `p0 passed`.
+- Full suite:
+  `python -m pytest -q -p no:cacheprovider` -> `455 passed in 458.30s`.
+- Release gate remains blocked:
+  `python scripts/check_release_gate.py --evidence out\release-evidence-current-v60.json --report-dir out\release-gate-current-v84`
+  -> `blocked` because independent real-material passes and outside-user
+  evidence are still missing.
+- This improves first-run clarity only. It does not add real-material passes or
+  outside-user release evidence.

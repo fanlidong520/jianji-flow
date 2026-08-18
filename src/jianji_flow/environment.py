@@ -75,7 +75,12 @@ def format_environment_report(report: dict) -> str:
         mark = "OK" if check.get("status") == "pass" else "FAIL"
         lines.append(f"- {name}: {mark} - {check.get('message', '')}")
     decision = "Ready to run quick draft" if report.get("status") == "pass" else "Not ready"
-    if decision == "Not ready":
+    if decision == "Ready to run quick draft":
+        lines.append("")
+        lines.append("Next steps:")
+        lines.append("- Run jianji-flow demo to see the workflow on generated local fixtures.")
+        lines.append("- If you already have a reference video and asset folder, run jianji-flow quick with those paths.")
+    else:
         checks = report.get("checks", {})
         lines.append("")
         lines.append("Next steps:")

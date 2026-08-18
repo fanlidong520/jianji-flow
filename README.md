@@ -119,6 +119,7 @@ jianji-flow doctor
 
 环境完整可用时输出会以 `Ready to run quick draft` 结尾；如果本机没有可用的中文 TTS，
 会显示 `Not ready` 并给出安装语音或使用 `--voiceover` 本地音频配音的下一步。
+如果 `doctor` 已经通过，先跑 `jianji-flow demo` 看一遍完整流程；如果你已经有自己的参考视频和素材文件夹，就直接跑 `jianji-flow quick`。
 首次安装建议先确认版本和内置 demo 都能运行：
 
 ```powershell
@@ -434,8 +435,8 @@ unverified user trial into a release pass.
 
 Latest local result:
 
-- `python -m pytest -q -p no:cacheprovider` -> 450 passed in 413.55s. The test
-  suite now uses repo-local temporary directories under `out\pytest-tmp`, so it
+- `python -m pytest -q -p no:cacheprovider` -> 455 passed in 458.30s. The test
+  suite uses repo-local temporary directories under `out\pytest-tmp`, so it
   does not depend on the host Windows temp directory being writable.
 - A real FFmpeg run converted `out\voiceover-format-real\narration.mp3` to a
   2,000ms, probeable, non-silent `voiceover.wav`.
@@ -475,8 +476,9 @@ Latest local result:
 - the Edge TTS backend's focused tests and the end-to-end auto-TTS run also pass.
 - `python scripts/run_smoke.py` -> smoke passed
 - `python scripts/run_p0.py` -> p0 passed
-- `python -m jianji_flow doctor --work-dir out\doctor-v63` -> `local_tts: FAIL`,
-  `edge_tts: OK`, `Ready to run quick draft`.
+- `python -m jianji_flow doctor --work-dir out\doctor-v-next` -> `local_tts:
+  FAIL`, `edge_tts: OK`, `Ready to run quick draft`, and next steps for
+  `jianji-flow demo` / `jianji-flow quick`.
 - `out\edge-auto-v63-run` -> `quick --tts-provider auto` generated a valid
   voiceover, MP4 with video/audio, captions, and review artifacts; status remains
   `warning` because the synthetic filename-role run still needs visual selection.
